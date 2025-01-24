@@ -20,8 +20,8 @@ const items = [
         icon: LayoutDashboard,
     },
     {
-        title: "Parcels",
-        url: "/parcels",
+        title: "Air Way Bills",
+        url: "/awb",
         icon: Box,
     },
     {

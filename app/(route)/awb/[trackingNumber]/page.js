@@ -3,7 +3,8 @@
 import { useState, useEffect, use } from "react";
 import axios from "axios";
 import Image from "next/image";
-import { Printer } from "lucide-react";
+import { Mail, MapPin, Phone, Printer } from "lucide-react";
+import Barcode from "react-barcode"; // Import the barcode package
 
 export default function AWBView({ params }) {
   const { trackingNumber } = use(params);
@@ -16,21 +17,21 @@ export default function AWBView({ params }) {
   useEffect(() => {
     const fetchAWBData = async () => {
       console.log(`AWB fetching data ${trackingNumber}`);
-      setLoading(true); // Ensure loading state is set before fetching
+      setLoading(true);
       try {
         const response = await axios.get(`/api/awb/${trackingNumber}`);
-        setAwbData(response.data[0]); // Set the fetched data
-        setLoading(false); // Data fetched, stop loading
+        setAwbData(response.data[0]);
+        setLoading(false);
       } catch (err) {
         setError("Failed to fetch AWB data");
-        setLoading(false); // Stop loading even on error
+        setLoading(false);
       }
     };
 
     if (trackingNumber) {
       fetchAWBData();
     }
-  }, [trackingNumber]); // Add trackingNumber as dependency to refetch when it changes
+  }, [trackingNumber]);
 
   if (loading) return <div className="text-center mt-8">Loading...</div>;
   if (error)
@@ -44,16 +45,39 @@ export default function AWBView({ params }) {
     <div className="container mx-auto px-4 max-w-4xl pt-0 mt-0">
       <div className="bg-white shadow-lg rounded-lg overflow-hidden pt-0 mt-0">
         <div className="p-6 pt-0 mt-0">
-          <div className="flex justify-between items-center border-b border-gray-200 pb-4">
+          {/* Flex container for logo, barcode, and title */}
+          <div className="flex items-center justify-between border-b border-gray-200 pb-4">
             <div>
               <Image
                 src="/logo.jpg"
                 alt="Express Hub"
                 width={200}
                 height={60}
-                className="" // Hide logo in print view
+                className=""
+              />
+              {/* Add contact info below the logo */}
+              <div className="text-left mt-2">
+                <p className="text-sm text-gray-500 flex flex-row">
+                  <Phone className="h-4" /> +91 81691 55537
+                </p>
+                <p className="text-sm text-gray-500 flex flex-row">
+                  <Mail className="h-4" /> expresshub555@gmail.com
+                </p>
+                <p className="text-sm text-gray-500 flex flex-row">
+                  <MapPin className="h-4" /> Mumbai, Bengaluru
+                </p>
+              </div>
+            </div>
+
+            {/* Barcode Section */}
+            <div className="mx-4">
+              <Barcode
+                height={60}
+                fontSize={15}
+                value={awbData?.trackingNumber}
               />
             </div>
+
             <div className="text-right">
               <h1 className="text-2xl font-bold text-[#232C65]">Air Waybill</h1>
               <p className="text-[#E31E24] font-semibold">
@@ -62,6 +86,7 @@ export default function AWBView({ params }) {
             </div>
           </div>
 
+          {/* The rest of the content */}
           <div className="grid grid-cols-2 md:grid-cols-2 gap-6">
             <div>
               <h2 className="text-lg font-semibold text-[#232C65] mb-2">
@@ -122,7 +147,6 @@ export default function AWBView({ params }) {
                 </thead>
                 <tbody className="bg-white divide-y divide-gray-200">
                   {awbData?.boxes?.map((box, index) => {
-                    // Calculate box total (sum of item subtotals)
                     const boxTotal = box.items?.reduce((total, item) => {
                       return total + item.quantity * item.price;
                     }, 0);

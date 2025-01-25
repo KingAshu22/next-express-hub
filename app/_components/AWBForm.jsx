@@ -1,9 +1,8 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useState, useEffect } from "react";
 import { format } from "date-fns";
-import { Calendar as CalendarIcon } from "lucide-react";
-
+import { CalendarIcon, Plus, Minus, Trash2 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { Calendar } from "@/components/ui/calendar";
@@ -14,9 +13,19 @@ import {
 } from "@/components/ui/popover";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import SingleSearch from "@/app/_components/SingleSearch";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { Textarea } from "@/components/ui/textarea";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Countries } from "@/app/constants/country";
 import axios from "axios";
+import SingleSearch from "./SingleSearch";
+import { SearchableCountrySelect } from "./SearchableCountrySelect";
 
 export default function AWBForm({ isEdit = false, awb }) {
   const [date, setDate] = useState(awb?.date || Date.now());
@@ -53,15 +62,6 @@ export default function AWBForm({ isEdit = false, awb }) {
   );
   const [receiverContact, setReceiverContact] = useState(
     awb?.receiver?.contact || ""
-  );
-  const [zone, setZone] = useState(awb?.zone || "");
-  const [billToSelector, setBillToSelector] = useState("Sender");
-  const [billToName, setBillToName] = useState(awb?.billTo?.name || "");
-  const [billToAddress, setBillToAddress] = useState(
-    awb?.billTo?.address || ""
-  );
-  const [billToContact, setBillToContact] = useState(
-    awb?.billTo?.contact || ""
   );
   const [trackingNumber, setTrackingNumber] = useState(
     awb?.trackingNumber || ""
@@ -103,42 +103,6 @@ export default function AWBForm({ isEdit = false, awb }) {
     // Update the totalChargeableWeight state
     setTotalChargeableWeight(Math.round(totalWeight));
   }, [boxes]);
-
-  useEffect(() => {
-    CheckBillToSelector();
-  }, [billToSelector]);
-
-  const CheckBillToSelector = (name, address, contact) => {
-    if (billToSelector === "Sender") {
-      setBillToName(name);
-      setBillToAddress(address);
-      setBillToContact(contact);
-    } else if (billToSelector === "Receiver") {
-      setBillToName(name);
-      setBillToAddress(address);
-      setBillToContact(contact);
-    } else {
-      setBillToName("");
-      setBillToAddress("");
-      setBillToContact("");
-    }
-  };
-
-  useEffect(() => {
-    if (billToSelector === "Sender") {
-      CheckBillToSelector(senderName, senderAddress, senderContact);
-    } else if (billToSelector === "Receiver") {
-      CheckBillToSelector(receiverName, receiverAddress, receiverContact);
-    }
-  }, [
-    billToSelector,
-    senderName,
-    senderAddress,
-    senderContact,
-    receiverName,
-    receiverAddress,
-    receiverContact,
-  ]);
 
   const getInvoiceNumber = async () => {
     try {
@@ -241,11 +205,6 @@ export default function AWBForm({ isEdit = false, awb }) {
           zip: receiverZipCode,
           contact: receiverContact,
         },
-        billTo: {
-          name: billToName,
-          address: billToAddress,
-          contact: billToContact,
-        },
         gst,
         boxes,
         parcelStatus,
@@ -296,11 +255,6 @@ export default function AWBForm({ isEdit = false, awb }) {
           zip: receiverZipCode,
           contact: receiverContact,
         },
-        billTo: {
-          name: billToName,
-          address: billToAddress,
-          contact: billToContact,
-        },
         gst,
         boxes,
         parcelStatus,
@@ -328,470 +282,521 @@ export default function AWBForm({ isEdit = false, awb }) {
   };
 
   return (
-    <div className="container mx-auto px-2">
-      <h1 className="text-2xl font-bold mb-4">Create AWB Bill</h1>
-      <form onSubmit={isEdit ? editSubmit : handleSubmit}>
-        {/* General Parcel Information */}
-        <h1 className="text-xl mb-4">Basic Details for Shipping</h1>
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 justify-items-center justify-center items-start content-center gap-4 mb-4">
-          <div className="grid w-full min-w-sm items-center gap-1.5">
-            <Label htmlFor="invoiceNumber">Invoice No:</Label>
-            <Input
-              type="text"
-              placeholder="Invoice No."
-              value={invoiceNumber}
-              onChange={(e) => setInvoiceNumber(e.target.value)}
-            />
-          </div>
-          <div className="grid w-full min-w-sm items-center gap-1.5">
-            <Label htmlFor="trackingNumber">Tracking No:</Label>
-            <Input
-              type="number"
-              placeholder="Tracking No."
-              value={trackingNumber}
-              onChange={(e) => setTrackingNumber(e.target.value)}
-              readOnly
-            />
-          </div>
-          <div className="grid w-full min-w-sm gap-1.5 md:mt-6">
-            <Label htmlFor="date" className="lg:-mt-6">
-              Date
-            </Label>
-            <Popover>
-              <PopoverTrigger asChild>
-                <Button
-                  variant={"outline"}
-                  className={cn(
-                    "lg:-mt-2 w-full justify-start text-left font-normal",
-                    !date && "text-muted-foreground"
-                  )}
-                >
-                  <CalendarIcon className="mr-2 h-4 w-4" />
-                  {date ? format(date, "PPP") : <span>Select Parcel Date</span>}
-                </Button>
-              </PopoverTrigger>
-              <PopoverContent className="w-full p-0">
-                <Calendar
-                  mode="single"
-                  selected={date}
-                  onSelect={setDate}
-                  initialFocus
-                />
-              </PopoverContent>
-            </Popover>
-          </div>
-          <div className="">
-            <SingleSearch
-              type="Select Parcel Type"
-              topList={["International", "Domestic"]}
-              selectedItem={parcelType}
-              setSelectedItem={setParcelType}
-              showSearch={false}
-            />
-          </div>
-          <div className="">
-            <SingleSearch
-              type="Select Parcel Status"
-              list={[
-                "Item Accepted By Courier",
-                "Shipment Arrived at Export Gateway",
-                "Connection Established",
-                "In-Transit",
-                "At Destination Sort Facility",
-                "Out For Delivery",
-                "Delivered",
-                "Unsuccessful Delivery Attempt",
-              ]}
-              selectedItem={parcelStatus}
-              setSelectedItem={setParcelStatus}
-              showSearch={true}
-            />
-          </div>
-        </div>
-        <h1 className="text-xl mb-4">Sender Details:</h1>
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-8 justify-items-center justify-center items-start content-center gap-4 mb-4">
-          <div className="lg:mt-2">
-            <Input
-              type="text"
-              placeholder="Sender Name"
-              value={senderName}
-              onChange={(e) => setSenderName(e.target.value)}
-            />
-          </div>
-          <div className="grid w-full min-w-sm items-center gap-1.5">
-            <Label htmlFor="senderAddress">Sender Address:</Label>
-            <textarea
-              id="senderAddress"
-              placeholder="Sender Address"
-              value={senderAddress}
-              onChange={(e) => setSenderAddress(e.target.value)}
-              className="w-full px-2 py-1 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-              rows="4" // Set rows to control the height
-            />
-          </div>
-          <div className="lg:-mt-10">
-            <SingleSearch
-              type="Sender Country"
-              list={Countries}
-              selectedItem={senderCountry}
-              setSelectedItem={setSenderCountry}
-              showSearch={true}
-            />
-          </div>
-          <div className="grid w-full min-w-sm items-center gap-1.5">
-            <Label htmlFor="senderZipCode">Sender Zip Code:</Label>
-            <Input
-              type="text"
-              placeholder="Sender Zip Code"
-              value={senderZipCode}
-              onChange={(e) => setSenderZipCode(e.target.value)}
-            />
-          </div>
-          <div className="grid w-full min-w-sm items-center gap-1.5">
-            <Label htmlFor="senderContact">Sender Contact:</Label>
-            <Input
-              type="text"
-              placeholder="Sender Contact"
-              value={senderContact}
-              onChange={(e) => setSenderContact(e.target.value)}
-            />
-          </div>
-          <div className="lg:-mt-10">
-            <SingleSearch
-              type="Sender KYC Type"
-              list={[
-                "Aadhaar No -",
-                "Pan No -",
-                "Passport No -",
-                "Driving License No -",
-                "Voter ID Card No -",
-                "GST No -",
-              ]}
-              selectedItem={kycType}
-              setSelectedItem={setKycType}
-              showSearch={true}
-            />
-          </div>
-          <div className="grid w-full min-w-sm items-center gap-1.5">
-            <Label htmlFor="kyc">KYC:</Label>
-            <Input
-              type="text"
-              placeholder="KYC"
-              value={kyc}
-              onChange={(e) => setKyc(e.target.value)}
-            />
-          </div>
-          <div className="grid w-full min-w-sm items-center gap-1.5">
-            <Label htmlFor="gst">GST:</Label>
-            <Input
-              type="text"
-              placeholder="GST No"
-              value={gst}
-              onChange={(e) => setGst(e.target.value)}
-            />
-          </div>
-        </div>
-        <h1 className="text-xl mb-4">Receiver Details:</h1>
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-6 justify-items-center justify-center items-start content-center gap-4 mb-4">
-          <div className="lg:-mt-1">
-            <Input
-              type="text"
-              placeholder="Receiver Name"
-              value={receiverName}
-              onChange={(e) => setReceiverName(e.target.value)}
-            />
-          </div>
-          <div className="grid w-full min-w-sm items-center gap-1.5">
-            <Label htmlFor="receiverAddress">Receiver Address:</Label>
-            <textarea
-              id="receiverAddress"
-              placeholder="Receiver Address"
-              value={receiverAddress}
-              onChange={(e) => setReceiverAddress(e.target.value)}
-              className="w-full px-2 py-1 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-              rows="4" // Set rows to control the height
-            />
-          </div>
-          <div className="">
-            <SingleSearch
-              type="Receiver Country"
-              list={Countries}
-              selectedItem={receiverCountry}
-              setSelectedItem={setReceiverCountry}
-              showSearch={true}
-            />
-          </div>
-          <div className="grid w-full min-w-sm items-center gap-1.5">
-            <Label htmlFor="receiverZipCode">Receiver Zip Code:</Label>
-            <Input
-              type="text"
-              placeholder="Receiver Zip Code"
-              value={receiverZipCode}
-              onChange={(e) => setReceiverZipCode(e.target.value)}
-            />
-          </div>
-          <div className="grid w-full min-w-sm items-center gap-1.5">
-            <Label htmlFor="receiverContact">Receiver Contact:</Label>
-            <Input
-              type="text"
-              placeholder="Receiver Contact"
-              value={receiverContact}
-              onChange={(e) => setReceiverContact(e.target.value)}
-            />
-          </div>
-          <div className="grid w-full min-w-sm items-center gap-1.5">
-            <Label htmlFor="zone">Zone:</Label>
-            <Input
-              type="text"
-              placeholder="Zone"
-              value={zone}
-              onChange={(e) => setZone(e.target.value)}
-            />
-          </div>
-        </div>
-        <h1 className="text-xl mb-4">Bill To Details:</h1>
-        <div className="grid grid-cols-1 md:grid-cols-4 lg:grid-cols-4 justify-items-center justify-center items-start content-center gap-4 mb-4">
-          <div className="">
-            <SingleSearch
-              type="Bill To"
-              list={["Sender", "Receiver", "Other Person"]}
-              topList={["Sender", "Receiver", "Other Person"]}
-              selectedItem={billToSelector}
-              setSelectedItem={setBillToSelector}
-              showSearch={false}
-            />
-          </div>
-          <div className="grid w-full min-w-sm items-center gap-1.5">
-            <Label htmlFor="billToName">Bill To Name:</Label>
-            <Input
-              type="text"
-              placeholder="Bill To Name"
-              value={billToName}
-              onChange={(e) => setBillToName(e.target.value)}
-            />
-          </div>
-          <div className="grid w-full min-w-sm items-center gap-1.5">
-            <Label htmlFor="billToAddress">Bill To Address:</Label>
-            <Input
-              type="text"
-              placeholder="Bill To Address"
-              value={billToAddress}
-              onChange={(e) => setBillToAddress(e.target.value)}
-            />
-          </div>
-          <div className="grid w-full min-w-sm items-center gap-1.5">
-            <Label htmlFor="billToContact">Bill To Contact:</Label>
-            <Input
-              type="text"
-              placeholder="Bill To Contact"
-              value={billToContact}
-              onChange={(e) => setBillToContact(e.target.value)}
-            />
-          </div>
-        </div>
-        <h1 className="text-xl mb-4">Box Details:</h1>
-        <div className="mb-4">
-          <h2 className="text-lg font-bold mb-2">Boxes</h2>
-          {boxes.map((box, boxIndex) => (
-            <div key={boxIndex} className="p-4 mb-4 border rounded shadow-sm">
-              <h1 className="text-xl mb-4">Box {boxIndex + 1}:</h1>
-              <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-7 gap-4">
-                {/* Box Fields */}
-                <div>
-                  <Label htmlFor="length">Length (cm):</Label>
-                  <Input
-                    type="number"
-                    placeholder="Length (cm)"
-                    value={box.length || ""}
-                    onChange={(e) =>
-                      handleBoxChange(
-                        boxIndex,
-                        "length",
-                        parseFloat(e.target.value) || ""
-                      )
-                    }
-                    required
-                  />
-                </div>
-                <div>
-                  <Label htmlFor="breadth">Breadth (cm):</Label>
-                  <Input
-                    type="number"
-                    placeholder="Breadth (cm)"
-                    value={box.breadth || ""}
-                    onChange={(e) =>
-                      handleBoxChange(
-                        boxIndex,
-                        "breadth",
-                        parseFloat(e.target.value) || ""
-                      )
-                    }
-                    required
-                  />
-                </div>
-                <div>
-                  <Label htmlFor="height">Height (cm):</Label>
-                  <Input
-                    type="number"
-                    placeholder="Height (cm)"
-                    value={box.height || ""}
-                    onChange={(e) =>
-                      handleBoxChange(
-                        boxIndex,
-                        "height",
-                        parseFloat(e.target.value) || ""
-                      )
-                    }
-                    required
-                  />
-                </div>
-                <div>
-                  <Label htmlFor="actualWeight">Actual Weight (kg):</Label>
-                  <Input
-                    type="number"
-                    placeholder="Actual Weight (kg)"
-                    value={box.actualWeight || ""}
-                    onChange={(e) =>
-                      handleBoxChange(
-                        boxIndex,
-                        "actualWeight",
-                        parseFloat(e.target.value) || ""
-                      )
-                    }
-                    required
-                  />
-                </div>
-                <div>
-                  <Label htmlFor="dimensionalWeight">
-                    Dimensional Weight (kg):
-                  </Label>
-                  <Input
-                    type="number"
-                    placeholder="Dimensional Weight (kg)"
-                    value={box.dimensionalWeight || ""}
-                    readOnly
-                    required
-                  />
-                </div>
-                <div>
-                  <Label htmlFor="chargeableWeight">
-                    Chargeable Weight (kg):
-                  </Label>
-                  <Input
-                    type="number"
-                    placeholder="Chargeable Weight (kg)"
-                    value={box.chargeableWeight || ""}
-                    readOnly
-                    required
-                  />
-                </div>
-                <button
-                  type="button"
-                  onClick={() => removeBox(boxIndex)}
-                  className="lg:mt-6 w-28 h-8 bg-red-500 text-white rounded"
-                >
-                  Remove Box
-                </button>
-              </div>
-              <h3 className="text-lg font-semibold mt-4">Items</h3>
-              {box.items.map((item, itemIndex) => (
-                <div key={itemIndex}>
-                  <h1 className="text-md mb-4">Item {itemIndex + 1}:</h1>
-                  <div
-                    key={itemIndex}
-                    className="grid grid-cols-1 md:grid-cols-4 gap-4 mt-2"
-                  >
-                    <div>
-                      <Label htmlFor={`itemName-${boxIndex}-${itemIndex}`}>
-                        Name:
-                      </Label>
-                      <Input
-                        type="text"
-                        placeholder="Item Name"
-                        value={item.name || ""}
-                        onChange={(e) =>
-                          handleItemChange(
-                            boxIndex,
-                            itemIndex,
-                            "name",
-                            e.target.value
-                          )
-                        }
-                        required
-                      />
-                    </div>
-                    <div>
-                      <Label htmlFor={`itemQuantity-${boxIndex}-${itemIndex}`}>
-                        Quantity:
-                      </Label>
-                      <Input
-                        type="number"
-                        placeholder="Quantity"
-                        value={item.quantity || ""}
-                        onChange={(e) =>
-                          handleItemChange(
-                            boxIndex,
-                            itemIndex,
-                            "quantity",
-                            e.target.value
-                          )
-                        }
-                        required
-                      />
-                    </div>
-                    <div>
-                      <Label htmlFor={`itemPrice-${boxIndex}-${itemIndex}`}>
-                        Price:
-                      </Label>
-                      <Input
-                        type="number"
-                        placeholder="Price"
-                        value={item.price || ""}
-                        onChange={(e) =>
-                          handleItemChange(
-                            boxIndex,
-                            itemIndex,
-                            "price",
-                            e.target.value
-                          )
-                        }
-                        required
-                      />
-                    </div>
-                    <button
-                      type="button"
-                      onClick={() => removeItem(boxIndex, itemIndex)}
-                      className="lg:mt-6 w-28 h-8 bg-red-500 text-white px-2 py-1 rounded"
-                    >
-                      Remove Item
-                    </button>
-                  </div>
-                </div>
-              ))}
-              <button
-                type="button"
-                onClick={() => addItem(boxIndex)}
-                className="bg-blue-500 text-white px-4 py-2 rounded mt-4"
-              >
-                Add Item
-              </button>
+    <div className="container mx-auto px-4 py-8">
+      <h1 className="text-3xl font-bold mb-8 text-center text-[#232C65]">
+        {isEdit ? "Edit AWB" : "Create AWB"}
+      </h1>
+      <form onSubmit={isEdit ? editSubmit : handleSubmit} className="space-y-8">
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-2xl text-[#232C65]">
+              Basic Details
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            <div className="space-y-2">
+              <Label htmlFor="invoiceNumber">Invoice No:</Label>
+              <Input
+                id="invoiceNumber"
+                type="text"
+                placeholder="Invoice No."
+                value={invoiceNumber}
+                onChange={(e) => setInvoiceNumber(e.target.value)}
+              />
             </div>
-          ))}
-          <button
-            type="button"
-            onClick={addBox}
-            className="bg-blue-500 text-white px-4 py-2 rounded"
+            <div className="space-y-2">
+              <Label htmlFor="trackingNumber">Tracking No:</Label>
+              <Input
+                id="trackingNumber"
+                type="number"
+                placeholder="Tracking No."
+                value={trackingNumber}
+                onChange={(e) => setTrackingNumber(e.target.value)}
+                readOnly
+              />
+            </div>
+            <div className="space-y-2">
+              <Label>Date</Label>
+              <Popover>
+                <PopoverTrigger asChild>
+                  <Button
+                    variant={"outline"}
+                    className={cn(
+                      "w-full justify-start text-left font-normal",
+                      !date && "text-muted-foreground"
+                    )}
+                  >
+                    <CalendarIcon className="mr-2 h-4 w-4" />
+                    {date ? (
+                      format(date, "PPP")
+                    ) : (
+                      <span>Select Parcel Date</span>
+                    )}
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent className="w-auto p-0">
+                  <Calendar
+                    mode="single"
+                    selected={date}
+                    onSelect={setDate}
+                    initialFocus
+                  />
+                </PopoverContent>
+              </Popover>
+            </div>
+            <div className="space-y-2">
+              <Label>Parcel Type</Label>
+              <Select value={parcelType} onValueChange={setParcelType}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Select Parcel Type" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="International">International</SelectItem>
+                  <SelectItem value="Domestic">Domestic</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-2">
+              <Label>Parcel Status</Label>
+              <Select value={parcelStatus} onValueChange={setParcelStatus}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Select Parcel Status" />
+                </SelectTrigger>
+                <SelectContent>
+                  {[
+                    "Item Accepted By Courier",
+                    "Shipment Arrived at Export Gateway",
+                    "Connection Established",
+                    "In-Transit",
+                    "At Destination Sort Facility",
+                    "Out For Delivery",
+                    "Delivered",
+                    "Unsuccessful Delivery Attempt",
+                  ].map((status) => (
+                    <SelectItem key={status} value={status}>
+                      {status}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-2xl text-[#232C65]">
+              Sender Details
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            <div className="space-y-2">
+              <Label htmlFor="senderName">Sender Name</Label>
+              <Input
+                id="senderName"
+                type="text"
+                placeholder="Sender Name"
+                value={senderName}
+                onChange={(e) => setSenderName(e.target.value)}
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="senderAddress">Sender Address</Label>
+              <Textarea
+                id="senderAddress"
+                placeholder="Sender Address"
+                value={senderAddress}
+                onChange={(e) => setSenderAddress(e.target.value)}
+                rows={4}
+              />
+            </div>
+            <div className="space-y-2">
+              <SingleSearch
+                type="Sender Country"
+                list={Countries}
+                selectedItem={senderCountry}
+                setSelectedItem={setSenderCountry}
+                showSearch={true}
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="senderZipCode">Sender Zip Code</Label>
+              <Input
+                id="senderZipCode"
+                type="text"
+                placeholder="Sender Zip Code"
+                value={senderZipCode}
+                onChange={(e) => setSenderZipCode(e.target.value)}
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="senderContact">Sender Contact</Label>
+              <Input
+                id="senderContact"
+                type="text"
+                placeholder="Sender Contact"
+                value={senderContact}
+                onChange={(e) => setSenderContact(e.target.value)}
+              />
+            </div>
+            <div className="space-y-2">
+              <Label>Sender KYC Type</Label>
+              <Select value={kycType} onValueChange={setKycType}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Select KYC Type" />
+                </SelectTrigger>
+                <SelectContent>
+                  {[
+                    "Aadhaar No -",
+                    "Pan No -",
+                    "Passport No -",
+                    "Driving License No -",
+                    "Voter ID Card No -",
+                    "GST No -",
+                  ].map((type) => (
+                    <SelectItem key={type} value={type}>
+                      {type}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="kyc">KYC</Label>
+              <Input
+                id="kyc"
+                type="text"
+                placeholder="KYC"
+                value={kyc}
+                onChange={(e) => setKyc(e.target.value)}
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="gst">GST</Label>
+              <Input
+                id="gst"
+                type="text"
+                placeholder="GST No"
+                value={gst}
+                onChange={(e) => setGst(e.target.value)}
+              />
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-2xl text-[#232C65]">
+              Receiver Details
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            <div className="space-y-2">
+              <Label htmlFor="receiverName">Receiver Name</Label>
+              <Input
+                id="receiverName"
+                type="text"
+                placeholder="Receiver Name"
+                value={receiverName}
+                onChange={(e) => setReceiverName(e.target.value)}
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="receiverAddress">Receiver Address</Label>
+              <Textarea
+                id="receiverAddress"
+                placeholder="Receiver Address"
+                value={receiverAddress}
+                onChange={(e) => setReceiverAddress(e.target.value)}
+                rows={4}
+              />
+            </div>
+            <div className="space-y-2">
+              <SingleSearch
+                type="Receiver Country"
+                list={Countries}
+                selectedItem={receiverCountry}
+                setSelectedItem={setReceiverCountry}
+                showSearch={true}
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="receiverZipCode">Receiver Zip Code</Label>
+              <Input
+                id="receiverZipCode"
+                type="text"
+                placeholder="Receiver Zip Code"
+                value={receiverZipCode}
+                onChange={(e) => setReceiverZipCode(e.target.value)}
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="receiverContact">Receiver Contact</Label>
+              <Input
+                id="receiverContact"
+                type="text"
+                placeholder="Receiver Contact"
+                value={receiverContact}
+                onChange={(e) => setReceiverContact(e.target.value)}
+              />
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-2xl text-[#232C65]">
+              Box Details
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-6">
+            {boxes.map((box, boxIndex) => (
+              <Card key={boxIndex}>
+                <CardHeader className="flex flex-row items-center justify-between">
+                  <CardTitle className="text-xl text-[#232C65]">
+                    Box {boxIndex + 1}
+                  </CardTitle>
+                  {boxIndex > 0 && (
+                    <Button
+                      type="button"
+                      variant="destructive"
+                      size="sm"
+                      onClick={() => removeBox(boxIndex)}
+                    >
+                      <Trash2 className="h-4 w-4 mr-2" />
+                      Remove Box
+                    </Button>
+                  )}
+                </CardHeader>
+                <CardContent className="space-y-6">
+                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                    <div className="space-y-2">
+                      <Label htmlFor={`length-${boxIndex}`}>Length (cm)</Label>
+                      <Input
+                        id={`length-${boxIndex}`}
+                        type="number"
+                        placeholder="Length (cm)"
+                        value={box.length || ""}
+                        onChange={(e) =>
+                          handleBoxChange(
+                            boxIndex,
+                            "length",
+                            Number.parseFloat(e.target.value) || ""
+                          )
+                        }
+                        required
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor={`breadth-${boxIndex}`}>
+                        Breadth (cm)
+                      </Label>
+                      <Input
+                        id={`breadth-${boxIndex}`}
+                        type="number"
+                        placeholder="Breadth (cm)"
+                        value={box.breadth || ""}
+                        onChange={(e) =>
+                          handleBoxChange(
+                            boxIndex,
+                            "breadth",
+                            Number.parseFloat(e.target.value) || ""
+                          )
+                        }
+                        required
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor={`height-${boxIndex}`}>Height (cm)</Label>
+                      <Input
+                        id={`height-${boxIndex}`}
+                        type="number"
+                        placeholder="Height (cm)"
+                        value={box.height || ""}
+                        onChange={(e) =>
+                          handleBoxChange(
+                            boxIndex,
+                            "height",
+                            Number.parseFloat(e.target.value) || ""
+                          )
+                        }
+                        required
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor={`actualWeight-${boxIndex}`}>
+                        Actual Weight (kg)
+                      </Label>
+                      <Input
+                        id={`actualWeight-${boxIndex}`}
+                        type="number"
+                        placeholder="Actual Weight (kg)"
+                        value={box.actualWeight || ""}
+                        onChange={(e) =>
+                          handleBoxChange(
+                            boxIndex,
+                            "actualWeight",
+                            Number.parseFloat(e.target.value) || ""
+                          )
+                        }
+                        required
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor={`dimensionalWeight-${boxIndex}`}>
+                        Dimensional Weight (kg)
+                      </Label>
+                      <Input
+                        id={`dimensionalWeight-${boxIndex}`}
+                        type="number"
+                        placeholder="Dimensional Weight (kg)"
+                        value={box.dimensionalWeight || ""}
+                        readOnly
+                        required
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor={`chargeableWeight-${boxIndex}`}>
+                        Chargeable Weight (kg)
+                      </Label>
+                      <Input
+                        id={`chargeableWeight-${boxIndex}`}
+                        type="number"
+                        placeholder="Chargeable Weight (kg)"
+                        value={box.chargeableWeight || ""}
+                        readOnly
+                        required
+                      />
+                    </div>
+                  </div>
+                  <div className="space-y-4">
+                    <h3 className="text-lg font-semibold text-[#232C65]">
+                      Items
+                    </h3>
+                    {box.items.map((item, itemIndex) => (
+                      <Card key={itemIndex}>
+                        <CardHeader className="flex flex-row items-center justify-between">
+                          <CardTitle className="text-lg text-[#232C65]">
+                            Item {itemIndex + 1}
+                          </CardTitle>
+                          {itemIndex > 0 && (
+                            <Button
+                              type="button"
+                              variant="destructive"
+                              size="sm"
+                              onClick={() => removeItem(boxIndex, itemIndex)}
+                            >
+                              <Minus className="h-4 w-4 mr-2" />
+                              Remove Item
+                            </Button>
+                          )}
+                        </CardHeader>
+                        <CardContent>
+                          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                            <div className="space-y-2">
+                              <Label
+                                htmlFor={`itemName-${boxIndex}-${itemIndex}`}
+                              >
+                                Name
+                              </Label>
+                              <Input
+                                id={`itemName-${boxIndex}-${itemIndex}`}
+                                type="text"
+                                placeholder="Item Name"
+                                value={item.name || ""}
+                                onChange={(e) =>
+                                  handleItemChange(
+                                    boxIndex,
+                                    itemIndex,
+                                    "name",
+                                    e.target.value
+                                  )
+                                }
+                                required
+                              />
+                            </div>
+                            <div className="space-y-2">
+                              <Label
+                                htmlFor={`itemQuantity-${boxIndex}-${itemIndex}`}
+                              >
+                                Quantity
+                              </Label>
+                              <Input
+                                id={`itemQuantity-${boxIndex}-${itemIndex}`}
+                                type="number"
+                                placeholder="Quantity"
+                                value={item.quantity || ""}
+                                onChange={(e) =>
+                                  handleItemChange(
+                                    boxIndex,
+                                    itemIndex,
+                                    "quantity",
+                                    e.target.value
+                                  )
+                                }
+                                required
+                              />
+                            </div>
+                            <div className="space-y-2">
+                              <Label
+                                htmlFor={`itemPrice-${boxIndex}-${itemIndex}`}
+                              >
+                                Price
+                              </Label>
+                              <Input
+                                id={`itemPrice-${boxIndex}-${itemIndex}`}
+                                type="number"
+                                placeholder="Price"
+                                value={item.price || ""}
+                                onChange={(e) =>
+                                  handleItemChange(
+                                    boxIndex,
+                                    itemIndex,
+                                    "price",
+                                    e.target.value
+                                  )
+                                }
+                                required
+                              />
+                            </div>
+                          </div>
+                        </CardContent>
+                      </Card>
+                    ))}
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      onClick={() => addItem(boxIndex)}
+                      className="mt-2"
+                    >
+                      <Plus className="h-4 w-4 mr-2" />
+                      Add Item
+                    </Button>
+                  </div>
+                </CardContent>
+              </Card>
+            ))}
+            <Button
+              type="button"
+              variant="outline"
+              onClick={addBox}
+              className="mt-4"
+            >
+              <Plus className="h-4 w-4 mr-2" />
+              Add Box
+            </Button>
+          </CardContent>
+        </Card>
+
+        <div className="flex justify-end">
+          <Button
+            type="submit"
+            className="bg-[#E31E24] hover:bg-[#C71D23] text-white"
           >
-            Add Box
-          </button>
+            {isEdit ? "Update AWB" : "Create AWB"}
+          </Button>
         </div>
-        {/* Submit */}
-        <button
-          type="submit"
-          className="bg-green-500 text-white px-4 py-2 rounded"
-        >
-          {isEdit ? "Edit" : "Submit"}
-        </button>
       </form>
     </div>
   );

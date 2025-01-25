@@ -10,7 +10,9 @@ const inter = Inter({ subsets: ["latin"] });
 
 export default function RootLayout({ children }) {
   const pathname = usePathname(); // Get the current pathname
-  const isAWBPage = pathname.includes("/awb/"); // Hide sidebar for /awb/[trackingNumber]
+  const isAWBPage =
+    (pathname.includes("/awb/") && !pathname.includes("/awb/create")) ||
+    pathname.includes("/signin"); // Hide sidebar for /awb/[trackingNumber]
 
   return (
     <html lang="en">
@@ -18,7 +20,7 @@ export default function RootLayout({ children }) {
         <SidebarProvider>
           {!isAWBPage && <AppSidebar />}{" "}
           {/* Only render the sidebar if it's not the AWB page */}
-          <main className="flex-grow p-6">
+          <main className="flex-grow">
             {!isAWBPage && <SidebarTrigger className="ml-4 mb-8" />}
 
             {children}

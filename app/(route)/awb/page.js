@@ -4,8 +4,9 @@ import axios from "axios";
 import { DataTable } from "./data-table";
 import { columns } from "./columns";
 import { HashLoader } from "react-spinners";
+import withAuth from "@/lib/withAuth";
 
-export default function Page() {
+function AWBTable() {
   const [awbs, setAwbs] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -51,3 +52,5 @@ export default function Page() {
     </div>
   );
 }
+
+export default withAuth(AWBTable);

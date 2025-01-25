@@ -10,8 +10,15 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
   AlertDialogTrigger,
-} from "@/components/ui/alert-dialog"
-import { ArrowUpDown, Eye, LayoutDashboard, MoreHorizontal, Pencil, Trash } from "lucide-react";
+} from "@/components/ui/alert-dialog";
+import {
+  ArrowUpDown,
+  Eye,
+  LayoutDashboard,
+  MoreHorizontal,
+  Pencil,
+  Trash,
+} from "lucide-react";
 
 export const columns = [
   {
@@ -107,17 +114,15 @@ export const columns = [
     ),
   },
   {
-    accessorKey: "parcelType",
-    header: ({ column }) => (
-      <span
-        variant="ghost"
-        onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}
-        className="flex items-center gap-1"
-      >
-        Category
-        <ArrowUpDown className="ml-2 h-4 w-4" />
-      </span>
-    ),
+    accessorKey: "parcelStatus",
+    header: "Status",
+    cell: ({ row }) => {
+      const parcelStatus = row.original.parcelStatus;
+      if (parcelStatus) {
+        // Assuming parcelStatus is either a parcelStatus
+        return <span>{parcelStatus[0]}</span>;
+      }
+    },
   },
   {
     id: "actions",
@@ -128,19 +133,13 @@ export const columns = [
         <div className="flex flex-rows gap-2">
           <Button
             className="px-2 py-1 bg-green-800"
-            onClick={() =>
-              window.open(
-                `/awb/${trackingNumber}`
-              )
-            }
+            onClick={() => window.open(`/awb/${trackingNumber}`)}
           >
             <Eye className="w-[20px] h-[20px]" />
           </Button>
           <Button
             className="px-2 py-1 bg-blue-800"
-            onClick={() =>
-              window.open(`/edit-awb/${trackingNumber}`)
-            }
+            onClick={() => window.open(`/edit-awb/${trackingNumber}`)}
           >
             <Pencil className="w-[20px] h-[20px]" />
           </Button>
@@ -158,9 +157,9 @@ export const columns = [
               <AlertDialogHeader>
                 <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
                 <AlertDialogDescription>
-                  This action cannot be undone. This will permanently delete{" "} AWB with Tracking Number:
-                  {trackingNumber} and remove data completely from the
-                  servers.
+                  This action cannot be undone. This will permanently delete AWB
+                  with Tracking Number:
+                  {trackingNumber} and remove data completely from the servers.
                 </AlertDialogDescription>
               </AlertDialogHeader>
               <AlertDialogFooter>

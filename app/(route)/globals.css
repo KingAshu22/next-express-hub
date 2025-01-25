@@ -78,6 +78,37 @@ body {
   }
 }
 
+@media print {
+  @page {
+    size: A4;
+    margin: 0;
+  }
+
+  body {
+    margin: 1.6cm;
+  }
+
+  .container {
+    max-width: 100% !important;
+  }
+
+  .shadow-lg {
+    box-shadow: none !important;
+  }
+
+  .bg-gray-50 {
+    background-color: white !important;
+  }
+
+  button {
+    display: none !important;
+  }
+
+  .print-full-width {
+    width: 100% !important;
+  }
+}
+
 @layer base {
   * {
     @apply border-border;

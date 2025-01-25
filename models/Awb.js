@@ -6,7 +6,7 @@ const AwbSchema = new Schema({
   staffId: String,
   invoiceNumber: String,
   date: Date,
-  trackingNumber: Number,
+  trackingNumber: String,
   sender: UserSchema,
   receiver: UserSchema,
   billTo: UserSchema,
@@ -17,6 +17,6 @@ const AwbSchema = new Schema({
   parcelValue: Number,
 });
 
-const Awb = models.AwbSchema || model("Awb", AwbSchema);
+const Awb = models.Awb || model("Awb", AwbSchema);
 
 export default Awb;

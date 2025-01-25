@@ -25,7 +25,6 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Countries } from "@/app/constants/country";
 import axios from "axios";
 import SingleSearch from "./SingleSearch";
-import { SearchableCountrySelect } from "./SearchableCountrySelect";
 
 export default function AWBForm({ isEdit = false, awb }) {
   const [date, setDate] = useState(awb?.date || Date.now());

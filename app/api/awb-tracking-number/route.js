@@ -1,5 +1,5 @@
 import { connectToDB } from "@/app/_utils/mongodb";
-import GstParcel from "@/models/Awb";
+import Awb from "@/models/Awb";
 import { NextResponse } from "next/server";
 
 export async function GET(req) {
@@ -19,9 +19,9 @@ export async function GET(req) {
         await connectToDB();
 
         // Find the parcel by tracking number
-        const parcel = await GstParcel.findOne({ trackingNumber });
+        const awb = await Awb.findOne({ trackingNumber });
 
-        if (!parcel) {
+        if (!awb) {
             return NextResponse.json(
                 { error: "Parcel not found" },
                 { status: 404 }

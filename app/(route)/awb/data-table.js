@@ -60,12 +60,12 @@ export function DataTable({ columns, data }) {
     <div className="w-full">
       <div className="flex items-center flex-wrap gap-2 py-1">
         <Input
-          placeholder="Filter by Invoice Number..."
+          placeholder="Filter by Invoice No..."
           value={table.getColumn("invoiceNumber")?.getFilterValue() ?? ""}
           onChange={(event) =>
             table.getColumn("invoiceNumber")?.setFilterValue(event.target.value)
           }
-          className="max-w-xs"
+          className="max-w-40"
         />
         <Button onClick={() => router.push("/awb/create")}>
           Create New Parcel

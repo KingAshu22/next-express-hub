@@ -44,7 +44,7 @@ const items = [
 export function AppSidebar() {
     return (
         <>
-            <Sidebar>
+            <Sidebar collapsible="icon">
                 <SidebarHeader className="p-4 text-center">
                     <Sun />
                 </SidebarHeader>

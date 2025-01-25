@@ -1,6 +1,9 @@
+import { Inter } from "next/font/google"
 import "./globals.css";
 import { SidebarProvider, SidebarTrigger } from "@/components/ui/sidebar"
 import { AppSidebar } from "../_components/Sidebar";
+
+const inter = Inter({ subsets: ["latin"] })
 
 export const metadata = {
   title: "Create Next App",
@@ -10,10 +13,10 @@ export const metadata = {
 export default function RootLayout({ children }) {
   return (
     <html lang="en">
-      <body>
+      <body className={inter.className}>
         <SidebarProvider>
           <AppSidebar />
-          <main className="m-4">
+          <main className="flex-grow p-6">
             <SidebarTrigger className="ml-4 mb-8" />
             {children}
           </main>

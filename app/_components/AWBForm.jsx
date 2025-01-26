@@ -74,13 +74,6 @@ export default function AWBForm({ isEdit = false, awb }) {
         actualWeight: "",
         dimensionalWeight: "",
         chargeableWeight: "",
-        items: [
-          {
-            name: "",
-            quantity: "",
-            price: "",
-          },
-        ],
       },
     ]
   );
@@ -131,7 +124,6 @@ export default function AWBForm({ isEdit = false, awb }) {
         actualWeight: "",
         dimensionalWeight: "",
         chargeableWeight: "",
-        items: [{ name: "", quantity: "", price: "" }],
       },
     ]);
   };
@@ -153,24 +145,6 @@ export default function AWBForm({ isEdit = false, awb }) {
     setBoxes(updatedBoxes);
   };
 
-  const handleItemChange = (boxIndex, itemIndex, field, value) => {
-    const updatedBoxes = [...boxes];
-    updatedBoxes[boxIndex].items[itemIndex][field] = value;
-    setBoxes(updatedBoxes);
-  };
-
-  const addItem = (boxIndex) => {
-    const updatedBoxes = [...boxes];
-    updatedBoxes[boxIndex].items.push({ name: "", quantity: "", price: "" });
-    setBoxes(updatedBoxes);
-  };
-
-  const removeItem = (boxIndex, itemIndex) => {
-    const updatedBoxes = [...boxes];
-    updatedBoxes[boxIndex].items.splice(itemIndex, 1);
-    setBoxes(updatedBoxes);
-  };
-
   const removeBox = (boxIndex) => {
     const updatedBoxes = [...boxes];
     updatedBoxes.splice(boxIndex, 1);
@@ -180,9 +154,11 @@ export default function AWBForm({ isEdit = false, awb }) {
   const handleSubmit = async () => {
     try {
       console.log("Inside Save Parcel Function");
+      const userType = localStorage.getItem("userType");
+      const userId = localStorage.getItem("id");
       const parcelData = {
         parcelType,
-        staffId,
+        staffId: userType === "admin" ? "admin" : userId,
         invoiceNumber,
         date,
         trackingNumber,
@@ -491,6 +467,15 @@ export default function AWBForm({ isEdit = false, awb }) {
           </CardHeader>
           <CardContent className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
             <div className="space-y-2">
+              <SingleSearch
+                type="Receiver Country"
+                list={Countries}
+                selectedItem={receiverCountry}
+                setSelectedItem={setReceiverCountry}
+                showSearch={true}
+              />
+            </div>
+            <div className="space-y-2">
               <Label htmlFor="receiverName">Receiver Name</Label>
               <Input
                 id="receiverName"
@@ -508,15 +493,6 @@ export default function AWBForm({ isEdit = false, awb }) {
                 value={receiverAddress}
                 onChange={(e) => setReceiverAddress(e.target.value)}
                 rows={4}
-              />
-            </div>
-            <div className="space-y-2">
-              <SingleSearch
-                type="Receiver Country"
-                list={Countries}
-                selectedItem={receiverCountry}
-                setSelectedItem={setReceiverCountry}
-                showSearch={true}
               />
             </div>
             <div className="space-y-2">
@@ -667,111 +643,6 @@ export default function AWBForm({ isEdit = false, awb }) {
                         required
                       />
                     </div>
-                  </div>
-                  <div className="space-y-4">
-                    <h3 className="text-lg font-semibold text-[#232C65]">
-                      Items
-                    </h3>
-                    {box.items.map((item, itemIndex) => (
-                      <Card key={itemIndex}>
-                        <CardHeader className="flex flex-row items-center justify-between">
-                          <CardTitle className="text-lg text-[#232C65]">
-                            Item {itemIndex + 1}
-                          </CardTitle>
-                          {itemIndex > 0 && (
-                            <Button
-                              type="button"
-                              variant="destructive"
-                              size="sm"
-                              onClick={() => removeItem(boxIndex, itemIndex)}
-                            >
-                              <Minus className="h-4 w-4 mr-2" />
-                              Remove Item
-                            </Button>
-                          )}
-                        </CardHeader>
-                        <CardContent>
-                          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                            <div className="space-y-2">
-                              <Label
-                                htmlFor={`itemName-${boxIndex}-${itemIndex}`}
-                              >
-                                Name
-                              </Label>
-                              <Input
-                                id={`itemName-${boxIndex}-${itemIndex}`}
-                                type="text"
-                                placeholder="Item Name"
-                                value={item.name || ""}
-                                onChange={(e) =>
-                                  handleItemChange(
-                                    boxIndex,
-                                    itemIndex,
-                                    "name",
-                                    e.target.value
-                                  )
-                                }
-                                required
-                              />
-                            </div>
-                            <div className="space-y-2">
-                              <Label
-                                htmlFor={`itemQuantity-${boxIndex}-${itemIndex}`}
-                              >
-                                Quantity
-                              </Label>
-                              <Input
-                                id={`itemQuantity-${boxIndex}-${itemIndex}`}
-                                type="number"
-                                placeholder="Quantity"
-                                value={item.quantity || ""}
-                                onChange={(e) =>
-                                  handleItemChange(
-                                    boxIndex,
-                                    itemIndex,
-                                    "quantity",
-                                    e.target.value
-                                  )
-                                }
-                                required
-                              />
-                            </div>
-                            <div className="space-y-2">
-                              <Label
-                                htmlFor={`itemPrice-${boxIndex}-${itemIndex}`}
-                              >
-                                Price
-                              </Label>
-                              <Input
-                                id={`itemPrice-${boxIndex}-${itemIndex}`}
-                                type="number"
-                                placeholder="Price"
-                                value={item.price || ""}
-                                onChange={(e) =>
-                                  handleItemChange(
-                                    boxIndex,
-                                    itemIndex,
-                                    "price",
-                                    e.target.value
-                                  )
-                                }
-                                required
-                              />
-                            </div>
-                          </div>
-                        </CardContent>
-                      </Card>
-                    ))}
-                    <Button
-                      type="button"
-                      variant="outline"
-                      size="sm"
-                      onClick={() => addItem(boxIndex)}
-                      className="mt-2"
-                    >
-                      <Plus className="h-4 w-4 mr-2" />
-                      Add Item
-                    </Button>
                   </div>
                 </CardContent>
               </Card>

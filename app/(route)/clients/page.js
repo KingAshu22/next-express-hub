@@ -2,40 +2,29 @@
 import { useEffect, useState } from "react";
 import axios from "axios";
 import { DataTable } from "./data-table";
-import { adminColumns } from "./adminColumns";
+import { columns } from "./columns";
 import { HashLoader } from "react-spinners";
 import withAuth from "@/lib/withAuth";
-import { clientColumns } from "./clientColumns";
 
-function AWBTable() {
-  const [awbs, setAwbs] = useState([]);
+function ClientTable() {
+  const [clients, setClients] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
-  const userType = localStorage.getItem("userType");
-  const userId = localStorage.getItem("id");
-
   useEffect(() => {
-    fetchAwbs();
+    fetchClients();
   }, []);
 
-  const fetchAwbs = async () => {
+  const fetchClients = async () => {
     setLoading(true);
     setError(null);
-
     try {
-      const response = await axios.get("/api/awb", {
-        headers: {
-          userType,
-          userId,
-        },
-      });
-
+      const response = await axios.get("/api/clients");
       console.log(response.data);
-      setAwbs(response.data);
+      setClients(response.data);
     } catch (error) {
-      console.error("Error fetching awbs:", error);
-      setError("Failed to fetch awbs. Please try again later.");
+      console.error("Error fetching clients:", error);
+      setError("Failed to fetch clients. Please try again later.");
     } finally {
       setTimeout(() => {
         setLoading(false);
@@ -58,13 +47,10 @@ function AWBTable() {
   }
 
   return (
-    <div className="container w-full">
-      {userType === "admin" ?
-        <DataTable columns={adminColumns} data={awbs} /> :
-        <DataTable columns={clientColumns} data={awbs} />
-      }
+    <div className="container w-full px-4">
+      <DataTable columns={columns} data={clients} />
     </div>
   );
 }
 
-export default withAuth(AWBTable);
+export default withAuth(ClientTable);

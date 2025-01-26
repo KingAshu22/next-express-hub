@@ -3,6 +3,7 @@
 import AWBForm from "@/app/_components/AWBForm";
 import { useState, useEffect, use } from "react";
 import axios from "axios";
+import withAuth from "@/lib/withAuth";
 
 const EditAWB = ({ params }) => {
   const { trackingNumber } = use(params);
@@ -49,4 +50,4 @@ const EditAWB = ({ params }) => {
   );
 };
 
-export default EditAWB;
+export default withAuth(EditAWB);

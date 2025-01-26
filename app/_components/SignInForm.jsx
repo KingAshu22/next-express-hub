@@ -1,10 +1,10 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useState, useEffect } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
-import { Loader2 } from "lucide-react";
+import { Loader2, Eye, EyeOff } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   Form,
@@ -35,10 +35,11 @@ const formSchema = z.object({
 });
 
 export default function SignInForm() {
-  const [step, setStep] = useState("email");
   const [userType, setUserType] = useState("customer");
   const [returnUrl, setReturnUrl] = useState("");
   const [isLoading, setIsLoading] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
+
   const router = useRouter();
   const searchParams = useSearchParams();
 
@@ -62,32 +63,30 @@ export default function SignInForm() {
   async function onSubmit(values) {
     setIsLoading(true);
 
-    if (userType === "admin") {
-      try {
-        const response = await fetch("/api/signin", {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify(values), // Pass email and password
-        });
+    const endpoint = userType === "admin" ? "/api/admin-signin" : "/api/client-signin";
+    try {
+      const response = await fetch(endpoint, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(values),
+      });
 
-        const data = await response.json(); // Parse response as JSON
+      const data = await response.json();
 
-        if (response.ok) {
-          console.log("Admin signed in:", data.admin);
-          const authExpiry = Date.now() + 7 * 24 * 60 * 60 * 1000;
-          localStorage.setItem("id", data.admin._id);
-          localStorage.setItem("name", data.admin.name);
-          localStorage.setItem("authExpiry", authExpiry);
-          router.push(returnUrl);
-        } else {
-          console.error("Error:", data.error);
-          // Optionally, show an error message to the user
-        }
-      } catch (error) {
-        console.error("Error during sign-in:", error);
+      if (response.ok) {
+        const authExpiry = Date.now() + 7 * 24 * 60 * 60 * 1000;
+        localStorage.setItem("id", data[userType]._id);
+        localStorage.setItem("userType", userType);
+        localStorage.setItem("name", data[userType].name);
+        localStorage.setItem("authExpiry", authExpiry);
+        router.push(returnUrl);
+      } else {
+        console.error("Error:", data.error);
       }
+    } catch (error) {
+      console.error("Error during sign-in:", error);
     }
 
     setIsLoading(false);
@@ -105,9 +104,7 @@ export default function SignInForm() {
             className=""
           />
         </div>
-        <CardTitle className="text-2xl font-bold text-[#232C65]">
-          Sign In
-        </CardTitle>
+        <CardTitle className="text-2xl font-bold text-[#232C65]">Sign In</CardTitle>
         <CardDescription className="text-center">
           Enter your details to access your account
         </CardDescription>
@@ -120,54 +117,49 @@ export default function SignInForm() {
           </TabsList>
         </Tabs>
         <Form {...form}>
-          <form
-            onSubmit={form.handleSubmit(onSubmit)}
-            className="space-y-4 mt-4"
-          >
-            {step === "email" && (
-              <FormField
-                control={form.control}
-                name="email"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Email</FormLabel>
-                    <FormControl>
-                      <Input placeholder="Enter your email" {...field} />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-            )}
-            {step === "password" && (
-              <FormField
-                control={form.control}
-                name="password"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Password</FormLabel>
-                    <FormControl>
+          <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4 mt-4">
+            <FormField
+              control={form.control}
+              name="email"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Email</FormLabel>
+                  <FormControl>
+                    <Input placeholder="Enter your email" {...field} />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+            <FormField
+              control={form.control}
+              name="password"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Password</FormLabel>
+                  <FormControl>
+                    <div className="relative">
                       <Input
-                        type="password"
+                        type={showPassword ? "text" : "password"}
                         placeholder="Enter your password"
                         {...field}
                       />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-            )}
+                      <button
+                        type="button"
+                        className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-500"
+                        onClick={() => setShowPassword((prev) => !prev)}
+                      >
+                        {showPassword ? <EyeOff size={20} /> : <Eye size={20} />}
+                      </button>
+                    </div>
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
             <Button
-              type={step === "email" ? "button" : "submit"}
+              type="submit"
               className="w-full bg-[#E31E24] hover:bg-[#C71D23] text-white"
-              onClick={() => {
-                if (step === "email") {
-                  form.trigger("email").then((isValid) => {
-                    if (isValid) setStep("password");
-                  });
-                }
-              }}
               disabled={isLoading}
             >
               {isLoading ? (
@@ -175,8 +167,6 @@ export default function SignInForm() {
                   <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                   Please wait
                 </>
-              ) : step === "email" ? (
-                "Next"
               ) : (
                 "Sign In"
               )}
@@ -184,14 +174,6 @@ export default function SignInForm() {
           </form>
         </Form>
       </CardContent>
-      <CardFooter className="flex justify-center">
-        <p className="text-sm text-gray-500">
-          Don't have an account?{" "}
-          <a href="#" className="text-[#E31E24] hover:underline">
-            Sign up
-          </a>
-        </p>
-      </CardFooter>
     </Card>
   );
 }

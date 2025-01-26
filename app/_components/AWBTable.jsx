@@ -33,16 +33,16 @@ export default function AWBTable({ awbData, onEdit, onDelete }) {
                         <TableHead>Sender</TableHead>
                         <TableHead>Recipient</TableHead>
                         <TableHead>Status</TableHead>
-                        <TableHead>Actions</TableHead>
+                        <TableHead>Generate AWB</TableHead>
                     </TableRow>
                 </TableHeader>
                 <TableBody>
                     {awbData.map((awb) => (
                         <TableRow key={awb.trackingNumber}>
                             <TableCell>{awb.trackingNumber}</TableCell>
-                            <TableCell>{awb.senderName}</TableCell>
-                            <TableCell>{awb.recipientName}</TableCell>
-                            <TableCell>{awb.status}</TableCell>
+                            <TableCell>{awb.sender?.name}</TableCell>
+                            <TableCell>{awb.receiver?.name}</TableCell>
+                            <TableCell>{awb.parcelStatus}</TableCell>
                             <TableCell>
                                 <div className="flex space-x-2">
                                     <Link href={`/awb/${awb.trackingNumber}`}>
@@ -50,22 +50,6 @@ export default function AWBTable({ awbData, onEdit, onDelete }) {
                                             View
                                         </Button>
                                     </Link>
-                                    <Dialog>
-                                        <DialogTrigger asChild>
-                                            <Button variant="outline" size="sm" onClick={() => handleEdit(awb)}>
-                                                Edit
-                                            </Button>
-                                        </DialogTrigger>
-                                        <DialogContent>
-                                            <DialogHeader>
-                                                <DialogTitle>Edit AWB</DialogTitle>
-                                            </DialogHeader>
-                                            <EditAWBForm awb={editingAWB} onSave={handleSave} />
-                                        </DialogContent>
-                                    </Dialog>
-                                    <Button variant="destructive" size="sm" onClick={() => handleDelete(awb.trackingNumber)}>
-                                        Delete
-                                    </Button>
                                 </div>
                             </TableCell>
                         </TableRow>

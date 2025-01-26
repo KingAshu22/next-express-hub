@@ -19,135 +19,84 @@ import {
   Pencil,
   Trash,
 } from "lucide-react";
+import axios from "axios";
+
+const deleteClient = async (code) => {
+  try {
+    await axios.delete(
+      `/api/clients/${code}`,
+      { withCredentials: true }
+    );
+  } catch (error) {
+    console.error("Error Deleting AWB:", error);
+  }
+};
 
 export const columns = [
   {
-    accessorKey: "date",
-    header: "Date",
-    cell: ({ row }) => {
-      const date = row.original.date;
-      if (date) {
-        // Assuming date is either a Date object or a string in ISO format
-        return <span>{new Date(date).toLocaleDateString("en-GB")}</span>;
-      } else {
-        // Handle cases where date is missing or invalid
-        return <span>No date available</span>;
-      }
-    },
-  },
-  {
-    accessorKey: "invoiceNumber",
+    accessorKey: "code",
     header: ({ column }) => (
       <span
         variant="ghost"
         onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}
         className="flex items-center gap-1"
       >
-        Invoice No.
+        Code
         <ArrowUpDown className="ml-2 h-4 w-4" />
       </span>
     ),
   },
   {
-    accessorKey: "trackingNumber",
+    accessorKey: "name",
     header: ({ column }) => (
       <span
         variant="ghost"
         onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}
         className="flex items-center gap-1"
       >
-        Tracking No.
+        Name
         <ArrowUpDown className="ml-2 h-4 w-4" />
       </span>
     ),
   },
   {
-    accessorKey: "sender.name",
+    accessorKey: "email",
     header: ({ column }) => (
       <span
         variant="ghost"
         onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}
         className="flex items-center gap-1"
       >
-        Sender
+        Email
         <ArrowUpDown className="ml-2 h-4 w-4" />
       </span>
     ),
   },
   {
-    accessorKey: "receiver.name",
+    accessorKey: "password",
     header: ({ column }) => (
       <span
         variant="ghost"
         onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}
         className="flex items-center gap-1"
       >
-        Receiver
+        Password
         <ArrowUpDown className="ml-2 h-4 w-4" />
       </span>
     ),
-  },
-  {
-    accessorKey: "receiver.country",
-    header: ({ column }) => (
-      <span
-        variant="ghost"
-        onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}
-        className="flex items-center gap-1"
-      >
-        Destination
-        <ArrowUpDown className="ml-2 h-4 w-4" />
-      </span>
-    ),
-  },
-  {
-    accessorKey: "staffId",
-    header: ({ column }) => (
-      <span
-        variant="ghost"
-        onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}
-        className="flex items-center gap-1"
-      >
-        Staff
-        <ArrowUpDown className="ml-2 h-4 w-4" />
-      </span>
-    ),
-  },
-  {
-    accessorKey: "parcelStatus",
-    header: "Status",
-    cell: ({ row }) => {
-      const parcelStatus = row.original.parcelStatus;
-      if (parcelStatus) {
-        // Assuming parcelStatus is either a parcelStatus
-        return <span>{parcelStatus[0]}</span>;
-      }
-    },
   },
   {
     id: "actions",
     header: "Actions",
     cell: ({ row }) => {
-      const { trackingNumber } = row.original;
+      const { code, name } = row.original;
       return (
         <div className="flex flex-rows gap-2">
           <Button
-            className="px-2 py-1 bg-green-800"
-            onClick={() => window.open(`/awb/${trackingNumber}`)}
-          >
-            <Eye className="w-[20px] h-[20px]" />
-          </Button>
-          <Button
             className="px-2 py-1 bg-blue-800"
-            onClick={() => window.open(`/edit-awb/${trackingNumber}`)}
+            onClick={() => window.open(`/clients/edit/${code}`)}
           >
             <Pencil className="w-[20px] h-[20px]" />
-          </Button>
-          <Button
-            className="px-2 py-1 bg-gray-600"
-            onClick={() => window.open(`/update-status/${trackingNumber}`)}
-          >
-            <LayoutDashboard className="w-[20px] h-[20px]" />
           </Button>
           <AlertDialog>
             <AlertDialogTrigger className="bg-primary rounded-lg px-2 py-1 text-white">
@@ -157,16 +106,14 @@ export const columns = [
               <AlertDialogHeader>
                 <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
                 <AlertDialogDescription>
-                  This action cannot be undone. This will permanently delete AWB
-                  with Tracking Number:
-                  {trackingNumber} and remove data completely from the servers.
+                  This action cannot be undone. This will permanently delete {name} and remove data completely from the servers.
                 </AlertDialogDescription>
               </AlertDialogHeader>
               <AlertDialogFooter>
                 <AlertDialogCancel>Cancel</AlertDialogCancel>
                 <AlertDialogAction
                   onClick={() => {
-                    deleteAwb({ trackingNumber });
+                    deleteClient(code);
                   }}
                 >
                   Continue

@@ -1,4 +1,7 @@
+"use client"
+
 import AWBForm from "@/app/_components/AWBForm";
+import withAuth from "@/lib/withAuth";
 import React from "react";
 
 const CreateAWB = () => {
@@ -9,4 +12,4 @@ const CreateAWB = () => {
   );
 };
 
-export default CreateAWB;
+export default withAuth(CreateAWB);

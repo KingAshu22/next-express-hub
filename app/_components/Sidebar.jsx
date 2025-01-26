@@ -1,4 +1,4 @@
-import { Calendar, LayoutDashboard, Inbox, Search, Settings, Sun, Box } from "lucide-react"
+import { Calendar, LayoutDashboard, User, Search, Settings, Sun, Box } from "lucide-react"
 
 import {
     Sidebar,
@@ -12,7 +12,10 @@ import {
     SidebarMenuItem,
 } from "@/components/ui/sidebar"
 
-// Menu items.
+// Get the userType from localStorage
+const userType = localStorage?.getItem("userType") || "";
+
+// Menu items
 const items = [
     {
         title: "Dashboard",
@@ -24,22 +27,17 @@ const items = [
         url: "/awb",
         icon: Box,
     },
-    {
-        title: "Calendar",
-        url: "#",
-        icon: Calendar,
-    },
-    {
-        title: "Search",
-        url: "#",
-        icon: Search,
-    },
-    {
-        title: "Settings",
-        url: "#",
-        icon: Settings,
-    },
-]
+    // Add Clients menu item conditionally
+    ...(userType === "admin"
+        ? [
+            {
+                title: "Clients",
+                url: "/clients",
+                icon: User,
+            },
+        ]
+        : []),
+];
 
 export function AppSidebar() {
     return (
@@ -51,7 +49,7 @@ export function AppSidebar() {
                 <SidebarContent>
                     <SidebarGroup>
                         <SidebarGroupContent>
-                            <SidebarMenu className="">
+                            <SidebarMenu>
                                 {items.map((item) => (
                                     <SidebarMenuItem key={item.title}>
                                         <SidebarMenuButton asChild className="py-8">
@@ -68,5 +66,5 @@ export function AppSidebar() {
                 </SidebarContent>
             </Sidebar>
         </>
-    )
+    );
 }

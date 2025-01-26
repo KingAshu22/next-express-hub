@@ -23,31 +23,30 @@ async function getUniqueTrackingNumber() {
 }
 
 export async function GET() {
-    await connectToDB();
+    await connectToDB()
 
     try {
         // Fetch the last document for the invoice number
-        const lastAwb = await Awb.findOne({}).sort({ _id: -1 }).select("invoiceNumber");
+        const lastAwb = await Awb.findOne({}).sort({ _id: -1 }).select("invoiceNumber")
 
+        let invoiceNumber
         if (!lastAwb) {
-            return NextResponse.json(
-                { message: "No documents found" },
-                { status: 404 }
-            );
+            // If no AWBs exist, start with invoice number 0
+            invoiceNumber = "0"
+        } else {
+            // Increment the last invoice number
+            invoiceNumber = lastAwb.invoiceNumber
         }
 
         // Generate a unique tracking number
-        const uniqueTrackingNumber = await getUniqueTrackingNumber();
+        const uniqueTrackingNumber = await getUniqueTrackingNumber()
 
         return NextResponse.json({
-            invoiceNumber: lastAwb.invoiceNumber,
+            invoiceNumber: invoiceNumber,
             trackingNumber: uniqueTrackingNumber,
-        });
+        })
     } catch (error) {
-        console.error("Error fetching Awb:", error.message);
-        return NextResponse.json(
-            { error: "Failed to fetch Awb" },
-            { status: 500 }
-        );
+        console.error("Error fetching Awb:", error.message)
+        return NextResponse.json({ error: "Failed to fetch Awb" }, { status: 500 })
     }
 }

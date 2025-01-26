@@ -69,7 +69,7 @@ export async function DELETE(req, { params }) {
   try {
     console.log("Deleting AWB");
     await connectToDB();
-    const { trackingNumber } = params; // Correctly extract params
+    const { trackingNumber } = await params; // Correctly extract params
     const deletedAwb = await Awb.findOneAndDelete({ trackingNumber }); // Use a proper query object
 
     if (!deletedAwb) {

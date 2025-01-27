@@ -22,7 +22,7 @@ export default function RootLayout({ children }) {
         <SidebarProvider>
           {!isAWBPage && <AppSidebar />}{" "}
           {/* Only render the sidebar if it's not the AWB page */}
-          <main className="flex-grow p-4">
+          <main className={`flex-grow ${(pathname !== "/" || !pathname.includes("/signin")) && "p-4"}`}>
             {!isAWBPage && (
               <div className="mb-20">
                 <Header />

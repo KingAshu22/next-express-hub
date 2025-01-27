@@ -13,7 +13,13 @@ const AwbSchema = new Schema({
   zone: String,
   gst: String,
   boxes: Array,
-  parcelStatus: Array,
+  parcelStatus: [
+    {
+      status: String,
+      timestamp: Date,
+      comment: String,
+    }
+  ],
   parcelValue: Number,
 });
 

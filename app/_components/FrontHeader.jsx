@@ -1,8 +1,10 @@
 import Link from "next/link";
 import Image from "next/image";
 import { Button } from "@/components/ui/button";
+import { useRouter } from "next/navigation";
 
 export default function FrontHeader() {
+  const router = useRouter();
   return (
     <header className="fixed top-0 left-0 right-0 bg-white z-50 shadow-sm">
       <div className="container mx-auto px-4">
@@ -16,7 +18,7 @@ export default function FrontHeader() {
             />
           </Link>
 
-          <nav className="hidden lg:flex items-center space-x-8">
+          <nav className="hidden lg:flex items-center space-x-8 font-bold">
             <Link
               href="#what-we-offer"
               className="text-[#232C65] hover:text-[#E31E24] transition-colors"
@@ -37,15 +39,15 @@ export default function FrontHeader() {
             </Link>
           </nav>
 
-          <div className="flex items-center space-x-4">
+          <div className="flex items-center space-x-4 font-bold">
             <Link
-              href="/contact"
+              href="tel:+918169155537"
               className="hidden md:inline-block text-sm text-[#232C65] hover:text-[#E31E24] transition-colors"
             >
               Contact Us
             </Link>
             <Link
-              href="/login"
+              href="/dashboard"
               className="hidden md:inline-block text-sm text-[#232C65] hover:text-[#E31E24] transition-colors"
             >
               Login

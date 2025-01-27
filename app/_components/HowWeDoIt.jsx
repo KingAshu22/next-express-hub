@@ -11,7 +11,7 @@ const steps = [
 
 export default function HowWeDoIt() {
   return (
-    <section className="py-20 bg-gray-50" id="how-we-do-it">
+    <section className="py-28 bg-gray-50" id="how-we-do-it">
       <div className="container mx-auto px-4">
         <div className="grid lg:grid-cols-2 gap-12 items-center">
           <div className="space-y-8">
@@ -30,12 +30,12 @@ export default function HowWeDoIt() {
               ))}
             </div>
           </div>
-          <div className="relative h-[500px] rounded-lg overflow-hidden">
+          <div className="relative h-[550px] w-full rounded-lg overflow-hidden">
             <Image
               src="/how-we-do-it-web.svg"
               alt="Shipping Process"
               fill
-              className="object-cover"
+              className="object-contain"
             />
           </div>
         </div>

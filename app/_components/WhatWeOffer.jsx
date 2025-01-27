@@ -15,7 +15,7 @@ const services = [
 
 export default function WhatWeOffer() {
   return (
-    <section className="py-20" id="what-we-offer">
+    <section className="py-28" id="what-we-offer">
       <div className="container mx-auto px-4">
         <h2 className="text-4xl font-bold text-[#232C65] text-center mb-12">
           <span className="relative inline-block">

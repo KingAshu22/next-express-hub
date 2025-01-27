@@ -7,7 +7,7 @@ const stats = [
 
 export default function Experience() {
   return (
-    <section className="py-20 bg-[#232C65]" id="our-experience">
+    <section className="py-28 bg-[#232C65]" id="our-experience">
       <div className="container mx-auto px-4">
         <h2 className="text-4xl font-bold text-center text-white mb-16">
           <span className="relative inline-block">

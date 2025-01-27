@@ -2,7 +2,7 @@ import Image from "next/image";
 import { Button } from "@/components/ui/button";
 import { ArrowRight } from "lucide-react";
 import { useRouter } from "next/navigation";
-import Typical from "react-typical";
+import { Typewriter } from 'react-simple-typewriter';
 
 export default function Hero() {
   const router = useRouter();
@@ -13,17 +13,20 @@ export default function Hero() {
           <div className="space-y-6">
             <h1 className="text-4xl lg:text-5xl xl:text-6xl font-bold text-[#232C65] leading-tight">
               Cross-Border Shipping:{" "}
-              <span className="relative inline-block">
-                <Typical
-                  className="text-[#E31E24]"
-                  steps={[
-                    "Made Affordable", 2000,
-                    "Fast and Reliable", 2000,
-                    "Secure and Efficient", 2000,
-                    "Tailored for You", 2000,
+              <span className="relative inline-block text-[#E31E24]">
+                <Typewriter
+                  words={[
+                    "Made Affordable",
+                    "Fast and Reliable",
+                    "Secure and Efficient",
+                    "Tailored for You",
                   ]}
-                  loop={Infinity}
-                  wrapper="span"
+                  loop
+                  cursor
+                  cursorStyle="_"
+                  typeSpeed={70}
+                  deleteSpeed={50}
+                  delaySpeed={1000}
                 />
                 <span className="absolute inset-x-0 bottom-2 h-3 bg-yellow-300 -z-10"></span>
               </span>

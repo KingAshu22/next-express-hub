@@ -13,7 +13,8 @@ export default function RootLayout({ children }) {
   const pathname = usePathname(); // Get the current pathname
   const isAWBPage =
     (pathname.includes("/awb/") && !pathname.includes("/awb/create")) ||
-    pathname.includes("/signin"); // Hide sidebar for /awb/[trackingNumber]
+    pathname.includes("/signin") ||
+    pathname == "/"; // Hide sidebar for /awb/[trackingNumber]
 
   return (
     <html lang="en">
@@ -22,7 +23,11 @@ export default function RootLayout({ children }) {
           {!isAWBPage && <AppSidebar />}{" "}
           {/* Only render the sidebar if it's not the AWB page */}
           <main className="flex-grow p-4">
-            {!isAWBPage && <div className="mb-20"><Header /></div>}
+            {!isAWBPage && (
+              <div className="mb-20">
+                <Header />
+              </div>
+            )}
             {children}
           </main>
         </SidebarProvider>

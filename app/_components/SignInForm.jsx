@@ -44,7 +44,7 @@ export default function SignInForm() {
   const searchParams = useSearchParams();
 
   useEffect(() => {
-    const rawReturnUrl = searchParams.get("redirect_url") || "/";
+    const rawReturnUrl = searchParams.get("redirect_url") || "/dashboard";
     if (typeof window !== "undefined") {
       const returnUrlPath = new URL(rawReturnUrl, window.location.origin)
         .pathname;

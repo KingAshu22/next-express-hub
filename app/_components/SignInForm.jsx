@@ -63,30 +63,60 @@ export default function SignInForm() {
   async function onSubmit(values) {
     setIsLoading(true);
 
-    const endpoint = userType === "admin" ? "/api/admin-signin" : "/api/client-signin";
-    try {
-      const response = await fetch(endpoint, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify(values),
-      });
+    if (userType === "admin") {
+      try {
+        const response = await fetch("/api/admin-signin", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify(values), // Pass email and password
+        });
 
-      const data = await response.json();
+        const data = await response.json(); // Parse response as JSON
 
-      if (response.ok) {
-        const authExpiry = Date.now() + 7 * 24 * 60 * 60 * 1000;
-        localStorage.setItem("id", data[userType]._id);
-        localStorage.setItem("userType", userType);
-        localStorage.setItem("name", data[userType].name);
-        localStorage.setItem("authExpiry", authExpiry);
-        router.push(returnUrl);
-      } else {
-        console.error("Error:", data.error);
+        if (response.ok) {
+          console.log("Admin signed in:", data.admin);
+          const authExpiry = Date.now() + 7 * 24 * 60 * 60 * 1000;
+          localStorage.setItem("id", data.admin._id);
+          localStorage.setItem("userType", "admin");
+          localStorage.setItem("name", data.admin.name);
+          localStorage.setItem("authExpiry", authExpiry);
+          router.push(returnUrl);
+        } else {
+          console.error("Error:", data.error);
+          // Optionally, show an error message to the user
+        }
+      } catch (error) {
+        console.error("Error during sign-in:", error);
       }
-    } catch (error) {
-      console.error("Error during sign-in:", error);
+    } else {
+      try {
+        const response = await fetch("/api/client-signin", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify(values), // Pass email and password
+        });
+
+        const data = await response.json(); // Parse response as JSON
+
+        if (response.ok) {
+          console.log("Client signed in:", data.client);
+          const authExpiry = Date.now() + 7 * 24 * 60 * 60 * 1000;
+          localStorage.setItem("id", data.client._id);
+          localStorage.setItem("userType", "client");
+          localStorage.setItem("name", data.client.name);
+          localStorage.setItem("authExpiry", authExpiry);
+          router.push(returnUrl);
+        } else {
+          console.error("Error:", data.error);
+          // Optionally, show an error message to the user
+        }
+      } catch (error) {
+        console.error("Error during sign-in:", error);
+      }
     }
 
     setIsLoading(false);
@@ -104,7 +134,9 @@ export default function SignInForm() {
             className=""
           />
         </div>
-        <CardTitle className="text-2xl font-bold text-[#232C65]">Sign In</CardTitle>
+        <CardTitle className="text-2xl font-bold text-[#232C65]">
+          Sign In
+        </CardTitle>
         <CardDescription className="text-center">
           Enter your details to access your account
         </CardDescription>
@@ -117,7 +149,10 @@ export default function SignInForm() {
           </TabsList>
         </Tabs>
         <Form {...form}>
-          <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4 mt-4">
+          <form
+            onSubmit={form.handleSubmit(onSubmit)}
+            className="space-y-4 mt-4"
+          >
             <FormField
               control={form.control}
               name="email"
@@ -149,7 +184,11 @@ export default function SignInForm() {
                         className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-500"
                         onClick={() => setShowPassword((prev) => !prev)}
                       >
-                        {showPassword ? <EyeOff size={20} /> : <Eye size={20} />}
+                        {showPassword ? (
+                          <EyeOff size={20} />
+                        ) : (
+                          <Eye size={20} />
+                        )}
                       </button>
                     </div>
                   </FormControl>

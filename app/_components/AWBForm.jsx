@@ -331,30 +331,32 @@ export default function AWBForm({ isEdit = false, awb }) {
                 </SelectContent>
               </Select>
             </div>
-            <div className="space-y-2">
-              <Label>Parcel Status</Label>
-              <Select value={parcelStatus} onValueChange={setParcelStatus}>
-                <SelectTrigger>
-                  <SelectValue placeholder="Select Parcel Status" />
-                </SelectTrigger>
-                <SelectContent>
-                  {[
-                    "Item Accepted By Courier",
-                    "Shipment Arrived at Export Gateway",
-                    "Connection Established",
-                    "In-Transit",
-                    "At Destination Sort Facility",
-                    "Out For Delivery",
-                    "Delivered",
-                    "Unsuccessful Delivery Attempt",
-                  ].map((status) => (
-                    <SelectItem key={status} value={status}>
-                      {status}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
+            {isEdit && (
+              <div className="space-y-2">
+                <Label>Parcel Status</Label>
+                <Select value={parcelStatus} onValueChange={setParcelStatus}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select Parcel Status" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {[
+                      "Item Accepted By Courier",
+                      "Shipment Arrived at Export Gateway",
+                      "Connection Established",
+                      "In-Transit",
+                      "At Destination Sort Facility",
+                      "Out For Delivery",
+                      "Delivered",
+                      "Unsuccessful Delivery Attempt",
+                    ].map((status) => (
+                      <SelectItem key={status} value={status}>
+                        {status}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            )}
           </CardContent>
         </Card>
 

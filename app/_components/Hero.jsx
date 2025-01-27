@@ -12,7 +12,7 @@ export default function Hero() {
         <div className="grid lg:grid-cols-2 gap-12 items-center">
           <div className="space-y-6">
             <h1 className="text-4xl lg:text-5xl xl:text-6xl font-bold text-[#232C65] leading-tight">
-              Cross-Border Shipping:{" "}
+              Cross-Border Shipping:{" "}<br />
               <span className="relative inline-block text-[#E31E24]">
                 <Typewriter
                   words={[

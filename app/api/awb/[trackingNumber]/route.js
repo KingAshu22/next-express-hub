@@ -27,7 +27,7 @@ export async function PUT(req, { params }) {
   try {
     console.log("Updating AWB");
     await connectToDB();
-    const { trackingNumber } = params; // Correctly extract params
+    const { trackingNumber } = await params; // Correctly extract params
     const body = await req.json(); // Parse the incoming JSON data
 
     const updatedAwb = await Awb.findOneAndUpdate(

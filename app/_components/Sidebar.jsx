@@ -34,7 +34,7 @@ export function AppSidebar() {
   const items = [
     {
       title: "Dashboard",
-      url: "/",
+      url: "/dashboard",
       icon: LayoutDashboard,
     },
     {
@@ -45,12 +45,12 @@ export function AppSidebar() {
     // Add Clients menu item conditionally
     ...(userType === "admin"
       ? [
-          {
-            title: "Clients",
-            url: "/clients",
-            icon: User,
-          },
-        ]
+        {
+          title: "Clients",
+          url: "/clients",
+          icon: User,
+        },
+      ]
       : []),
   ];
   return (

@@ -58,7 +58,7 @@ function AWBTable() {
   }
 
   return (
-    <div className="container w-full">
+    <div className="container w-full px-4">
       {userType === "admin" ?
         <DataTable columns={adminColumns} data={awbs} /> :
         <DataTable columns={clientColumns} data={awbs} />

@@ -25,8 +25,10 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Countries } from "@/app/constants/country";
 import axios from "axios";
 import SingleSearch from "./SingleSearch";
+import Modal from "./Modal";
 
 export default function AWBForm({ isEdit = false, awb }) {
+  const [success, setSuccess] = useState(false);
   const [date, setDate] = useState(awb?.date || Date.now());
   const [parcelType, setParcelType] = useState(
     awb?.parcelType || "International"
@@ -76,9 +78,6 @@ export default function AWBForm({ isEdit = false, awb }) {
         chargeableWeight: "",
       },
     ]
-  );
-  const [parcelStatus, setParcelStatus] = useState(
-    awb?.parcelStatus || "Item Accepted By Courier"
   );
   const [totalChargeableWeight, setTotalChargeableWeight] = useState("");
   useEffect(() => {
@@ -182,14 +181,13 @@ export default function AWBForm({ isEdit = false, awb }) {
         },
         gst,
         boxes,
-        parcelStatus,
       };
 
       const response = await axios.post("/api/awb", parcelData);
 
       if (response.status === 200) {
         console.log("Parcel saved successfully:", response.data);
-        alert("Parcel saved successfully!");
+        setSuccess(true);
       } else {
         console.error("Failed to save parcel:", response.data);
         alert("Failed to save the parcel. Please try again.");
@@ -232,7 +230,6 @@ export default function AWBForm({ isEdit = false, awb }) {
         },
         gst,
         boxes,
-        parcelStatus,
       };
 
       const response = await axios.put(
@@ -242,7 +239,7 @@ export default function AWBForm({ isEdit = false, awb }) {
 
       if (response.status === 200) {
         console.log("Parcel saved successfully:", response.data);
-        alert("Parcel saved successfully!");
+        setSuccess(true);
       } else {
         console.error("Failed to save parcel:", response.data);
         alert("Failed to save the parcel. Please try again.");
@@ -276,6 +273,7 @@ export default function AWBForm({ isEdit = false, awb }) {
                 type="text"
                 placeholder="Invoice No."
                 value={invoiceNumber}
+                readOnly
                 onChange={(e) => setInvoiceNumber(e.target.value)}
               />
             </div>
@@ -331,32 +329,6 @@ export default function AWBForm({ isEdit = false, awb }) {
                 </SelectContent>
               </Select>
             </div>
-            {isEdit && (
-              <div className="space-y-2">
-                <Label>Parcel Status</Label>
-                <Select value={parcelStatus} onValueChange={setParcelStatus}>
-                  <SelectTrigger>
-                    <SelectValue placeholder="Select Parcel Status" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {[
-                      "Item Accepted By Courier",
-                      "Shipment Arrived at Export Gateway",
-                      "Connection Established",
-                      "In-Transit",
-                      "At Destination Sort Facility",
-                      "Out For Delivery",
-                      "Delivered",
-                      "Unsuccessful Delivery Attempt",
-                    ].map((status) => (
-                      <SelectItem key={status} value={status}>
-                        {status}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-            )}
           </CardContent>
         </Card>
 
@@ -368,28 +340,30 @@ export default function AWBForm({ isEdit = false, awb }) {
           </CardHeader>
           <CardContent className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
             <div className="space-y-2">
-              <Label htmlFor="senderName">Sender Name</Label>
+              <Label htmlFor="senderName">Sender Name*</Label>
               <Input
                 id="senderName"
                 type="text"
                 placeholder="Sender Name"
                 value={senderName}
                 onChange={(e) => setSenderName(e.target.value)}
+                required
               />
             </div>
             <div className="space-y-2">
-              <Label htmlFor="senderAddress">Sender Address</Label>
+              <Label htmlFor="senderAddress">Sender Address*</Label>
               <Textarea
                 id="senderAddress"
                 placeholder="Sender Address"
                 value={senderAddress}
                 onChange={(e) => setSenderAddress(e.target.value)}
                 rows={4}
+                required
               />
             </div>
             <div className="space-y-2">
               <SingleSearch
-                type="Sender Country"
+                type="Sender Country*"
                 list={Countries}
                 selectedItem={senderCountry}
                 setSelectedItem={setSenderCountry}
@@ -397,30 +371,32 @@ export default function AWBForm({ isEdit = false, awb }) {
               />
             </div>
             <div className="space-y-2">
-              <Label htmlFor="senderZipCode">Sender Zip Code</Label>
+              <Label htmlFor="senderZipCode">Sender Zip Code*</Label>
               <Input
                 id="senderZipCode"
                 type="text"
                 placeholder="Sender Zip Code"
                 value={senderZipCode}
                 onChange={(e) => setSenderZipCode(e.target.value)}
+                required
               />
             </div>
             <div className="space-y-2">
-              <Label htmlFor="senderContact">Sender Contact</Label>
+              <Label htmlFor="senderContact">Sender Contact*</Label>
               <Input
                 id="senderContact"
                 type="text"
                 placeholder="Sender Contact"
                 value={senderContact}
                 onChange={(e) => setSenderContact(e.target.value)}
+                required
               />
             </div>
             <div className="space-y-2">
-              <Label>Sender KYC Type</Label>
-              <Select value={kycType} onValueChange={setKycType}>
+              <Label>Sender KYC Type*</Label>
+              <Select value={kycType} onValueChange={setKycType} required>
                 <SelectTrigger>
-                  <SelectValue placeholder="Select KYC Type" />
+                  <SelectValue placeholder="Select KYC Type" required />
                 </SelectTrigger>
                 <SelectContent>
                   {[
@@ -439,13 +415,14 @@ export default function AWBForm({ isEdit = false, awb }) {
               </Select>
             </div>
             <div className="space-y-2">
-              <Label htmlFor="kyc">KYC</Label>
+              <Label htmlFor="kyc">KYC*</Label>
               <Input
                 id="kyc"
                 type="text"
                 placeholder="KYC"
                 value={kyc}
                 onChange={(e) => setKyc(e.target.value)}
+                required
               />
             </div>
             <div className="space-y-2">
@@ -470,7 +447,7 @@ export default function AWBForm({ isEdit = false, awb }) {
           <CardContent className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
             <div className="space-y-2">
               <SingleSearch
-                type="Receiver Country"
+                type="Receiver Country*"
                 list={Countries}
                 selectedItem={receiverCountry}
                 setSelectedItem={setReceiverCountry}
@@ -478,43 +455,47 @@ export default function AWBForm({ isEdit = false, awb }) {
               />
             </div>
             <div className="space-y-2">
-              <Label htmlFor="receiverName">Receiver Name</Label>
+              <Label htmlFor="receiverName">Receiver Name*</Label>
               <Input
                 id="receiverName"
                 type="text"
                 placeholder="Receiver Name"
                 value={receiverName}
                 onChange={(e) => setReceiverName(e.target.value)}
+                required
               />
             </div>
             <div className="space-y-2">
-              <Label htmlFor="receiverAddress">Receiver Address</Label>
+              <Label htmlFor="receiverAddress">Receiver Address*</Label>
               <Textarea
                 id="receiverAddress"
                 placeholder="Receiver Address"
                 value={receiverAddress}
                 onChange={(e) => setReceiverAddress(e.target.value)}
                 rows={4}
+                required
               />
             </div>
             <div className="space-y-2">
-              <Label htmlFor="receiverZipCode">Receiver Zip Code</Label>
+              <Label htmlFor="receiverZipCode">Receiver Zip Code*</Label>
               <Input
                 id="receiverZipCode"
                 type="text"
                 placeholder="Receiver Zip Code"
                 value={receiverZipCode}
                 onChange={(e) => setReceiverZipCode(e.target.value)}
+                required
               />
             </div>
             <div className="space-y-2">
-              <Label htmlFor="receiverContact">Receiver Contact</Label>
+              <Label htmlFor="receiverContact">Receiver Contact*</Label>
               <Input
                 id="receiverContact"
                 type="text"
                 placeholder="Receiver Contact"
                 value={receiverContact}
                 onChange={(e) => setReceiverContact(e.target.value)}
+                required
               />
             </div>
           </CardContent>
@@ -548,7 +529,7 @@ export default function AWBForm({ isEdit = false, awb }) {
                 <CardContent className="space-y-6">
                   <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                     <div className="space-y-2">
-                      <Label htmlFor={`length-${boxIndex}`}>Length (cm)</Label>
+                      <Label htmlFor={`length-${boxIndex}`}>Length* (cm)</Label>
                       <Input
                         id={`length-${boxIndex}`}
                         type="number"
@@ -566,7 +547,7 @@ export default function AWBForm({ isEdit = false, awb }) {
                     </div>
                     <div className="space-y-2">
                       <Label htmlFor={`breadth-${boxIndex}`}>
-                        Breadth (cm)
+                        Breadth* (cm)
                       </Label>
                       <Input
                         id={`breadth-${boxIndex}`}
@@ -584,7 +565,7 @@ export default function AWBForm({ isEdit = false, awb }) {
                       />
                     </div>
                     <div className="space-y-2">
-                      <Label htmlFor={`height-${boxIndex}`}>Height (cm)</Label>
+                      <Label htmlFor={`height-${boxIndex}`}>Height* (cm)</Label>
                       <Input
                         id={`height-${boxIndex}`}
                         type="number"
@@ -602,7 +583,7 @@ export default function AWBForm({ isEdit = false, awb }) {
                     </div>
                     <div className="space-y-2">
                       <Label htmlFor={`actualWeight-${boxIndex}`}>
-                        Actual Weight (kg)
+                        Actual Weight* (kg)
                       </Label>
                       <Input
                         id={`actualWeight-${boxIndex}`}
@@ -621,7 +602,7 @@ export default function AWBForm({ isEdit = false, awb }) {
                     </div>
                     <div className="space-y-2">
                       <Label htmlFor={`dimensionalWeight-${boxIndex}`}>
-                        Dimensional Weight (kg)
+                        Dimensional Weight* (kg)
                       </Label>
                       <Input
                         id={`dimensionalWeight-${boxIndex}`}
@@ -634,7 +615,7 @@ export default function AWBForm({ isEdit = false, awb }) {
                     </div>
                     <div className="space-y-2">
                       <Label htmlFor={`chargeableWeight-${boxIndex}`}>
-                        Chargeable Weight (kg)
+                        Chargeable Weight* (kg)
                       </Label>
                       <Input
                         id={`chargeableWeight-${boxIndex}`}
@@ -670,6 +651,31 @@ export default function AWBForm({ isEdit = false, awb }) {
           </Button>
         </div>
       </form>
+      <Modal
+        isOpen={success}
+        onClose={() => setSuccess(false)}
+        title={`AWB ${isEdit ? "Updated" : "Created"} Successfully`}
+        description={`The AWB has been ${
+          isEdit ? "updated" : "created"
+        } successfully. Click the button below to view AWB or go back to AWB Table.`}
+      >
+        <div className="flex justify-center gap-2">
+          <button
+            className="inline-flex justify-center py-2 px-4 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
+            type="button"
+            onClick={() => router.push(`/awb/${trackingNumber}`)}
+          >
+            View AWB
+          </button>
+          <button
+            className="inline-flex justify-center py-2 px-4 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-green-600 hover:bg-green-800 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
+            type="button"
+            onClick={() => router.push(`/awb`)}
+          >
+            Back to AWB Table
+          </button>
+        </div>
+      </Modal>
     </div>
   );
 }

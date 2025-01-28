@@ -10,22 +10,13 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
-import {
-  ArrowUpDown,
-  Eye,
-  LayoutDashboard,
-  Pencil,
-  Trash,
-} from "lucide-react";
+import { ArrowUpDown, Eye, LayoutDashboard, Pencil, Trash } from "lucide-react";
 import { useEffect, useState } from "react";
 import axios from "axios";
 
 const deleteAwb = async (trackingNumber) => {
   try {
-    await axios.delete(
-      `/api/awb/${trackingNumber}`,
-      { withCredentials: true }
-    );
+    await axios.delete(`/api/awb/${trackingNumber}`, { withCredentials: true });
   } catch (error) {
     console.error("Error Deleting AWB:", error);
   }
@@ -65,7 +56,9 @@ export const adminColumns = [
       const date = row.original.date;
       return (
         <span>
-          {date ? new Date(date).toLocaleDateString("en-GB") : "No date available"}
+          {date
+            ? new Date(date).toLocaleDateString("en-GB")
+            : "No date available"}
         </span>
       );
     },
@@ -104,7 +97,11 @@ export const adminColumns = [
     ),
     cell: ({ row }) => {
       const staffId = row.original.staffId;
-      return staffId !== "admin" ? <ShowName id={staffId} /> : <span>Admin</span>;
+      return staffId !== "admin" ? (
+        <ShowName id={staffId} />
+      ) : (
+        <span>Admin</span>
+      );
     },
   },
   {
@@ -112,7 +109,13 @@ export const adminColumns = [
     header: "Status",
     cell: ({ row }) => {
       const parcelStatus = row.original.parcelStatus;
-      return <span>{parcelStatus ? parcelStatus[0] : "Unknown"}</span>;
+      return (
+        <span>
+          {parcelStatus
+            ? parcelStatus[parcelStatus.length - 1].status
+            : "Unknown"}
+        </span>
+      );
     },
   },
   {
@@ -122,13 +125,21 @@ export const adminColumns = [
       const { trackingNumber } = row.original;
       return (
         <div className="flex gap-2">
-          <Button className="bg-green-800" onClick={() => window.open(`/awb/${trackingNumber}`)}>
+          <Button
+            className="bg-green-800"
+            onClick={() => window.open(`/awb/${trackingNumber}`)}
+          >
             <Eye className="w-5 h-5" />
           </Button>
-          <Button className="bg-blue-800" onClick={() => window.open(`/edit-awb/${trackingNumber}`)}>
+          <Button
+            className="bg-blue-800"
+            onClick={() => window.open(`/edit-awb/${trackingNumber}`)}
+          >
             <Pencil className="w-5 h-5" />
           </Button>
-          <Button onClick={() => window.open(`/update-status/${trackingNumber}`)}>
+          <Button
+            onClick={() => window.open(`/awb/update-track/${trackingNumber}`)}
+          >
             <LayoutDashboard className="w-5 h-5" />
           </Button>
           <AlertDialog>
@@ -139,7 +150,8 @@ export const adminColumns = [
               <AlertDialogHeader>
                 <AlertDialogTitle>Are you sure?</AlertDialogTitle>
                 <AlertDialogDescription>
-                  Deleting AWB with Tracking Number: {trackingNumber} cannot be undone.
+                  Deleting AWB with Tracking Number: {trackingNumber} cannot be
+                  undone.
                 </AlertDialogDescription>
               </AlertDialogHeader>
               <AlertDialogFooter>

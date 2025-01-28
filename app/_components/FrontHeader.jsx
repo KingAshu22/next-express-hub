@@ -41,10 +41,10 @@ export default function FrontHeader() {
 
           <div className="flex items-center space-x-4 font-bold">
             <Link
-              href="tel:+918169155537"
+              href="https://wa.me/918169155537"
               className="hidden md:inline-block text-sm text-[#232C65] hover:text-[#E31E24] transition-colors"
             >
-              Contact Us
+              Whatsapp Us
             </Link>
             <Link
               href="/dashboard"
@@ -52,7 +52,10 @@ export default function FrontHeader() {
             >
               Login
             </Link>
-            <Button className="bg-[#E31E24] hover:bg-[#C71D23] text-white rounded-md px-6">
+            <Button
+              className="bg-[#E31E24] hover:bg-[#C71D23] text-white rounded-md px-6"
+              onClick={() => router.push("/track")}
+            >
               Track Parcel
             </Button>
           </div>

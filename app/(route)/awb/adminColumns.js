@@ -112,7 +112,7 @@ export const adminColumns = [
       return (
         <span>
           {parcelStatus
-            ? parcelStatus[parcelStatus.length - 1].status
+            ? parcelStatus[parcelStatus.length - 1]?.status
             : "Unknown"}
         </span>
       );

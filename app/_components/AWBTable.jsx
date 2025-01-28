@@ -40,7 +40,7 @@ export default function AWBTable({ awbData }) {
               <TableCell>{awb.receiver?.name}</TableCell>
               <TableCell>
                 {awb.parcelStatus
-                  ? awb.parcelStatus[awb.parcelStatus.length - 1].status
+                  ? awb.parcelStatus[awb.parcelStatus.length - 1]?.status
                   : "Unknown"}
               </TableCell>
               <TableCell>

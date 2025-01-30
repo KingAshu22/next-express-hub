@@ -1,72 +1,44 @@
-"use client";
+"use client"
 
-import { useState, useEffect } from "react";
-import { format } from "date-fns";
-import { CalendarIcon, Plus, Minus, Trash2 } from "lucide-react";
-import { cn } from "@/lib/utils";
-import { Button } from "@/components/ui/button";
-import { Calendar } from "@/components/ui/calendar";
-import {
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
-} from "@/components/ui/popover";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
-import { Textarea } from "@/components/ui/textarea";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Countries } from "@/app/constants/country";
-import axios from "axios";
-import SingleSearch from "./SingleSearch";
-import Modal from "./Modal";
+import { useState, useEffect } from "react"
+import { format } from "date-fns"
+import { CalendarIcon, Plus, Minus, Trash2 } from "lucide-react"
+import { cn } from "@/lib/utils"
+import { Button } from "@/components/ui/button"
+import { Calendar } from "@/components/ui/calendar"
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
+import { Input } from "@/components/ui/input"
+import { Label } from "@/components/ui/label"
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
+import { Textarea } from "@/components/ui/textarea"
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
+import { Countries } from "@/app/constants/country"
+import axios from "axios"
+import SingleSearch from "./SingleSearch"
+import Modal from "./Modal"
+import { useRouter } from "next/navigation"
 
 export default function AWBForm({ isEdit = false, awb }) {
-  const [success, setSuccess] = useState(false);
-  const [date, setDate] = useState(awb?.date || Date.now());
-  const [parcelType, setParcelType] = useState(
-    awb?.parcelType || "International"
-  );
-  const [staffId, setStaffId] = useState(awb?.staffId || "");
-  const [invoiceNumber, setInvoiceNumber] = useState(awb?.invoiceNumber || "");
-  const [senderName, setSenderName] = useState(awb?.sender?.name || "");
-  const [senderAddress, setSenderAddress] = useState(
-    awb?.sender?.address || ""
-  );
-  const [senderCountry, setSenderCountry] = useState(
-    awb?.sender?.country || "India"
-  );
-  const [senderZipCode, setSenderZipCode] = useState(awb?.sender?.zip || "");
-  const [senderContact, setSenderContact] = useState(
-    awb?.sender?.contact || ""
-  );
-  const [kycType, setKycType] = useState(
-    awb?.sender?.kyc?.type || "Aadhaar No -"
-  );
-  const [kyc, setKyc] = useState(awb?.sender?.kyc?.kyc || "");
-  const [gst, setGst] = useState(awb?.gst || "");
-  const [receiverName, setReceiverName] = useState(awb?.receiver?.name || "");
-  const [receiverAddress, setReceiverAddress] = useState(
-    awb?.receiver?.address || ""
-  );
-  const [receiverCountry, setReceiverCountry] = useState(
-    awb?.receiver?.country || ""
-  );
-  const [receiverZipCode, setReceiverZipCode] = useState(
-    awb?.receiver?.zip || ""
-  );
-  const [receiverContact, setReceiverContact] = useState(
-    awb?.receiver?.contact || ""
-  );
-  const [trackingNumber, setTrackingNumber] = useState(
-    awb?.trackingNumber || ""
-  );
+  const router = useRouter()
+  const [success, setSuccess] = useState(false)
+  const [date, setDate] = useState(awb?.date || Date.now())
+  const [parcelType, setParcelType] = useState(awb?.parcelType || "International")
+  const [staffId, setStaffId] = useState(awb?.staffId || "")
+  const [invoiceNumber, setInvoiceNumber] = useState(awb?.invoiceNumber || "")
+  const [senderName, setSenderName] = useState(awb?.sender?.name || "")
+  const [senderAddress, setSenderAddress] = useState(awb?.sender?.address || "")
+  const [senderCountry, setSenderCountry] = useState(awb?.sender?.country || "India")
+  const [senderZipCode, setSenderZipCode] = useState(awb?.sender?.zip || "")
+  const [senderContact, setSenderContact] = useState(awb?.sender?.contact || "")
+  const [kycType, setKycType] = useState(awb?.sender?.kyc?.type || "Aadhaar No -")
+  const [kyc, setKyc] = useState(awb?.sender?.kyc?.kyc || "")
+  const [gst, setGst] = useState(awb?.gst || "")
+  const [receiverName, setReceiverName] = useState(awb?.receiver?.name || "")
+  const [receiverAddress, setReceiverAddress] = useState(awb?.receiver?.address || "")
+  const [receiverCountry, setReceiverCountry] = useState(awb?.receiver?.country || "")
+  const [receiverZipCode, setReceiverZipCode] = useState(awb?.receiver?.zip || "")
+  const [receiverContact, setReceiverContact] = useState(awb?.receiver?.contact || "")
+  const [trackingNumber, setTrackingNumber] = useState(awb?.trackingNumber || "")
   const [boxes, setBoxes] = useState(
     awb?.boxes || [
       {
@@ -77,41 +49,41 @@ export default function AWBForm({ isEdit = false, awb }) {
         dimensionalWeight: "",
         chargeableWeight: "",
       },
-    ]
-  );
-  const [totalChargeableWeight, setTotalChargeableWeight] = useState("");
+    ],
+  )
+  const [totalChargeableWeight, setTotalChargeableWeight] = useState("")
   useEffect(() => {
-    !isEdit && getInvoiceNumber();
-  }, []);
+    !isEdit && getInvoiceNumber()
+  }, [])
 
   useEffect(() => {
     // Calculate the total chargeable weight
     const totalWeight = boxes.reduce((acc, box) => {
-      const chargeableWeight = parseFloat(box.chargeableWeight) || 0; // Parse as a number and default to 0 if invalid
-      return acc + chargeableWeight;
-    }, 0); // Initial accumulator value is 0
+      const chargeableWeight = Number.parseFloat(box.chargeableWeight) || 0 // Parse as a number and default to 0 if invalid
+      return acc + chargeableWeight
+    }, 0) // Initial accumulator value is 0
 
     // Update the totalChargeableWeight state
-    setTotalChargeableWeight(Math.round(totalWeight));
-  }, [boxes]);
+    setTotalChargeableWeight(Math.round(totalWeight))
+  }, [boxes])
 
   const getInvoiceNumber = async () => {
     try {
-      const response = await axios.get("/api/get-last-awb");
-      const lastInvoiceNumber = response.data.invoiceNumber;
-      const incrementedNumber = (parseInt(lastInvoiceNumber) + 1).toString();
+      const response = await axios.get("/api/get-last-awb")
+      const lastInvoiceNumber = response.data.invoiceNumber
+      const incrementedNumber = (Number.parseInt(lastInvoiceNumber) + 1).toString()
 
       // Construct the new invoice number
-      const newInvoiceNumber = incrementedNumber;
+      const newInvoiceNumber = incrementedNumber
 
       // Set the new invoice number
-      setInvoiceNumber(newInvoiceNumber);
-      setTrackingNumber(response.data.trackingNumber);
+      setInvoiceNumber(newInvoiceNumber)
+      setTrackingNumber(response.data.trackingNumber)
     } catch (error) {
-      console.error("Error fetching parcel:", error);
+      console.error("Error fetching parcel:", error)
       // setError("Failed to fetch parcel. Please try again later.");
     }
-  };
+  }
 
   const addBox = () => {
     setBoxes([
@@ -124,37 +96,36 @@ export default function AWBForm({ isEdit = false, awb }) {
         dimensionalWeight: "",
         chargeableWeight: "",
       },
-    ]);
-  };
+    ])
+  }
 
   const handleBoxChange = (index, field, value) => {
-    const updatedBoxes = [...boxes];
-    updatedBoxes[index][field] = value;
+    const updatedBoxes = [...boxes]
+    updatedBoxes[index][field] = value
 
     if (["length", "breadth", "height", "actualWeight"].includes(field)) {
-      const box = updatedBoxes[index];
-      const dimensionalWeight = Math.round(
-        (box.length * box.breadth * box.height) / 5000
-      );
-      const chargeableWeight = Math.max(box.actualWeight, dimensionalWeight);
-      updatedBoxes[index].dimensionalWeight = dimensionalWeight;
-      updatedBoxes[index].chargeableWeight = chargeableWeight;
+      const box = updatedBoxes[index]
+      const dimensionalWeight = Math.round((box.length * box.breadth * box.height) / 5000)
+      const chargeableWeight = Math.max(box.actualWeight, dimensionalWeight)
+      updatedBoxes[index].dimensionalWeight = dimensionalWeight
+      updatedBoxes[index].chargeableWeight = chargeableWeight
     }
 
-    setBoxes(updatedBoxes);
-  };
+    setBoxes(updatedBoxes)
+  }
 
   const removeBox = (boxIndex) => {
-    const updatedBoxes = [...boxes];
-    updatedBoxes.splice(boxIndex, 1);
-    setBoxes(updatedBoxes);
-  };
+    const updatedBoxes = [...boxes]
+    updatedBoxes.splice(boxIndex, 1)
+    setBoxes(updatedBoxes)
+  }
 
-  const handleSubmit = async () => {
+  const handleSubmit = async (e) => {
+    e.preventDefault() // Prevent default form submission
     try {
-      console.log("Inside Save Parcel Function");
-      const userType = localStorage.getItem("userType");
-      const userId = localStorage.getItem("id");
+      console.log("Inside Save Parcel Function")
+      const userType = localStorage.getItem("userType")
+      const userId = localStorage.getItem("id")
       const parcelData = {
         parcelType,
         staffId: userType === "admin" ? "admin" : userId,
@@ -181,29 +152,27 @@ export default function AWBForm({ isEdit = false, awb }) {
         },
         gst,
         boxes,
-      };
+      }
 
-      const response = await axios.post("/api/awb", parcelData);
+      const response = await axios.post("/api/awb", parcelData)
 
       if (response.status === 200) {
-        console.log("Parcel saved successfully:", response.data);
-        setSuccess(true);
+        console.log("Parcel saved successfully:", response.data)
+        setSuccess(true)
       } else {
-        console.error("Failed to save parcel:", response.data);
-        alert("Failed to save the parcel. Please try again.");
+        console.error("Failed to save parcel:", response.data)
+        alert("Failed to save the parcel. Please try again.")
       }
     } catch (error) {
-      console.error(
-        "Error saving parcel:",
-        error.response?.data || error.message
-      );
-      alert("An error occurred while saving the parcel.");
+      console.error("Error saving parcel:", error.response?.data || error.message)
+      alert("An error occurred while saving the parcel.")
     }
-  };
+  }
 
-  const editSubmit = async () => {
+  const editSubmit = async (e) => {
+    e.preventDefault() // Prevent default form submission
     try {
-      console.log("Inside Save Parcel Function");
+      console.log("Inside Edit Parcel Function")
       const parcelData = {
         parcelType,
         staffId,
@@ -230,40 +199,30 @@ export default function AWBForm({ isEdit = false, awb }) {
         },
         gst,
         boxes,
-      };
+      }
 
-      const response = await axios.put(
-        `/api/awb/${trackingNumber}`,
-        parcelData
-      );
+      const response = await axios.put(`/api/awb/${trackingNumber}`, parcelData)
 
       if (response.status === 200) {
-        console.log("Parcel saved successfully:", response.data);
-        setSuccess(true);
+        console.log("Parcel updated successfully:", response.data)
+        setSuccess(true)
       } else {
-        console.error("Failed to save parcel:", response.data);
-        alert("Failed to save the parcel. Please try again.");
+        console.error("Failed to update parcel:", response.data)
+        alert("Failed to update the parcel. Please try again.")
       }
     } catch (error) {
-      console.error(
-        "Error saving parcel:",
-        error.response?.data || error.message
-      );
-      alert("An error occurred while saving the parcel.");
+      console.error("Error updating parcel:", error.response?.data || error.message)
+      alert("An error occurred while updating the parcel.")
     }
-  };
+  }
 
   return (
     <div className="container mx-auto px-4 py-8">
-      <h1 className="text-3xl font-bold mb-8 text-center text-[#232C65]">
-        {isEdit ? "Edit AWB" : "Create AWB"}
-      </h1>
+      <h1 className="text-3xl font-bold mb-8 text-center text-[#232C65]">{isEdit ? "Edit AWB" : "Create AWB"}</h1>
       <form onSubmit={isEdit ? editSubmit : handleSubmit} className="space-y-8">
         <Card>
           <CardHeader>
-            <CardTitle className="text-2xl text-[#232C65]">
-              Basic Details
-            </CardTitle>
+            <CardTitle className="text-2xl text-[#232C65]">Basic Details</CardTitle>
           </CardHeader>
           <CardContent className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
             <div className="space-y-2">
@@ -294,26 +253,14 @@ export default function AWBForm({ isEdit = false, awb }) {
                 <PopoverTrigger asChild>
                   <Button
                     variant={"outline"}
-                    className={cn(
-                      "w-full justify-start text-left font-normal",
-                      !date && "text-muted-foreground"
-                    )}
+                    className={cn("w-full justify-start text-left font-normal", !date && "text-muted-foreground")}
                   >
                     <CalendarIcon className="mr-2 h-4 w-4" />
-                    {date ? (
-                      format(date, "PPP")
-                    ) : (
-                      <span>Select Parcel Date</span>
-                    )}
+                    {date ? format(date, "PPP") : <span>Select Parcel Date</span>}
                   </Button>
                 </PopoverTrigger>
                 <PopoverContent className="w-auto p-0">
-                  <Calendar
-                    mode="single"
-                    selected={date}
-                    onSelect={setDate}
-                    initialFocus
-                  />
+                  <Calendar mode="single" selected={date} onSelect={setDate} initialFocus />
                 </PopoverContent>
               </Popover>
             </div>
@@ -334,9 +281,7 @@ export default function AWBForm({ isEdit = false, awb }) {
 
         <Card>
           <CardHeader>
-            <CardTitle className="text-2xl text-[#232C65]">
-              Sender Details
-            </CardTitle>
+            <CardTitle className="text-2xl text-[#232C65]">Sender Details</CardTitle>
           </CardHeader>
           <CardContent className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
             <div className="space-y-2">
@@ -427,22 +372,14 @@ export default function AWBForm({ isEdit = false, awb }) {
             </div>
             <div className="space-y-2">
               <Label htmlFor="gst">GST</Label>
-              <Input
-                id="gst"
-                type="text"
-                placeholder="GST No"
-                value={gst}
-                onChange={(e) => setGst(e.target.value)}
-              />
+              <Input id="gst" type="text" placeholder="GST No" value={gst} onChange={(e) => setGst(e.target.value)} />
             </div>
           </CardContent>
         </Card>
 
         <Card>
           <CardHeader>
-            <CardTitle className="text-2xl text-[#232C65]">
-              Receiver Details
-            </CardTitle>
+            <CardTitle className="text-2xl text-[#232C65]">Receiver Details</CardTitle>
           </CardHeader>
           <CardContent className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
             <div className="space-y-2">
@@ -503,24 +440,15 @@ export default function AWBForm({ isEdit = false, awb }) {
 
         <Card>
           <CardHeader>
-            <CardTitle className="text-2xl text-[#232C65]">
-              Box Details
-            </CardTitle>
+            <CardTitle className="text-2xl text-[#232C65]">Box Details</CardTitle>
           </CardHeader>
           <CardContent className="space-y-6">
             {boxes.map((box, boxIndex) => (
               <Card key={boxIndex}>
                 <CardHeader className="flex flex-row items-center justify-between">
-                  <CardTitle className="text-xl text-[#232C65]">
-                    Box {boxIndex + 1}
-                  </CardTitle>
+                  <CardTitle className="text-xl text-[#232C65]">Box {boxIndex + 1}</CardTitle>
                   {boxIndex > 0 && (
-                    <Button
-                      type="button"
-                      variant="destructive"
-                      size="sm"
-                      onClick={() => removeBox(boxIndex)}
-                    >
+                    <Button type="button" variant="destructive" size="sm" onClick={() => removeBox(boxIndex)}>
                       <Trash2 className="h-4 w-4 mr-2" />
                       Remove Box
                     </Button>
@@ -535,32 +463,18 @@ export default function AWBForm({ isEdit = false, awb }) {
                         type="number"
                         placeholder="Length (cm)"
                         value={box.length || ""}
-                        onChange={(e) =>
-                          handleBoxChange(
-                            boxIndex,
-                            "length",
-                            Number.parseFloat(e.target.value) || ""
-                          )
-                        }
+                        onChange={(e) => handleBoxChange(boxIndex, "length", Number.parseFloat(e.target.value) || "")}
                         required
                       />
                     </div>
                     <div className="space-y-2">
-                      <Label htmlFor={`breadth-${boxIndex}`}>
-                        Breadth* (cm)
-                      </Label>
+                      <Label htmlFor={`breadth-${boxIndex}`}>Breadth* (cm)</Label>
                       <Input
                         id={`breadth-${boxIndex}`}
                         type="number"
                         placeholder="Breadth (cm)"
                         value={box.breadth || ""}
-                        onChange={(e) =>
-                          handleBoxChange(
-                            boxIndex,
-                            "breadth",
-                            Number.parseFloat(e.target.value) || ""
-                          )
-                        }
+                        onChange={(e) => handleBoxChange(boxIndex, "breadth", Number.parseFloat(e.target.value) || "")}
                         required
                       />
                     </div>
@@ -571,39 +485,25 @@ export default function AWBForm({ isEdit = false, awb }) {
                         type="number"
                         placeholder="Height (cm)"
                         value={box.height || ""}
-                        onChange={(e) =>
-                          handleBoxChange(
-                            boxIndex,
-                            "height",
-                            Number.parseFloat(e.target.value) || ""
-                          )
-                        }
+                        onChange={(e) => handleBoxChange(boxIndex, "height", Number.parseFloat(e.target.value) || "")}
                         required
                       />
                     </div>
                     <div className="space-y-2">
-                      <Label htmlFor={`actualWeight-${boxIndex}`}>
-                        Actual Weight* (kg)
-                      </Label>
+                      <Label htmlFor={`actualWeight-${boxIndex}`}>Actual Weight* (kg)</Label>
                       <Input
                         id={`actualWeight-${boxIndex}`}
                         type="number"
                         placeholder="Actual Weight (kg)"
                         value={box.actualWeight || ""}
                         onChange={(e) =>
-                          handleBoxChange(
-                            boxIndex,
-                            "actualWeight",
-                            Number.parseFloat(e.target.value) || ""
-                          )
+                          handleBoxChange(boxIndex, "actualWeight", Number.parseFloat(e.target.value) || "")
                         }
                         required
                       />
                     </div>
                     <div className="space-y-2">
-                      <Label htmlFor={`dimensionalWeight-${boxIndex}`}>
-                        Dimensional Weight* (kg)
-                      </Label>
+                      <Label htmlFor={`dimensionalWeight-${boxIndex}`}>Dimensional Weight* (kg)</Label>
                       <Input
                         id={`dimensionalWeight-${boxIndex}`}
                         type="number"
@@ -614,9 +514,7 @@ export default function AWBForm({ isEdit = false, awb }) {
                       />
                     </div>
                     <div className="space-y-2">
-                      <Label htmlFor={`chargeableWeight-${boxIndex}`}>
-                        Chargeable Weight* (kg)
-                      </Label>
+                      <Label htmlFor={`chargeableWeight-${boxIndex}`}>Chargeable Weight* (kg)</Label>
                       <Input
                         id={`chargeableWeight-${boxIndex}`}
                         type="number"
@@ -630,12 +528,7 @@ export default function AWBForm({ isEdit = false, awb }) {
                 </CardContent>
               </Card>
             ))}
-            <Button
-              type="button"
-              variant="outline"
-              onClick={addBox}
-              className="mt-4"
-            >
+            <Button type="button" variant="outline" onClick={addBox} className="mt-4">
               <Plus className="h-4 w-4 mr-2" />
               Add Box
             </Button>
@@ -643,10 +536,7 @@ export default function AWBForm({ isEdit = false, awb }) {
         </Card>
 
         <div className="flex justify-end">
-          <Button
-            type="submit"
-            className="bg-[#E31E24] hover:bg-[#C71D23] text-white"
-          >
+          <Button type="submit" className="bg-[#E31E24] hover:bg-[#C71D23] text-white">
             {isEdit ? "Update AWB" : "Create AWB"}
           </Button>
         </div>
@@ -655,9 +545,8 @@ export default function AWBForm({ isEdit = false, awb }) {
         isOpen={success}
         onClose={() => setSuccess(false)}
         title={`AWB ${isEdit ? "Updated" : "Created"} Successfully`}
-        description={`The AWB has been ${
-          isEdit ? "updated" : "created"
-        } successfully. Click the button below to view AWB or go back to AWB Table.`}
+        description={`The AWB has been ${isEdit ? "updated" : "created"
+          } successfully. Click the button below to view AWB or go back to AWB Table.`}
       >
         <div className="flex justify-center gap-2">
           <button
@@ -677,5 +566,6 @@ export default function AWBForm({ isEdit = false, awb }) {
         </div>
       </Modal>
     </div>
-  );
+  )
 }
+

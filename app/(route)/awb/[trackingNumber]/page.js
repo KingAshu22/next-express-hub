@@ -126,7 +126,7 @@ export default function AWBView({ params }) {
                 }
               />
               <InfoItem label="Parcel Type" value={awbData?.parcelType} />
-              <InfoItem label="Status" value={awbData?.parcelStatus[0]} />
+              <InfoItem label="Status" value={awbData?.parcelStatus[awbData?.parcelStatus.length - 1]?.status} />
             </div>
           </div>
 
@@ -162,9 +162,8 @@ export default function AWBView({ params }) {
 
                     return (
                       <tr key={index}>
-                        <td className="px-8 py-2 whitespace-nowrap">{`${
-                          index + 1
-                        }`}</td>
+                        <td className="px-8 py-2 whitespace-nowrap">{`${index + 1
+                          }`}</td>
                         <td className="px-8 py-2 whitespace-nowrap">{`${box.length}×${box.breadth}×${box.height}`}</td>
                         <td className="px-8 py-2 whitespace-nowrap">{`${box.actualWeight} kg`}</td>
                         <td className="px-8 py-2 whitespace-nowrap">{`${box.dimensionalWeight} kg`}</td>

@@ -42,9 +42,17 @@ export default function FrontHeader() {
           <div className="flex items-center space-x-4 font-bold">
             <Link
               href="https://wa.me/918169155537"
-              className="hidden md:inline-block text-sm text-[#232C65] hover:text-[#E31E24] transition-colors"
+              className="hidden md:inline-block text-sm text-white hover:text-[#E31E24] transition-colors bg-[#25D366] px-3 py-2 rounded-lg"
             >
-              Whatsapp Us
+              <div className="flex gap-2">
+                <Image
+                  src="/whatsapp.svg"
+                  alt="Whatsapp Icon"
+                  width={16}
+                  height={16}
+                />
+                <span>Whatsapp Us</span>
+              </div>
             </Link>
             <Link
               href="/dashboard"

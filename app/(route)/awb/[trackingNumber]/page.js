@@ -178,6 +178,55 @@ export default function AWBView({ params }) {
           </div>
         </div>
 
+        <div className="text-xs px-2">
+          <p className="text-[#232C65] font-semibold text-justify">
+            Terms & Conditions
+          </p>
+          <ul>
+            <li>
+              Any Extra Charges (Remote Area Charges, Pickup Charges, etc) would
+              be charged extra.
+            </li>
+            <li>
+              If the consignment is lost or damaged in transit by Express Hub
+              Company, the maximum claim payable by Express Hub Company will be
+              Rs. 100/- per kg or Rs. 5,000, whichever is lower.
+            </li>
+            <li>
+              Express Hub Company will not be responsible for delayed delivery
+              due to fire, accidents, riots, strikes, and natural calamities,
+              flight delay, offloading of cargo, airlines space problem,
+              airlines bagging mis-routing, customs process delay, lockdown,
+              war, civil war, disturbed area.
+            </li>
+            <li>No claim would be accepted after 48 hours of delivery.</li>
+            <li>
+              The consignor is responsible for all the consequences if any
+              incorrect/false declaration is given.
+            </li>
+            <li>
+              Any dispute, controversy, or claim arising out of this shipment
+              shall be subject to the jurisdiction of courts in Mumbai only,
+              irrespective of the place of origin, payment, and destination of
+              the consignment.
+            </li>
+            <li>
+              The consignments handed over to Express Hub Company do not violate
+              the rules and regulations of the Post & Telegraph Department and
+              IATA under the Geneva Convention.
+            </li>
+            <li>
+              No delivery time is given or committed for shipments booked for
+              economy services.
+            </li>
+            <li>
+              Express Hub Company is not responsible for any duties/penalties or
+              charges applied to any shipment by any government authorities of
+              the destination country.
+            </li>
+          </ul>
+        </div>
+
         <div className="bg-gray-50 p-1 print:hidden">
           <button
             onClick={handlePrint}

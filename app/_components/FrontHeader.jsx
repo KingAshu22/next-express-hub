@@ -16,6 +16,7 @@ export default function FrontHeader() {
               width={180}
               height={40}
             />
+            Company
           </Link>
 
           <nav className="hidden lg:flex items-center space-x-8 font-bold">

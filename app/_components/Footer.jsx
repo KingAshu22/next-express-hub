@@ -32,13 +32,13 @@ export default function Footer() {
               <span className="font-semibold">Phone:</span> +91 81691 55537
             </p>
             <div className="mb-4">
-              <p className="font-semibold text-white">Address 1:</p>
+              <p className="font-semibold text-white">Mumbai Office:</p>
               <p className="text-gray-300">
                 Shop no 10, Ground floor Prakashwadi CHS Beside Summit Business park, Gundavali, Andheri East, Mumbai, Maharashtra 400093
               </p>
             </div>
             <div>
-              <p className="font-semibold text-white">Address 2:</p>
+              <p className="font-semibold text-white">Hyderabad Service:</p>
               <p className="text-gray-300">
                 Plot No 22, Gaganvihar Colony, OPP Vishwa Infrastructure, Bagavathapur, Begumpet Hyderabad -500016 TELANGANA,INDIA
               </p>

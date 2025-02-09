@@ -35,15 +35,23 @@ export default function Hero() {
               We provide fast, reliable international deliveries at{" "}
               <span className="text-[#E31E24]">surprisingly low prices</span>.
             </p>
-            <Button
-              className="bg-[#E31E24] hover:bg-[#C71D23] text-white rounded-md px-8 py-3 flex items-center space-x-2"
-              onClick={() => {
-                router.push("tel:+918169155537");
-              }}
-            >
-              <span>Ask us how?</span>
-              <ArrowRight className="w-4 h-4" />
-            </Button>
+            <div className="flex flex-row gap-4">
+              <Button
+                className="bg-[#fff] hover:bg-[#C71D23] text-#E31E24 border border-[#E31E24] rounded-md px-8 py-3 flex items-center space-x-2"
+                onClick={() => {
+                  router.push("tel:+918169155537");
+                }}
+              >
+                <span>Ask us how?</span>
+                <ArrowRight className="w-4 h-4" />
+              </Button>
+              <Button
+                className="bg-[#E31E24] hover:bg-[#C71D23] text-white rounded-md px-6"
+                onClick={() => router.push("/track")}
+              >
+                Track Parcel
+              </Button>
+            </div>
           </div>
           <div className="relative h-[400px] lg:h-[500px]">
             <Image

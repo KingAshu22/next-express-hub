@@ -1,9 +1,9 @@
-import { Truck, Globe, Clock, Shield } from "lucide-react";
+import { Truck, Globe, Clock, Shield, File, Luggage, Pill, LibraryBig, ShoppingCart, Import } from "lucide-react";
 
 const features = [
   {
     icon: Truck,
-    title: "Door-to-Door Delivery",
+    title: "Courier Export (Door-to-Door) Express & Economy",
     description: "We handle pickup and delivery to any location worldwide",
   },
   {
@@ -21,13 +21,43 @@ const features = [
     title: "Secure Shipping",
     description: "Full tracking and insurance coverage for your shipments",
   },
+  {
+    icon: File,
+    title: "International Documents Delivery",
+    description: "We also provide International Documents Delivery",
+  },
+  {
+    icon: Luggage,
+    title: "Excess & Unacccompanied Baggages",
+    description: "We also provide Excess & Unacccompanied Baggages Shipments",
+  },
+  {
+    icon: Pill,
+    title: "Medicine Delivery",
+    description: "We also provide Medicine Delivery Services",
+  },
+  {
+    icon: LibraryBig,
+    title: "Student Services",
+    description: "We also provide Student Essentialls Services",
+  },
+  {
+    icon: ShoppingCart,
+    title: "E Commerce Services",
+    description: "We also provide E Commerce Services",
+  },
+  {
+    icon: Import,
+    title: "Import Express",
+    description: "We also provide Import Express Services",
+  },
 ];
 
 export default function Features() {
   return (
     <section className="py-16 bg-gray-50">
       <div className="container mx-auto px-4">
-        <div className="grid grid-cols-2 md:grid-cols-2 lg:grid-cols-4 gap-8">
+        <div className="grid grid-cols-2 md:grid-cols-2 lg:grid-cols-5 gap-8">
           {features.map((feature, index) => (
             <div
               key={index}

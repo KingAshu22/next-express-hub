@@ -9,17 +9,17 @@ export default function FrontHeader() {
     <header className="fixed top-0 left-0 right-0 bg-white z-50 shadow-sm">
       <div className="container mx-auto px-4">
         <div className="flex items-center justify-between h-20">
-          <Link href="/" className="flex items-center">
+          <Link href="/" className="flex flex-col items-center">
             <Image
               src="/logo.jpg"
-              alt="Redly Express Logo"
+              alt="Express Hub Logo"
               width={180}
               height={40}
             />
             Company
           </Link>
 
-          <nav className="hidden lg:flex items-center space-x-8 font-bold">
+          <nav className="hidden lg:flex items-center space-x-20 font-bold -ml-48">
             <Link
               href="#what-we-offer"
               className="text-[#232C65] hover:text-[#E31E24] transition-colors"
@@ -52,12 +52,12 @@ export default function FrontHeader() {
                   width={16}
                   height={16}
                 />
-                <span>Whatsapp Us</span>
+                <span>Contact Us</span>
               </div>
             </Link>
             <Link
               href="/dashboard"
-              className="hidden md:inline-block text-sm text-[#232C65] hover:text-[#E31E24] transition-colors"
+              className="hidden md:inline-block text-sm text-white hover:text-[#E31E24] transition-colors bg-orange-500 px-3 py-2 rounded-lg"
             >
               Login
             </Link>

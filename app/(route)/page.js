@@ -1,5 +1,6 @@
 "use client";
 
+import AreasWeServe from "../_components/AreasWeServe";
 import CTA from "../_components/Cta";
 import Experience from "../_components/Experience";
 import Features from "../_components/Features";
@@ -15,6 +16,7 @@ export default function Home() {
       <FrontHeader />
       <Hero />
       <Features />
+      <AreasWeServe />
       <WhatWeOffer />
       <HowWeDoIt />
       <Experience />

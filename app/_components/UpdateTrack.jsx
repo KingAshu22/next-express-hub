@@ -47,6 +47,8 @@ const statusOptions = [
 export default function UpdateTrackForm({ awb }) {
   const router = useRouter();
   const [success, setSuccess] = useState(false);
+  const [forwardingNumber, setForwardingNumber] = useState(awb?.forwardingNumber || "");
+  const [forwardingLink, setForwardingLink] = useState(awb?.forwardingLink || "");
   const [parcelStatus, setParcelStatus] = useState(
     awb?.parcelStatus || [
       {
@@ -86,6 +88,8 @@ export default function UpdateTrackForm({ awb }) {
       console.log("Inside Edit Parcel Status");
       const parcelData = {
         parcelStatus,
+        forwardingNumber,
+        forwardingLink,
       };
 
       const response = await axios.put(
@@ -115,6 +119,33 @@ export default function UpdateTrackForm({ awb }) {
         Update Parcel Status
       </h1>
       <form onSubmit={editSubmit} className="space-y-8">
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-2xl text-[#232C65]">Forwarding Details Details</CardTitle>
+          </CardHeader>
+          <CardContent className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div className="space-y-2">
+              <Label htmlFor="forwardingNumber">Forwarding Number:</Label>
+              <Input
+                id="forwardingNumber"
+                type="text"
+                placeholder="Forwarding Number"
+                value={forwardingNumber}
+                onChange={(e) => setForwardingNumber(e.target.value)}
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="forwardingLink">Forwarding Link:</Label>
+              <Input
+                id="forwardingLink"
+                type="text"
+                placeholder="Forwarding Link"
+                value={forwardingLink}
+                onChange={(e) => setForwardingLink(e.target.value)}
+              />
+            </div>
+          </CardContent>
+        </Card>
         {parcelStatus.map((status, index) => (
           <Card key={index}>
             <CardHeader>

@@ -6,7 +6,7 @@ export default function Footer() {
           <div>
             <h3 className="text-xl font-bold mb-4">About Us</h3>
             <p className="text-gray-300">
-              Express Hub is a trusted provider of reliable and cost-effective cross-border shipping solutions for businesses and individuals. We specialize in delivering parcels and cargo quickly and securely, ensuring your shipments reach their destination on time. With a commitment to excellence and customer satisfaction, we simplify global shipping to connect people and businesses worldwide.
+              Express Hub Company is a trusted provider of reliable and cost-effective cross-border shipping solutions for businesses and individuals. We specialize in delivering parcels and cargo quickly and securely, ensuring your shipments reach their destination on time. With a commitment to excellence and customer satisfaction, we simplify global shipping to connect people and businesses worldwide.
             </p>
           </div>
           <div>

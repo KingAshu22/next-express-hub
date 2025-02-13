@@ -13,6 +13,8 @@ const AwbSchema = new Schema({
   zone: String,
   gst: String,
   boxes: Array,
+  forwardingNumber: String,
+  forwardingLink: String,
   parcelStatus: [
     {
       status: String,

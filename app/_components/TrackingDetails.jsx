@@ -9,6 +9,7 @@ import {
   CheckCircle,
   AlertCircle,
 } from "lucide-react";
+import { Button } from "@/components/ui/button";
 
 const getStatusIcon = (status) => {
   if (status.includes("Prepared"))
@@ -84,6 +85,28 @@ export default function TrackingDetails({ parcelDetails }) {
             <p className="text-lg font-medium text-indigo-700">
               {parcelDetails.invoiceNumber}
             </p>
+          </div>
+          <div className="space-y-2">
+            <p className="font-semibold text-gray-600">Forwarding Number:</p>
+            <p className="text-lg font-medium text-indigo-700">
+              {parcelDetails?.forwardingNumber}
+            </p>
+          </div>
+          <div className="space-y-2">
+            <p className="font-semibold text-gray-600">Forwarding Link:</p>
+            <Button
+              onClick={() => {
+                window.open(
+                  `${parcelDetails?.forwardingLink}`,
+                  "_blank"
+                )
+              }}
+              className="text-lg font-medium text-indigo-700 bg-transparent b-0 hover:bg-transparent"
+              target="_blank"
+              rel="noopener noreferrer"
+            >
+              {parcelDetails?.forwardingLink}
+            </Button>
           </div>
         </CardContent>
       </Card>

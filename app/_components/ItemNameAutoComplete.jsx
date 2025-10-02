@@ -40,12 +40,10 @@ export default function ItemNameAutocomplete({ value, onChange, onHsnSelect, id,
           setResults(response.data)
         } else {
           console.error("Unexpected response format:", response.data)
-          setError("Received invalid data format from server")
           setResults([])
         }
       } catch (error) {
         console.error("Error searching HSN codes:", error)
-        setError(error.message || "Failed to search HSN codes")
         setResults([])
       } finally {
         setLoading(false)

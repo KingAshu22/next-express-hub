@@ -7,14 +7,21 @@ const AwbSchema = new Schema({
   invoiceNumber: String,
   date: Date,
   trackingNumber: String,
+  cNoteNumber: String,
+  cNoteVendorName: String,
+  awbNumber: String,
+  forwardingNumber: String,
+  forwardingLink: String,
+  shippingCurrency: String,
+  via: String,
+  refCode: String,
   sender: UserSchema,
   receiver: UserSchema,
   billTo: UserSchema,
   zone: String,
-  gst: String,
   boxes: Array,
-  forwardingNumber: String,
-  forwardingLink: String,
+  ourBoxes: Array,
+  vendorBoxes: Array,
   parcelStatus: [
     {
       status: String,
@@ -23,6 +30,15 @@ const AwbSchema = new Schema({
     }
   ],
   parcelValue: Number,
+  rateInfo: {
+    courier: String,
+    zone: String,
+    rate: String,
+    baseCharge: String,
+    totalWithGST: String,
+    GST: String,
+    weight: String,
+  },
 });
 
 const Awb = models.Awb || model("Awb", AwbSchema);

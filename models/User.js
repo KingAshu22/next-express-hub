@@ -2,6 +2,8 @@ import mongoose, { Schema, model, models } from "mongoose";
 
 export const UserSchema = new Schema({
     name: { type: String, required: true },
+    companyName: String,
+    email: String,
     address: { type: String, required: true },
     country: String,
     zip: String,

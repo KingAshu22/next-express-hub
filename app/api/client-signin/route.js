@@ -9,7 +9,7 @@ export async function POST(req) {
     await connectToDB();
 
     // Find the admin by email
-    const client = await Client.findOne({ email });
+    const client = await Client.findOne({ email }).select("+password");
 
     if (!client) {
       return NextResponse.json({ error: "Incorrect Email" }, { status: 400 });

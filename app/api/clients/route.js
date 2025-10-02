@@ -2,11 +2,20 @@ import { connectToDB } from "@/app/_utils/mongodb";
 import Client from "@/models/Client";
 import { NextResponse } from "next/server";
 
-export async function GET() {
+export async function GET(req) {
   console.log("Inside get /api/clients");
   await connectToDB();
   try {
-    const clients = await Client.find({}).sort({ _id: -1 });
+    // Extract userType and id from the request headers
+    const userType = req.headers.get("userType");
+    const userId = req.headers.get("userId");
+
+    let query = {};
+    if (userType === "franchise" || userType === "client") {
+      query = { owner: userId };
+    }
+
+    const clients = await Client.find(query).sort({ _id: -1 });
     return NextResponse.json(clients);
   } catch (error) {
     console.error("Error fetching Clients:", error.message);

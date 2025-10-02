@@ -1,5 +1,6 @@
 import { connectToDB } from "@/app/_utils/mongodb";
 import Awb from "@/models/Awb";
+import Customer from "@/models/Customer";
 import { NextResponse } from "next/server";
 
 export async function GET(req) {
@@ -14,7 +15,9 @@ export async function GET(req) {
     let query = {};
     if (userType === "client") {
       // If the user is a client, filter AWBs by staffId
-      query = { staffId: userId };
+      query = { refCode: userId };
+    } else if (userType === "franchise") {
+      query = { refCode: userId };
     }
 
     // Fetch AWBs based on the query
@@ -31,12 +34,58 @@ export async function POST(req) {
   try {
     console.log("Inside /api/awb");
     await connectToDB();
-    const data = await req.json(); // Parse JSON body from the request
+    const data = await req.json();
 
     console.log(data);
 
     const awb = new Awb(data);
     await awb.save();
+
+    // Update or create customer1 (sender)
+    await Customer.findOneAndUpdate(
+      {
+        name: data.sender.name,
+        owner: data.staffId
+      },
+      {
+        $set: {
+          companyName: data.sender.companyName,
+          email: data.sender.email,
+          address: data.sender.address,
+          country: data.sender.country,
+          zip: data.sender.zip,
+          contact: data.sender.contact,
+          kyc: data.sender.kyc,
+          gst: data.sender.gst,
+          role: "customer",
+          owner: data.staffId,
+        },
+      },
+      { upsert: true, new: true }
+    );
+
+    // Update or create customer2 (receiver)
+    await Customer.findOneAndUpdate(
+      {
+        name: data.receiver.name,
+        owner: data.staffId
+      },
+      {
+        $set: {
+          companyName: data.receiver.companyName,
+          email: data.receiver.email,
+          address: data.receiver.address,
+          country: data.receiver.country,
+          zip: data.receiver.zip,
+          contact: data.receiver.contact,
+          kyc: data.receiver.kyc,
+          gst: data.receiver.gst,
+          role: "customer",
+          owner: data.staffId,
+        },
+      },
+      { upsert: true, new: true }
+    );
 
     return NextResponse.json(
       { message: "Parcel added successfully!", awb },
@@ -50,3 +99,4 @@ export async function POST(req) {
     );
   }
 }
+

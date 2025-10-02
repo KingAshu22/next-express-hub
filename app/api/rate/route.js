@@ -1,18 +1,33 @@
+import { NextResponse } from "next/server";
 import { connectToDB } from "@/app/_utils/mongodb";
-import Rate from "@/models/Rate"; // Import your Rate model
-import { NextRequest, NextResponse } from "next/server";
+import Rate from "@/models/Rate"; // Your mongoose model
 
-// Function to calculate rates
-async function getRates(type, weight, country, profitPercent = 50) {
+export async function GET(req) {
+    const { searchParams } = new URL(req.url);
+    const type = searchParams.get("type");
+    let weight = parseFloat(searchParams.get("weight"));
+    const country = searchParams.get("country");
+    const profitPercent = parseFloat(searchParams.get("profitPercent")) || 0;
+
+    if (!type || !weight || !country) {
+        return NextResponse.json({ error: "Missing required parameters" }, { status: 400 });
+    }
+
+    // ✅ Round weight to nearest 0.5 kg
+    weight = Math.round(weight * 2) / 2;
+
+    await connectToDB();
+
     try {
         const rateResult = await Rate.findOne({ type });
+
         if (!rateResult) {
-            return { error: "Type not found in rates" };
+            return NextResponse.json({ error: "Type not found in rates" }, { status: 404 });
         }
 
         const { rates, zones } = rateResult;
 
-        // Find the zone for the given country
+        // find zone for the given country
         let selectedZone;
         let extraCharges = {};
         for (const zoneObj of zones) {
@@ -24,111 +39,113 @@ async function getRates(type, weight, country, profitPercent = 50) {
         }
 
         if (!selectedZone) {
-            return { error: "Zone not found for the given country" };
+            return NextResponse.json({ error: "Zone not found for the given country" }, { status: 404 });
         }
 
-        weight = (Math.ceil(weight) + 0.0).toFixed(1).toString();
+        // sort all available weights
+        const sortedRates = rates
+            .map(rate => ({ kg: parseFloat(rate.kg), data: rate }))
+            .sort((a, b) => a.kg - b.kg);
 
-        const weightRate = rates.find((rate) => rate.kg == weight);
+        // find exact match
+        let weightRate = sortedRates.find(r => r.kg === weight)?.data;
+
+        // if no exact match, find closest lower or equal weight
+        let closestWeight, zoneRate;
         if (!weightRate) {
-            return { error: "Rate not found for the given weight" };
+            const fallbackRate = [...sortedRates].reverse().find(r => r.kg <= weight);
+            if (fallbackRate) {
+                weightRate = fallbackRate.data;
+                closestWeight = fallbackRate.kg;
+            } else {
+                return NextResponse.json({ error: "No suitable rate found for the weight" }, { status: 404 });
+            }
+        } else {
+            closestWeight = weight;
         }
 
-        const zoneRate = weightRate[selectedZone];
+        zoneRate = weightRate[selectedZone];
         if (!zoneRate) {
-            return { error: "Rate not found for the selected zone" };
+            return NextResponse.json({ error: "Rate not found for the selected zone" }, { status: 404 });
         }
 
-        const rate = Math.ceil(Math.ceil(zoneRate) / weight);
-        let baseCharges = rate * weight;
+        // ✅ calculate per kg rate from closest available weight
+        const perKgRate = parseFloat((zoneRate / closestWeight).toFixed(2));
 
-        const baseCharge = baseCharges;
+        // ✅ base charge using rounded weight
+        const baseCharge = parseFloat((perKgRate * weight).toFixed(2));
+        let baseCharges = baseCharge;
 
-        let covidCharges = ["dtdc", "aramex", "orbit"].includes(type)
-            ? Math.ceil(15 * weight)
-            : 0;
-
+        // --- COVID charges ---
+        let covidCharges = 0;
+        if (rateResult.covidCharges !== undefined && rateResult.covidCharges !== null) {
+            // use value from DB (assumed per-kg)
+            covidCharges = parseFloat((rateResult.covidCharges * weight).toFixed(2));
+        } else if (["aramex"].includes(type)) {
+            // fallback logic
+            const covidChargePerKg = 15;
+            covidCharges = parseFloat((covidChargePerKg * weight).toFixed(2));
+        }
         baseCharges += covidCharges;
 
-        let fuelCharges = 0;
-        if (type === "dhl" || type === "fedex") {
-            fuelCharges = Math.ceil((30 / 100) * baseCharges);
-        } else if (type === "ups") {
-            fuelCharges = Math.ceil((30.5 / 100) * baseCharges);
-        } else if (type === "dtdc") {
-            fuelCharges = Math.ceil((36 / 100) * baseCharges);
-        } else if (["aramex", "orbit"].includes(type)) {
-            fuelCharges = Math.ceil((25 / 100) * baseCharges);
-        }
-
-        baseCharges += fuelCharges;
-
+        // --- Extra charges ---
         let extraChargeTotal = 0;
         for (const chargeValue of Object.values(extraCharges)) {
-            extraChargeTotal += Math.ceil(chargeValue * weight);
+            const charge = parseFloat((chargeValue * weight).toFixed(2));
+            extraChargeTotal += charge;
         }
-
         baseCharges += extraChargeTotal;
 
-        let profitCharges = ["Anaya World", "Prime"].includes(type)
-            ? 0
-            : Math.ceil((profitPercent / 100) * baseCharges);
+        // --- Fuel charges ---
+        let fuelCharges = 0;
+        if (rateResult.fuelCharges !== undefined && rateResult.fuelCharges !== null) {
+            // use value from DB (assumed percentage of baseCharges)
+            fuelCharges = parseFloat(((rateResult.fuelCharges / 100) * baseCharges).toFixed(2));
+        } else {
+            // fallback logic
+            if (type === "dhl") {
+                fuelCharges = parseFloat(((27.5 / 100) * baseCharges).toFixed(2));
+            } else if (type === "fedex") {
+                fuelCharges = parseFloat(((29 / 100) * baseCharges).toFixed(2));
+            } else if (type === "ups") {
+                fuelCharges = parseFloat(((30.5 / 100) * baseCharges).toFixed(2));
+            } else if (type === "dtdc") {
+                fuelCharges = parseFloat(((36 / 100) * baseCharges).toFixed(2));
+            } else if (["aramex", "orbit"].includes(type)) {
+                fuelCharges = parseFloat(((35.5 / 100) * baseCharges).toFixed(2));
+            }
+        }
+        baseCharges += fuelCharges;
 
-        const total = baseCharges + profitCharges;
-        const GST = (18 / 100) * total;
-        const totalWithGST = Math.ceil(total + GST);
+        // --- Profit ---
+        const profitCharges = parseFloat(((profitPercent / 100) * baseCharges).toFixed(2));
+        const total = parseFloat((baseCharges + profitCharges).toFixed(2));
 
-        return {
+        // --- GST ---
+        const GST = parseFloat(((18 / 100) * total).toFixed(2));
+        const totalWithGST = parseFloat((total + GST).toFixed(2));
+
+        return NextResponse.json({
+            service: rateResult.service,
             zone: selectedZone,
-            weight,
-            rate,
+            requestedWeight: weight, // ✅ final rounded weight used
+            weight: closestWeight,   // ✅ closest db weight used for per-kg rate
+            rate: perKgRate,
+            zoneRate: parseFloat(zoneRate.toFixed(2)),
             baseCharge,
             covidCharges,
-            fuelCharges,
             extraCharges,
             extraChargeTotal,
-            baseCharges,
+            fuelCharges,
+            baseCharges: parseFloat(baseCharges.toFixed(2)),
             profitPercent,
             profitCharges,
             total,
             GST,
             totalWithGST,
-        };
+        });
     } catch (error) {
         console.error(error);
-        return { error: "Internal Server Error" };
-    }
-}
-
-// API Route handler
-export async function GET(req) {
-    try {
-        const { searchParams } = new URL(req.url);
-        const type = searchParams.get("type");
-        const weight = searchParams.get("weight");
-        const country = searchParams.get("country");
-        const profitPercent = searchParams.get("profitPercent");
-
-        if (!type || !weight || !country) {
-            return NextResponse.json(
-                { error: "Type, weight, and country are required fields." },
-                { status: 400 }
-            );
-        }
-
-        await connectToDB();
-
-        const result = await getRates(type, weight, country, profitPercent);
-        if (result.error) {
-            return NextResponse.json(result, { status: 400 });
-        }
-
-        return NextResponse.json(result, { status: 200 });
-    } catch (error) {
-        console.error("Error processing the request:", error);
-        return NextResponse.json(
-            { error: "Internal Server Error" },
-            { status: 500 }
-        );
+        return NextResponse.json({ error: "Internal Server Error" }, { status: 500 });
     }
 }

@@ -14,13 +14,20 @@ export default function CTA() {
             Experience hassle-free international shipping at competitive rates
           </p>
           <div className="flex flex-col sm:flex-row gap-4 justify-center">
-            <Button className="bg-[#E31E24] hover:bg-[#C71D23] text-white px-8 py-3 text-lg" onClick={() => { router.push("tel:+918169155537") }}>
+            <Button
+              className="bg-[#E31E24] hover:bg-[#C71D23] text-white px-8 py-3 text-lg"
+              onClick={() => {
+                router.push("tel:+918169155537");
+              }}
+            >
               Get a Quote
             </Button>
             <Button
               variant="outline"
               className="border-[#E31E24] text-[#E31E24] hover:bg-red-50 px-8 py-3 text-lg"
-              onClick={() => { router.push("tel:+918169155537") }}
+              onClick={() => {
+                router.push("tel:+918169155537");
+              }}
             >
               Contact Sales
             </Button>

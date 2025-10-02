@@ -90,6 +90,44 @@ export default function SignInForm() {
       } catch (error) {
         console.error("Error during sign-in:", error);
       }
+    } else if (userType === "franchise") {
+      try {
+        const response = await fetch("/api/franchise-signin", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify(values), // Pass email and password
+        });
+
+        const data = await response.json(); // Parse response as JSON
+
+        if (response.ok) {
+          console.log("Franchise signed in:", data.franchise);
+          const authExpiry = Date.now() + 7 * 24 * 60 * 60 * 1000;
+          localStorage.setItem("id", data.franchise._id);
+          localStorage.setItem("code", data.franchise.code);
+          localStorage.setItem(
+            "userType",
+            data.franchise?.isBranch === "Yes"
+              ? "branch"
+              : data.franchise?.isBranch === "customerService"
+                ? "Customer Service"
+                : data.franchise?.isBranch === "pickup"
+                ? "pickup"
+                : "franchise"
+          );
+
+          localStorage.setItem("name", data.franchise.name);
+          localStorage.setItem("authExpiry", authExpiry);
+          router.push(returnUrl);
+        } else {
+          console.error("Error:", data.error);
+          // Optionally, show an error message to the user
+        }
+      } catch (error) {
+        console.error("Error during sign-in:", error);
+      }
     } else {
       try {
         const response = await fetch("/api/client-signin", {
@@ -107,7 +145,9 @@ export default function SignInForm() {
           const authExpiry = Date.now() + 7 * 24 * 60 * 60 * 1000;
           localStorage.setItem("id", data.client._id);
           localStorage.setItem("userType", "client");
-          localStorage.setItem("name", data.client.name);
+          // if company name is available, use it; otherwise, use personal name
+          localStorage.setItem("name", data.client.companyName || data.client.name);
+          localStorage.setItem("code", data.client.code);
           localStorage.setItem("authExpiry", authExpiry);
           router.push(returnUrl);
         } else {
@@ -143,8 +183,9 @@ export default function SignInForm() {
       </CardHeader>
       <CardContent>
         <Tabs value={userType} onValueChange={(value) => setUserType(value)}>
-          <TabsList className="grid w-full grid-cols-2">
+          <TabsList className="grid w-full grid-cols-3">
             <TabsTrigger value="customer">Customer</TabsTrigger>
+            <TabsTrigger value="franchise">Franchise</TabsTrigger>
             <TabsTrigger value="admin">Admin</TabsTrigger>
           </TabsList>
         </Tabs>

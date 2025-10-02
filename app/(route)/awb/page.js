@@ -6,6 +6,8 @@ import { adminColumns } from "./adminColumns";
 import { HashLoader } from "react-spinners";
 import withAuth from "@/lib/withAuth";
 import { clientColumns } from "./clientColumns";
+import { csColumns } from "./csColumns";
+import { ClientDataProvider } from "@/app/_components/ClientDataProvider";
 
 function AWBTable() {
   const [awbs, setAwbs] = useState([]);
@@ -13,7 +15,7 @@ function AWBTable() {
   const [error, setError] = useState(null);
 
   const userType = localStorage.getItem("userType");
-  const userId = localStorage.getItem("id");
+  const userId = localStorage.getItem("code");
 
   useEffect(() => {
     fetchAwbs();
@@ -59,10 +61,14 @@ function AWBTable() {
 
   return (
     <div className="container w-full px-4">
-      {userType === "admin" ?
-        <DataTable columns={adminColumns} data={awbs} /> :
-        <DataTable columns={clientColumns} data={awbs} />
+      <ClientDataProvider>
+        {userType === "admin" || userType === "branch" ?
+        <DataTable columns={adminColumns} data={awbs} />
+        : userType === "Customer Service"
+        ? <DataTable columns={csColumns} data={awbs} />
+        : <DataTable columns={clientColumns} data={awbs} />
       }
+      </ClientDataProvider>
     </div>
   );
 }

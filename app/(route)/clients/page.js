@@ -15,11 +15,19 @@ function ClientTable() {
     fetchClients();
   }, []);
 
+  const userType = localStorage.getItem("userType");
+  const userId = localStorage.getItem("code");
+
   const fetchClients = async () => {
     setLoading(true);
     setError(null);
     try {
-      const response = await axios.get("/api/clients");
+      const response = await axios.get("/api/clients", {
+        headers: {
+          userType,
+          userId,
+        },
+      });
       console.log(response.data);
       setClients(response.data);
     } catch (error) {

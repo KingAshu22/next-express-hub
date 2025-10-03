@@ -40,6 +40,40 @@ export default function TrackingDetails({ parcelDetails }) {
 
   return (
     <div className="max-w-4xl mx-auto">
+      <Card className="bg-white shadow-lg mb-4">
+        <CardHeader>
+          <CardTitle className="text-3xl font-bold text-indigo-700">
+            Tracking History
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          <ul className="space-y-6">
+            {reversedUpdates.map((update, index) => (
+              <li key={index} className="relative">
+                <div className="flex items-center mb-2">
+                  <div className="mr-4">{getStatusIcon(update.status)}</div>
+                  <div className="flex-grow">
+                    <p className="font-semibold text-lg text-gray-800">
+                      {update.status}
+                    </p>
+                    <p className="text-sm text-gray-500">
+                      {new Date(update.timestamp).toLocaleString("en-GB")}
+                    </p>
+                  </div>
+                </div>
+                {update.comment && (
+                  <p className="text-sm text-gray-600 ml-10">
+                    {update.comment}
+                  </p>
+                )}
+                {index !== reversedUpdates.length - 1 && (
+                  <Separator className="absolute left-3 top-10 bottom-0 w-px bg-gray-200" />
+                )}
+              </li>
+            ))}
+          </ul>
+        </CardContent>
+      </Card>
       <Card className="mb-8 bg-gradient-to-r from-blue-50 to-indigo-50">
         <CardHeader>
           <CardTitle className="text-3xl font-bold text-indigo-700">
@@ -158,41 +192,6 @@ export default function TrackingDetails({ parcelDetails }) {
               {parcelDetails.receiver.country}
             </p>
           </div>
-        </CardContent>
-      </Card>
-
-      <Card className="bg-white shadow-lg">
-        <CardHeader>
-          <CardTitle className="text-3xl font-bold text-indigo-700">
-            Tracking History
-          </CardTitle>
-        </CardHeader>
-        <CardContent>
-          <ul className="space-y-6">
-            {reversedUpdates.map((update, index) => (
-              <li key={index} className="relative">
-                <div className="flex items-center mb-2">
-                  <div className="mr-4">{getStatusIcon(update.status)}</div>
-                  <div className="flex-grow">
-                    <p className="font-semibold text-lg text-gray-800">
-                      {update.status}
-                    </p>
-                    <p className="text-sm text-gray-500">
-                      {new Date(update.timestamp).toLocaleString("en-GB")}
-                    </p>
-                  </div>
-                </div>
-                {update.comment && (
-                  <p className="text-sm text-gray-600 ml-10">
-                    {update.comment}
-                  </p>
-                )}
-                {index !== reversedUpdates.length - 1 && (
-                  <Separator className="absolute left-3 top-10 bottom-0 w-px bg-gray-200" />
-                )}
-              </li>
-            ))}
-          </ul>
         </CardContent>
       </Card>
     </div>

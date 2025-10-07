@@ -57,7 +57,7 @@ export default function TrackingDetails({ parcelDetails }) {
             setM5Data(result.data)
             setM5Error(null)
           } else {
-            setM5Error(result.error || "Failed to fetch M5 tracking data")
+            setM5Error(result.error || "Failed to fetch tracking data")
           }
         })
         .catch((error) => {
@@ -125,7 +125,7 @@ export default function TrackingDetails({ parcelDetails }) {
       {isLoading && (
         <Alert className="border-blue-200 bg-blue-50">
           <Loader2 className="h-4 w-4 animate-spin text-blue-600" />
-          <AlertDescription className="text-blue-800 ml-2">Fetching M5 tracking details...</AlertDescription>
+          <AlertDescription className="text-blue-800 ml-2">Fetching tracking details...</AlertDescription>
         </Alert>
       )}
 
@@ -133,7 +133,7 @@ export default function TrackingDetails({ parcelDetails }) {
         <Alert variant="destructive">
           <AlertCircle className="h-4 w-4" />
           <AlertDescription>
-            <strong>M5 API Error:</strong> {m5Error}
+            <strong>API Error:</strong> {m5Error}
             <br />
             <span className="text-sm">Showing standard tracking details below.</span>
           </AlertDescription>

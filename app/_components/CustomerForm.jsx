@@ -136,8 +136,8 @@ export default function CustomerRegistrationForm({ isEdit = false, customer }) {
       <CardHeader className="space-y-1">
         <div className="flex justify-center mb-4">
           <Image
-            src="/Sun.jpg"
-            alt="SunEx Logo"
+            src="/logo.jpg"
+            alt="Express Hub Logo"
             width={200}
             height={60}
           />

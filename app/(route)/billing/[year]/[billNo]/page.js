@@ -88,11 +88,11 @@ export default function BillPage() {
         <div className="flex justify-between items-center border-b pb-4">
           <div>
             <h1 className="text-2xl font-bold text-purple-700">
-              SunEx Services Pvt Ltd.
+              Express Hub
             </h1>
             <p>Andheri East, Mumbai 400 093</p>
-            <p className="text-gray-600">GSTIN: 27ABPCS6262F1ZX</p>
-            <p className="text-gray-600">PAN: ABPCS6262F</p>
+            <p className="text-gray-600">GSTIN: </p>
+            <p className="text-gray-600">PAN: </p>
           </div>
           <div className="text-right">
             <h2 className="text-xl font-bold">TAX INVOICE</h2>

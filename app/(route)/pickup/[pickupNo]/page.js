@@ -107,9 +107,9 @@ export default function SinglePickupPage() {
   }
 
   // Extract or fallback values for header
-  const callNumber = "+91 81691 55537"
-  const website = "www.sunexservices.com"
-  const email = "sunexcourierandcargo@gmail.com"
+  const callNumber = "022-60605556"
+  const website = "www.expresshub.in"
+  const email = "expresshub555@gmail.com"
 
   return (
     <div className="max-w-5xl mx-auto p-4 md:p-6">
@@ -122,7 +122,7 @@ export default function SinglePickupPage() {
           <div className="flex flex-col md:flex-col justify-between items-start md:items-center gap-4 text-center">
             <div>
               <h1 className="text-2xl md:text-3xl font-extrabold tracking-tight">
-                SunEx Services Private Limited
+                Express Hub
               </h1>
               <p className="text-blue-100 mt-1">International Courier & Cargo Services</p>
             </div>

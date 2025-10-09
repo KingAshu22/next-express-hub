@@ -29,7 +29,7 @@ export default function Footer() {
           <div>
             <h3 className="text-xl font-bold mb-4">Contact Us</h3>
             <p className="text-gray-300 mb-2">
-              <span className="font-semibold">Phone:</span> +91 81691 55537
+              <span className="font-semibold">Phone:</span> 022-60605556
             </p>
             <div className="mb-4">
               <p className="font-semibold text-white">Mumbai Office:</p>

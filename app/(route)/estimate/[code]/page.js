@@ -91,10 +91,10 @@ export default function ViewEstimate() {
       >
         {/* Letterhead */}
         <div className="text-center mb-6">
-          <h2 className="text-3xl font-bold text-blue-900">SunEx Services</h2>
+          <h2 className="text-3xl font-bold text-blue-900">Express Hub</h2>
           <p className="text-lg text-gray-700 mt-1">International Courier & Cargo Services</p>
           <p className="text-sm text-gray-600 mt-3">
-            📞 +91 81691 55537 | ✉️ sunexcourierandcargo@gmail.com | 🌐 www.sunexservices.com
+            📞 022-60605556 | ✉️ expresshub555@gmail.com | 🌐 www.expresshub.in
           </p>
           <p className="text-xs text-gray-600 mt-1 whitespace-nowrap">
             Shop no 10, Ground floor Prakashwadi CHS Beside Summit Business park, Gundavali, Andheri East, Mumbai 400 093

@@ -19,7 +19,7 @@ export default function RefundsCancellationPage() {
                         <div>
                             <h2 className="text-xl font-bold text-[#2563eb] mb-2">Returns</h2>
                             <p>
-                                We do not accept RTOs once the shipment has been received at our hub. In case the shipment is in transit to our hub, and you wish to cancel, please write to us at support@shipglobal.in or call our customer care at +91 81691 55537 with details.
+                                We do not accept RTOs once the shipment has been received at our hub. In case the shipment is in transit to our hub, and you wish to cancel, please write to us at support@shipglobal.in or call our customer care at 022-60605556 with details.
                             </p>
                         </div>
 

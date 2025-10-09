@@ -58,7 +58,7 @@ export default function AWBView({ params }) {
               {/* Add contact info below the logo */}
               <div className="text-left mt-2">
                 <p className="text-sm text-gray-500 flex flex-row">
-                  <Phone className="h-4" /> +91 81691 55537
+                  <Phone className="h-4" /> 022-60605556
                 </p>
                 <p className="text-sm text-gray-500 flex flex-row">
                   <Mail className="h-4" /> expresshub555@gmail.com

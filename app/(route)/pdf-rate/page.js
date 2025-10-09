@@ -113,7 +113,7 @@ export default function RateCalculator() {
           <div class="letterhead">
             <div class="company-name">Express Hub</div>
             <div class="tagline">International & Domestic Courier & Cargo Services</div>
-            <div class="contact">Mob No: +91 81691 55537</div>
+            <div class="contact">Mob No: 022-60605556</div>
           </div>
 
           <div class="title">
@@ -336,7 +336,7 @@ export default function RateCalculator() {
             <div className="text-center mb-6">
               <h2 className="text-xl font-bold">Express Hub</h2>
               <p className="text-sm italic">International & Domestic Courier & Cargo Services</p>
-              <p className="text-xs mt-1">Mob No: +91 81691 55537</p>
+              <p className="text-xs mt-1">Mob No: 022-60605556</p>
             </div>
 
             <h3 className="text-lg font-semibold text-center mb-4">

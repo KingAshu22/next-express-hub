@@ -54,7 +54,7 @@ export default function TrackingDetails({ parcelDetails }) {
   const shouldFetchM5 = parcelDetails?.cNoteVendorName === "M5" && parcelDetails?.cNoteNumber
   const shouldFetchCJ = parcelDetails?.cNoteVendorName === "Courier Journey" && parcelDetails?.cNoteNumber
 
-  // Fetch M5 tracking when relevant
+  // Fetch M5 tracking
   useEffect(() => {
     if (!shouldFetchM5) return
 
@@ -77,7 +77,7 @@ export default function TrackingDetails({ parcelDetails }) {
       .finally(() => setIsLoading(false))
   }, [shouldFetchM5, parcelDetails?.cNoteNumber])
 
-  // Fetch Courier Journey tracking when relevant
+  // Fetch Courier Journey tracking
   useEffect(() => {
     if (!shouldFetchCJ) return
 
@@ -100,22 +100,18 @@ export default function TrackingDetails({ parcelDetails }) {
       .finally(() => setIsLoading(false))
   }, [shouldFetchCJ, parcelDetails?.cNoteNumber])
 
-  // Determine the tracking data and events depending on source
   const trackingData = m5Data?.trackDetails?.[0] || cjData?.Tracking?.[0]
   const events = m5Data?.Event || cjData?.Events || []
   const normalTracking = parcelDetails?.parcelStatus || []
 
   const latestStatus =
-    (trackingData && (trackingData.Status || trackingData.Status)) || // keep original approach but safe
+    (trackingData && (trackingData.Status || trackingData.Status)) ||
     (events.length > 0
-      ? // if courier journey data exists prefer its Status field, else M5 event mapping
-        (cjData ? events[0].Status : getEventDescription(events[0].EventCode, events[0].EventDescription))
+      ? (cjData ? events[0].Status : getEventDescription(events[0].EventCode, events[0].EventDescription))
       : null) ||
     (normalTracking.length > 0 ? normalTracking[normalTracking.length - 1]?.status : null) ||
     "Unknown"
 
-  // reversedUpdates: if we have an API (m5 or cj) use events (already ordered with newest first in examples),
-  // otherwise use normalTracking reversed (so newest first)
   const reversedUpdates = (m5Data || cjData) ? [...events] : [...normalTracking].reverse()
 
   const origin = trackingData?.Origin || parcelDetails?.sender?.country || parcelDetails?.origin || "Origin"
@@ -125,8 +121,8 @@ export default function TrackingDetails({ parcelDetails }) {
   const forwardingNumber = trackingData?.ForwardingNo || parcelDetails?.forwardingNumber
   const forwardingLink = parcelDetails?.forwardingLink
   const forwarder = trackingData?.Forwarder
+  const awbNumber = trackingData?.Awbno || parcelDetails?.awbNumber || parcelDetails?.trackingNumber
 
-  // If no parcel details, show alert (kept from original)
   if (!parcelDetails) {
     return (
       <div className="max-w-5xl mx-auto p-4 md:p-6">
@@ -140,21 +136,28 @@ export default function TrackingDetails({ parcelDetails }) {
 
   return (
     <div className="max-w-5xl mx-auto p-4 md:p-6 space-y-6">
-      <Card className="bg-gradient-to-r from-purple-600 via-indigo-600 to-blue-600 text-white shadow-lg overflow-hidden">
+      {/* Updated color and AWB section */}
+      <Card className="bg-gradient-to-r from-rose-600 via-pink-600 to-red-500 text-white shadow-lg overflow-hidden border-none">
         <CardContent className="p-6">
-          <div className="flex items-center justify-center gap-3 md:gap-6">
-            <div className="text-center">
-              <p className="text-sm text-purple-100 mb-1">From</p>
-              <p className="text-xl md:text-2xl font-bold">{origin}</p>
+          <div className="flex flex-col items-center justify-center text-center space-y-4">
+            <div className="flex items-center justify-center gap-3 md:gap-6">
+              <div>
+                <p className="text-sm text-rose-100 mb-1">From</p>
+                <p className="text-xl md:text-2xl font-bold">{origin}</p>
+              </div>
+              <div className="flex items-center gap-2">
+                <div className="h-px w-8 md:w-16 bg-white/40"></div>
+                <ArrowRight className="w-6 h-6 md:w-8 md:h-8" />
+                <div className="h-px w-8 md:w-16 bg-white/40"></div>
+              </div>
+              <div>
+                <p className="text-sm text-rose-100 mb-1">To</p>
+                <p className="text-xl md:text-2xl font-bold">{destination}</p>
+              </div>
             </div>
-            <div className="flex items-center gap-2">
-              <div className="h-px w-8 md:w-16 bg-white/40"></div>
-              <ArrowRight className="w-6 h-6 md:w-8 md:h-8" />
-              <div className="h-px w-8 md:w-16 bg-white/40"></div>
-            </div>
-            <div className="text-center">
-              <p className="text-sm text-purple-100 mb-1">To</p>
-              <p className="text-xl md:text-2xl font-bold">{destination}</p>
+            <div className="bg-white/20 backdrop-blur-sm rounded-lg px-6 py-3 text-white">
+              <p className="text-sm text-white/80">AWB Number</p>
+              <p className="text-2xl font-extrabold tracking-wide">{awbNumber || "N/A"}</p>
             </div>
           </div>
         </CardContent>
@@ -167,7 +170,6 @@ export default function TrackingDetails({ parcelDetails }) {
         </Alert>
       )}
 
-      {/* Show M5 error or CJ error if present */}
       {(m5Error || cjError) && (
         <Alert variant="destructive">
           <AlertCircle className="h-4 w-4" />
@@ -188,13 +190,9 @@ export default function TrackingDetails({ parcelDetails }) {
               <p className="text-sm text-indigo-100">
                 Last updated:{" "}
                 {events.length > 0
-                  ? // For Courier Journey API the events have EventDate1/EventTime1 friendly strings.
-                    cjData
-                    ? // prefer EventDate1/EventTime1 if available
-                      `${events[0].EventDate1 || events[0].EventDate} ${events[0].EventTime1 || events[0].EventTime}`
-                    : // For M5 events (which appear to have EventDate and EventTime but not EventDate1), original code used a split on T:
-                      // But to be robust: if EventDate contains 'T' (iso), parse; else fallback to raw date/time pair
-                      (() => {
+                  ? cjData
+                    ? `${events[0].EventDate1 || events[0].EventDate} ${events[0].EventTime1 || events[0].EventTime}`
+                    : (() => {
                         const ev = events[0]
                         if (ev?.EventDate && ev.EventDate.includes("T") && ev?.EventTime) {
                           try {
@@ -217,17 +215,13 @@ export default function TrackingDetails({ parcelDetails }) {
         </CardContent>
       </Card>
 
+      {/* Parcel Information Card */}
       <Card className="shadow-sm border border-gray-100">
         <CardHeader>
           <CardTitle className="text-xl font-semibold text-indigo-700">Parcel Information</CardTitle>
         </CardHeader>
         <CardContent className="grid grid-cols-1 sm:grid-cols-2 gap-4 md:gap-6">
-          {parcelDetails?.trackingNumber && <InfoItem label="Tracking Number" value={parcelDetails.trackingNumber} />}
-          {parcelDetails?.invoiceNumber && <InfoItem label="Invoice Number" value={parcelDetails.invoiceNumber} />}
-          {parcelDetails?.cNoteNumber && <InfoItem label="C-Note Number" value={parcelDetails.cNoteNumber} />}
-          {trackingData?.Awbno && <InfoItem label="AWB Number" value={trackingData.Awbno} />}
-          {trackingData?.Consignee && <InfoItem label="Consignee" value={trackingData.Consignee} />}
-          {forwarder && <InfoItem label="Forwarder" value={forwarder} />}
+          {awbNumber && <InfoItem label="AWB Number" value={awbNumber} />}
           {forwardingNumber && <InfoItem label="Forwarding Number" value={forwardingNumber} />}
           {forwardingLink && (
             <div className="flex flex-col">
@@ -244,7 +238,7 @@ export default function TrackingDetails({ parcelDetails }) {
         </CardContent>
       </Card>
 
-      {/* Tracking history always visible */}
+      {/* Tracking History */}
       <Card className="shadow-sm border border-gray-100">
         <CardHeader>
           <CardTitle className="text-xl font-semibold text-indigo-700">Tracking History</CardTitle>
@@ -253,22 +247,18 @@ export default function TrackingDetails({ parcelDetails }) {
           {reversedUpdates.length > 0 ? (
             <ul className="space-y-5 relative">
               {reversedUpdates.map((update, index) => {
-                // Determine whether this is an M5 event (has EventCode) or CourierJourney (has Status & EventDate fields),
-                // or a normalTracking event (local)
                 const isM5Event = update && "EventCode" in update
                 const isCJEvent = cjData && ("Status" in update || "EventDate" in update)
                 const status = isCJEvent
-                  ? update.Status // Courier Journey event status field
+                  ? update.Status
                   : isM5Event
                   ? getEventDescription(update.EventCode, update.EventDescription)
                   : update.status
 
                 const timestamp = isCJEvent
-                  ? // CJ provides friendly EventDate1 and EventTime1, fallback to raw if missing
-                    `${update.EventDate1 || update.EventDate || ""} ${update.EventTime1 || update.EventTime || ""}`
+                  ? `${update.EventDate1 || update.EventDate || ""} ${update.EventTime1 || update.EventTime || ""}`
                   : isM5Event
-                  ? // M5 event — original code used EventDate split by T
-                    (() => {
+                  ? (() => {
                       try {
                         return new Date(`${update.EventDate.split("T")[0]}T${update.EventTime}`).toLocaleString("en-GB")
                       } catch {
@@ -329,7 +319,6 @@ const DetailCard = ({ title, details }) => (
     </CardHeader>
     <CardContent className="space-y-2">
       <InfoItem label="Name" value={details.name} />
-      <InfoItem label="Contact" value={details.contact} />
       <InfoItem label="Address" value={`${details.address}, ${details.zip}, ${details.country}`} />
     </CardContent>
   </Card>

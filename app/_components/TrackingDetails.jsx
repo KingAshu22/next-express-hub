@@ -17,6 +17,7 @@ import {
   Loader2,
 } from "lucide-react"
 import { fetchM5Tracking } from "./FetchM5Tracking"
+import { fetchCourierJourneyTracking } from "./FetchCourierJourneyTracking"
 import { getEventDescription } from "@/lib/m5-event-codes"
 
 const getStatusIcon = (status) => {
@@ -43,11 +44,14 @@ const getStatusColor = (status) => {
 
 export default function TrackingDetails({ parcelDetails }) {
   const [m5Data, setM5Data] = useState(null)
-  const [m5Error, setM5Error] = useState(null)
+  const [cjData, setCjData] = useState(null)
+  const [error, setError] = useState(null)
   const [isLoading, setIsLoading] = useState(false)
 
   const shouldFetchM5 = parcelDetails?.cNoteVendorName === "M5" && parcelDetails?.cNoteNumber
+  const shouldFetchCJ = parcelDetails?.cNoteVendorName === "Courier Journey" && parcelDetails?.cNoteNumber
 
+  // 🔹 Fetch M5 Tracking
   useEffect(() => {
     if (shouldFetchM5) {
       setIsLoading(true)
@@ -55,39 +59,54 @@ export default function TrackingDetails({ parcelDetails }) {
         .then((result) => {
           if (result.success) {
             setM5Data(result.data)
-            setM5Error(null)
+            setError(null)
           } else {
-            setM5Error(result.error || "Failed to fetch tracking data")
+            setError(result.error || "Failed to fetch M5 tracking data")
           }
         })
-        .catch((error) => {
-          setM5Error(error.message || "An unexpected error occurred")
-        })
-        .finally(() => {
-          setIsLoading(false)
-        })
+        .catch((error) => setError(error.message || "An unexpected error occurred"))
+        .finally(() => setIsLoading(false))
     }
   }, [shouldFetchM5, parcelDetails?.cNoteNumber])
 
-  const trackingData = m5Data?.trackDetails?.[0]
-  const events = m5Data?.Event || []
+  // 🔹 Fetch Courier Journey Tracking
+  useEffect(() => {
+    if (shouldFetchCJ) {
+      setIsLoading(true)
+      fetchCourierJourneyTracking(parcelDetails.cNoteNumber)
+        .then((result) => {
+          if (result.success) {
+            setCjData(result.data)
+            setError(null)
+          } else {
+            setError(result.error || "Failed to fetch Courier Journey tracking data")
+          }
+        })
+        .catch((error) => setError(error.message || "An unexpected error occurred"))
+        .finally(() => setIsLoading(false))
+    }
+  }, [shouldFetchCJ, parcelDetails?.cNoteNumber])
+
+  const trackingData = m5Data?.trackDetails?.[0] || cjData?.Tracking?.[0]
+  const events = m5Data?.Event || cjData?.Events || []
   const normalTracking = parcelDetails?.parcelStatus || []
 
   const latestStatus =
     trackingData?.Status ||
-    (events.length > 0 ? getEventDescription(events[0].EventCode, events[0].EventDescription) : null) ||
+    (events.length > 0
+      ? cjData
+        ? events[0].Status
+        : getEventDescription(events[0].EventCode, events[0].EventDescription)
+      : null) ||
     (normalTracking.length > 0 ? normalTracking[normalTracking.length - 1]?.status : null) ||
     "Unknown"
 
-  const reversedUpdates = m5Data ? [...events] : [...normalTracking].reverse()
+  const reversedUpdates = (m5Data || cjData)
+    ? [...events]
+    : [...normalTracking].reverse()
 
-  const origin = parcelDetails?.sender?.country || parcelDetails?.origin || "Origin"
-  const destination =
-    trackingData?.Destination || parcelDetails?.receiver?.country || parcelDetails?.destination || "Destination"
-
-  const forwardingNumber = trackingData?.ForwardingNo || parcelDetails?.forwardingNumber
-  const forwardingLink = parcelDetails?.forwardingLink
-  const forwarder = trackingData?.Forwarder
+  const origin = trackingData?.Origin || parcelDetails?.sender?.country || parcelDetails?.origin || "Origin"
+  const destination = trackingData?.Destination || parcelDetails?.receiver?.country || parcelDetails?.destination || "Destination"
 
   if (!parcelDetails) {
     return (
@@ -102,6 +121,7 @@ export default function TrackingDetails({ parcelDetails }) {
 
   return (
     <div className="max-w-5xl mx-auto p-4 md:p-6 space-y-6">
+      {/* Header Card */}
       <Card className="bg-gradient-to-r from-purple-600 via-indigo-600 to-blue-600 text-white shadow-lg overflow-hidden">
         <CardContent className="p-6">
           <div className="flex items-center justify-center gap-3 md:gap-6">
@@ -122,6 +142,7 @@ export default function TrackingDetails({ parcelDetails }) {
         </CardContent>
       </Card>
 
+      {/* Alerts */}
       {isLoading && (
         <Alert className="border-blue-200 bg-blue-50">
           <Loader2 className="h-4 w-4 animate-spin text-blue-600" />
@@ -129,17 +150,18 @@ export default function TrackingDetails({ parcelDetails }) {
         </Alert>
       )}
 
-      {m5Error && (
+      {error && (
         <Alert variant="destructive">
           <AlertCircle className="h-4 w-4" />
           <AlertDescription>
-            <strong>API Error:</strong> {m5Error}
+            <strong>API Error:</strong> {error}
             <br />
             <span className="text-sm">Showing standard tracking details below.</span>
           </AlertDescription>
         </Alert>
       )}
 
+      {/* Latest Status Card */}
       <Card className="bg-gradient-to-r from-indigo-600 to-blue-600 text-white shadow-lg">
         <CardContent className="flex flex-col md:flex-row justify-between items-start md:items-center p-6 gap-4">
           <div className="flex items-center space-x-3">
@@ -148,8 +170,10 @@ export default function TrackingDetails({ parcelDetails }) {
               <h2 className="text-2xl font-bold">{latestStatus}</h2>
               <p className="text-sm text-indigo-100">
                 Last updated:{" "}
-                {m5Data && events.length > 0
-                  ? new Date(`${events[0].EventDate.split("T")[0]}T${events[0].EventTime}`).toLocaleString("en-GB")
+                {events.length > 0
+                  ? cjData
+                    ? `${events[0].EventDate1 || events[0].EventDate} ${events[0].EventTime1 || events[0].EventTime}`
+                    : new Date(`${events[0].EventDate.split("T")[0]}T${events[0].EventTime}`).toLocaleString("en-GB")
                   : normalTracking.length > 0
                     ? new Date(normalTracking[normalTracking.length - 1].timestamp).toLocaleString("en-GB")
                     : "N/A"}
@@ -162,34 +186,7 @@ export default function TrackingDetails({ parcelDetails }) {
         </CardContent>
       </Card>
 
-      <Card className="shadow-sm border border-gray-100">
-        <CardHeader>
-          <CardTitle className="text-xl font-semibold text-indigo-700">Parcel Information</CardTitle>
-        </CardHeader>
-        <CardContent className="grid grid-cols-1 sm:grid-cols-2 gap-4 md:gap-6">
-          {parcelDetails?.trackingNumber && <InfoItem label="Tracking Number" value={parcelDetails.trackingNumber} />}
-          {parcelDetails?.invoiceNumber && <InfoItem label="Invoice Number" value={parcelDetails.invoiceNumber} />}
-          {parcelDetails?.cNoteNumber && <InfoItem label="C-Note Number" value={parcelDetails.cNoteNumber} />}
-          {trackingData?.Awbno && <InfoItem label="AWB Number" value={trackingData.Awbno} />}
-          {trackingData?.Consignee && <InfoItem label="Consignee" value={trackingData.Consignee} />}
-          {forwarder && <InfoItem label="Forwarder" value={forwarder} />}
-          {forwardingNumber && <InfoItem label="Forwarding Number" value={forwardingNumber} />}
-          {forwardingLink && (
-            <div className="flex flex-col">
-              <p className="font-semibold text-gray-600">Forwarding Link:</p>
-              <Button
-                variant="link"
-                onClick={() => window.open(forwardingLink, "_blank")}
-                className="p-0 h-auto text-indigo-600 flex items-center gap-1 justify-start"
-              >
-                Track with {forwarder || "Forwarder"} <ExternalLink className="w-4 h-4" />
-              </Button>
-            </div>
-          )}
-        </CardContent>
-      </Card>
-
-      {/* Tracking history always visible */}
+      {/* Tracking History */}
       <Card className="shadow-sm border border-gray-100">
         <CardHeader>
           <CardTitle className="text-xl font-semibold text-indigo-700">Tracking History</CardTitle>
@@ -199,14 +196,18 @@ export default function TrackingDetails({ parcelDetails }) {
             <ul className="space-y-5 relative">
               {reversedUpdates.map((update, index) => {
                 const isM5Event = "EventCode" in update
-                const status = isM5Event
-                  ? getEventDescription(update.EventCode, update.EventDescription)
-                  : update.status
-                const timestamp = isM5Event
-                  ? new Date(`${update.EventDate.split("T")[0]}T${update.EventTime}`).toLocaleString("en-GB")
-                  : new Date(update.timestamp).toLocaleString("en-GB")
-                const location = isM5Event ? update.Location : null
-                const comment = !isM5Event ? update.comment : null
+                const status = cjData
+                  ? update.Status
+                  : isM5Event
+                    ? getEventDescription(update.EventCode, update.EventDescription)
+                    : update.status
+                const timestamp = cjData
+                  ? `${update.EventDate1 || update.EventDate} ${update.EventTime1 || update.EventTime}`
+                  : isM5Event
+                    ? new Date(`${update.EventDate.split("T")[0]}T${update.EventTime}`).toLocaleString("en-GB")
+                    : new Date(update.timestamp).toLocaleString("en-GB")
+                const location = cjData ? update.Location : isM5Event ? update.Location : null
+                const comment = !isM5Event && !cjData ? update.comment : null
 
                 return (
                   <li key={index} className="flex items-start gap-3">
@@ -232,13 +233,6 @@ export default function TrackingDetails({ parcelDetails }) {
           )}
         </CardContent>
       </Card>
-
-      {parcelDetails?.sender && parcelDetails?.receiver && (
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-          <DetailCard title="Sender Details" details={parcelDetails.sender} />
-          <DetailCard title="Receiver Details" details={parcelDetails.receiver} />
-        </div>
-      )}
     </div>
   )
 }
@@ -248,17 +242,4 @@ const InfoItem = ({ label, value }) => (
     <p className="font-semibold text-gray-600">{label}:</p>
     <p className="text-base text-indigo-700 font-medium break-words">{value}</p>
   </div>
-)
-
-const DetailCard = ({ title, details }) => (
-  <Card className="shadow-sm border border-gray-100">
-    <CardHeader>
-      <CardTitle className="text-xl font-semibold text-indigo-700">{title}</CardTitle>
-    </CardHeader>
-    <CardContent className="space-y-2">
-      <InfoItem label="Name" value={details.name} />
-      <InfoItem label="Contact" value={details.contact} />
-      <InfoItem label="Address" value={`${details.address}, ${details.zip}, ${details.country}`} />
-    </CardContent>
-  </Card>
 )

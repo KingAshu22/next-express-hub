@@ -119,6 +119,13 @@ export default function TrackingDetails({ parcelDetails }) {
     );
   }
 
+  // 🔹 Determine forwarding number dynamically
+  const forwardingNumber =
+    parcelDetails?.forwardingNumber ||
+    (parcelDetails?.cNoteVendorName === "M5" ? trackingData?.ForwardingNo : null);
+
+  const forwardingLink = parcelDetails?.forwardingLink;
+
   return (
     <div className="max-w-5xl mx-auto p-4 md:p-6 space-y-6">
       {/* Header Card (From → To) */}
@@ -196,24 +203,24 @@ export default function TrackingDetails({ parcelDetails }) {
         </CardContent>
       </Card>
 
-      {/* Forwarding Details */}
-      {(parcelDetails?.forwardingNumber || parcelDetails?.forwardingLink) && (
+      {/* ✅ Forwarding Details (updated logic) */}
+      {(forwardingNumber || forwardingLink) && (
         <Card className="shadow-sm border border-gray-100">
           <CardHeader>
             <CardTitle className="text-xl font-semibold text-indigo-700">Forwarding Details</CardTitle>
           </CardHeader>
           <CardContent className="space-y-2">
-            {parcelDetails?.forwardingNumber || trackingData?.ForwardingNo && (
+            {forwardingNumber && (
               <p className="text-gray-700">
                 <span className="font-semibold">Forwarding Number:</span>{" "}
-                {parcelDetails?.forwardingNumber || trackingData?.ForwardingNo}
+                {forwardingNumber}
               </p>
             )}
-            {parcelDetails?.forwardingLink && (
+            {forwardingLink && (
               <p className="text-gray-700">
                 <span className="font-semibold">Forwarding Link:</span>{" "}
                 <a
-                  href={parcelDetails.forwardingLink}
+                  href={forwardingLink}
                   target="_blank"
                   rel="noopener noreferrer"
                   className="text-blue-600 hover:underline inline-flex items-center gap-1"
@@ -235,8 +242,8 @@ export default function TrackingDetails({ parcelDetails }) {
         <CardContent className="grid grid-cols-1 md:grid-cols-2 gap-6">
           <InfoItem label="Sender" value={parcelDetails?.sender?.name || "N/A"} />
           <InfoItem label="Receiver" value={parcelDetails?.receiver?.name || "N/A"} />
-          <InfoItem label="From" value={parcelDetails?.sender?.city || "N/A"} />
-          <InfoItem label="To" value={parcelDetails?.receiver?.city || "N/A"} />
+          <InfoItem label="From" value={parcelDetails?.sender?.address || "N/A"} />
+          <InfoItem label="To" value={parcelDetails?.receiver?.address || "N/A"} />
         </CardContent>
       </Card>
 

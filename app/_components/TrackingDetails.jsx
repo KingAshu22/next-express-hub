@@ -203,10 +203,10 @@ export default function TrackingDetails({ parcelDetails }) {
             <CardTitle className="text-xl font-semibold text-indigo-700">Forwarding Details</CardTitle>
           </CardHeader>
           <CardContent className="space-y-2">
-            {parcelDetails?.forwardingNumber && (
+            {parcelDetails?.forwardingNumber || trackingData?.ForwardingNo && (
               <p className="text-gray-700">
                 <span className="font-semibold">Forwarding Number:</span>{" "}
-                {parcelDetails.forwardingNumber}
+                {parcelDetails?.forwardingNumber || trackingData?.ForwardingNo}
               </p>
             )}
             {parcelDetails?.forwardingLink && (

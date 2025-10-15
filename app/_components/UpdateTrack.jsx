@@ -370,7 +370,13 @@ export default function UpdateTrackForm({ awb }) {
     <div className="container mx-auto px-4 py-8 max-w-6xl">
       <div className="text-center mb-8">
         <h1 className="text-4xl font-bold text-[#232C65] mb-2">Update Parcel Tracking</h1>
-        <p className="text-gray-600">Manage tracking details, boxes, and status updates</p>
+        <p className="text-gray-600 mb-4">Manage tracking details, boxes, and status updates</p>
+        <Button
+        onClick={() => router.push(`/awb/cj/${awb.trackingNumber}`)}
+        className="bg-red-600 text-white px-4 py-2 rounded-lg hover:bg-red-700 transition"
+      >
+        Create Courier Journey Air Way Bill
+      </Button>
       </div>
 
       <form onSubmit={editSubmit} className="space-y-8">

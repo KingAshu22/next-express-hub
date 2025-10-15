@@ -9,6 +9,8 @@ const AwbSchema = new Schema({
   trackingNumber: String,
   cNoteNumber: String,
   cNoteVendorName: String,
+  awbLabel: String,
+  boxLabel: String,
   awbNumber: String,
   forwardingNumber: String,
   forwardingLink: String,

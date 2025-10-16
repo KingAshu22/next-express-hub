@@ -42,6 +42,19 @@ export async function POST(request) {
       })
     }
 
+    const totalShippingValue = Number.parseFloat(awb?.boxes.reduce((acc, box) => {
+      return (
+        acc +
+        box.items.reduce((itemAcc, item) => {
+          const itemValue = Number.parseFloat(item.price) || 0
+          const itemQuantity = Number.parseInt(item.quantity, 10) || 0
+          return itemAcc + itemValue * itemQuantity
+        }, 0)
+      )
+    }, 0));
+
+
+
     // Check country eligibility
     const destCountry = awb.receiver?.country
     const countryCode = COUNTRY_CODES[destCountry]
@@ -112,7 +125,7 @@ export async function POST(request) {
           .toFixed(2) || "1.00",
       Content: awb.boxes?.map((box) => box.items?.map((item) => item.name).join(",")).join("; "),
       Currency: "INR",
-      ShipmentValue: awb.parcelValue?.toString(),
+      ShipmentValue: totalShippingValue?.toString(),
       RequiredPerforma: "Y",
       RequiredLable: "Y",
       Dimensions:

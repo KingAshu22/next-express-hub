@@ -1,14 +1,9 @@
 import { connectToDB } from "@/app/_utils/mongodb"
 import Awb from "@/models/Awb"
+import iso from "iso-3166-1-alpha-2"
 
-const COURIER_JOURNEY_API = "http://courierjourney.xpresion.in/api/v1/Awbentry/Awbentry"
-
-// Supported countries mapping
-const COUNTRY_CODES = {
-  "United Kingdom": "GB",
-  Australia: "AU",
-  "United Arab Emirates": "AE",
-}
+const COURIER_JOURNEY_API =
+  "http://courierjourney.xpresion.in/api/v1/Awbentry/Awbentry"
 
 // KYC document type mapping (your system → Courier Journey)
 const KYC_TYPE_MAP = {
@@ -36,33 +31,39 @@ export async function POST(request) {
 
     // Check if already integrated
     if (awb.cNoteNumber && awb.cNoteVendorName) {
-      return new Response(JSON.stringify({ error: "AWB already integrated with another vendor" }), {
-        status: 400,
-        headers: { "Content-Type": "application/json" },
-      })
+      return new Response(
+        JSON.stringify({
+          error: "AWB already integrated with another vendor",
+        }),
+        {
+          status: 400,
+          headers: { "Content-Type": "application/json" },
+        },
+      )
     }
 
-    const totalShippingValue = Number.parseFloat(awb?.boxes.reduce((acc, box) => {
-      return (
-        acc +
-        box.items.reduce((itemAcc, item) => {
-          const itemValue = Number.parseFloat(item.price) || 0
-          const itemQuantity = Number.parseInt(item.quantity, 10) || 0
-          return itemAcc + itemValue * itemQuantity
-        }, 0)
-      )
-    }, 0));
+    // Calculate total shipping value
+    const totalShippingValue = Number.parseFloat(
+      awb?.boxes.reduce((acc, box) => {
+        return (
+          acc +
+          box.items.reduce((itemAcc, item) => {
+            const itemValue = Number.parseFloat(item.price) || 0
+            const itemQuantity = Number.parseInt(item.quantity, 10) || 0
+            return itemAcc + itemValue * itemQuantity
+          }, 0)
+        )
+      }, 0),
+    )
 
-
-
-    // Check country eligibility
-    const destCountry = awb.receiver?.country
-    const countryCode = COUNTRY_CODES[destCountry]
+    // --- Country Code using iso-3166-1-alpha-2 ---
+    const destCountry = awb.receiver?.country?.trim()
+    const countryCode = iso.getCode(destCountry)
 
     if (!countryCode) {
       return new Response(
         JSON.stringify({
-          error: `Country ${destCountry} not supported. Supported: United Kingdom, Australia, United Arab Emirates`,
+          error: `Country "${destCountry}" not recognized or supported by ISO-3166-1.`,
         }),
         { status: 400, headers: { "Content-Type": "application/json" } },
       )
@@ -79,22 +80,25 @@ export async function POST(request) {
       (awb.sender?.gst && String(awb.sender.gst).trim()) ||
       "00000000000000"
 
-    // Final document type: mapped value if exists, otherwise default to GSTIN (Normal)
-    const documentType = mappedDocumentType || (awb.sender?.gst ? "GSTIN (Normal)" : "Aadhaar Number")
+    // Final document type
+    const documentType =
+      mappedDocumentType ||
+      (awb.sender?.gst ? "GSTIN (Normal)" : "Aadhaar Number")
 
+    console.log("Destination Country:", destCountry)
+    console.log("ISO Country Code:", countryCode)
     console.log("KYC raw:", rawKycType)
-    console.log("KYC normalized:", normalizedKycType)
     console.log("Mapped DocumentType:", mappedDocumentType)
-    console.log("Final DocumentType used:", documentType)
-    console.log("DocumentNumber used:", documentNumber)
+    console.log("Final DocumentType:", documentType)
+    console.log("DocumentNumber:", documentNumber)
 
-    // Build request payload for Courier Journey API
+    // Build payload for Courier Journey API
     const payload = {
       UserID: process.env.COURIER_JOURNEY_USER_ID || "CJEH065",
       Password: process.env.COURIER_JOURNEY_PASSWORD || "CJEH@065",
       CustomerCode: process.env.COURIER_JOURNEY_CUSTOMER_CODE || "CJEH065",
       CustomerRefNo: awb.trackingNumber,
-      OriginName: "BOM", // Default origin
+      OriginName: "BOM",
       DestinationName: countryCode,
       ShipperName: awb.sender?.name,
       ShipperContact: awb.sender?.name,
@@ -123,7 +127,9 @@ export async function POST(request) {
         awb.boxes
           ?.reduce((sum, box) => sum + Number.parseFloat(box.actualWeight || 0), 0)
           .toFixed(2) || "1.00",
-      Content: awb.boxes?.map((box) => box.items?.map((item) => item.name).join(",")).join("; "),
+      Content: awb.boxes
+        ?.map((box) => box.items?.map((item) => item.name).join(","))
+        .join("; "),
       Currency: "INR",
       ShipmentValue: totalShippingValue?.toString(),
       RequiredPerforma: "Y",
@@ -144,7 +150,10 @@ export async function POST(request) {
               HSNCode: item.hsnCode,
               Quantity: item.quantity?.toString(),
               Rate: item.price?.toString(),
-              Amount: (Number.parseFloat(item.price || 0) * Number.parseFloat(item.quantity || 1)).toString(),
+              Amount: (
+                Number.parseFloat(item.price || 0) *
+                Number.parseFloat(item.quantity || 1)
+              ).toString(),
             })) || [],
         ) || [],
     }
@@ -165,21 +174,25 @@ export async function POST(request) {
     const apiResponse = await response.json()
 
     if (apiResponse.Response?.Status === "Fail") {
-      // Extract error messages from the error array
-      const errorMessages = apiResponse.Response?.Error?.map((err) => err.Description).filter(Boolean) || []
-      const errorMessage = errorMessages.length > 0 ? errorMessages.join("; ") : "Failed to generate AWB"
+      const errorMessages =
+        apiResponse.Response?.Error?.map((err) => err.Description).filter(Boolean) || []
+      const errorMessage =
+        errorMessages.length > 0 ? errorMessages.join("; ") : "Failed to generate AWB"
 
       return new Response(
         JSON.stringify({
           success: false,
           error: errorMessage,
-          apiResponse: apiResponse.Response, // Return full API response for debugging
+          apiResponse: apiResponse.Response,
         }),
         { status: 400, headers: { "Content-Type": "application/json" } },
       )
     }
 
-    if (apiResponse.Response?.ResponseCode !== "RT01" || apiResponse.Response?.Status !== "Success") {
+    if (
+      apiResponse.Response?.ResponseCode !== "RT01" ||
+      apiResponse.Response?.Status !== "Success"
+    ) {
       const errorMessage = apiResponse.Response?.APIError || "Failed to generate AWB"
       return new Response(
         JSON.stringify({
@@ -191,7 +204,7 @@ export async function POST(request) {
       )
     }
 
-    // Update AWB with response data
+    // Update AWB
     awb.cNoteNumber = apiResponse.Response?.AWBNo
     awb.cNoteVendorName = "Courier Journey"
     awb.awbLabel = apiResponse.Response?.Pdfdownload

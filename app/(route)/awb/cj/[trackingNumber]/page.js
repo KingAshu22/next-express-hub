@@ -88,7 +88,7 @@ export default function AWBTrackingPage({ params }) {
         )
     }
 
-    const isEligibleForCJ = ["United Kingdom", "Australia", "United Arab Emirates"].includes(awbData.receiver?.country)
+    const isEligibleForCJ = true;
     const canIntegrate = isEligibleForCJ && !awbData.cNoteNumber && !awbData.cNoteVendorName
     const isIntegrated = awbData.cNoteVendorName === "Courier Journey"
 

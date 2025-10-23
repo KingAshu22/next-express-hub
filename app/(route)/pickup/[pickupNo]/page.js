@@ -107,7 +107,7 @@ export default function SinglePickupPage() {
   }
 
   // Extract or fallback values for header
-  const callNumber = "022-60605556"
+  const callNumber = "+91 97699 93011 / +91 81691 55537"
   const website = "www.expresshub.in"
   const email = "expresshub555@gmail.com"
 

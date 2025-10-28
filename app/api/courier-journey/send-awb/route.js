@@ -3,7 +3,7 @@ import Awb from "@/models/Awb"
 import iso from "iso-3166-1-alpha-2"
 
 const COURIER_JOURNEY_API =
-  "https://courierjourney.xpresion.in/api/v1/Awbentry/Awbentry"
+  "http://courierjourney.xpresion.in/api/v1/Awbentry/Awbentry"
 
 // KYC document type mapping (your system → Courier Journey)
 const KYC_TYPE_MAP = {

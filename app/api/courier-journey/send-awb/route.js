@@ -95,7 +95,7 @@ export async function POST(request) {
     // Build payload for Courier Journey API
     const payload = {
       UserID: "CJEH065",
-      Password: "CJEH065",
+      Password: "CJEH@065",
       CustomerCode: "CJEH065",
       CustomerRefNo: awb.trackingNumber,
       OriginName: "BOM",

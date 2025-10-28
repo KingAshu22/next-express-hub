@@ -1,39 +1,48 @@
-import { Button } from "@/components/ui/button";
-import { useRouter } from "next/navigation";
+"use client"
+
+import { useEffect, useRef, useState } from "react"
 
 export default function CTA() {
-  const router = useRouter();
+  const [isVisible, setIsVisible] = useState(false)
+  const ref = useRef(null)
+
+  useEffect(() => {
+    const observer = new IntersectionObserver(
+      ([entry]) => {
+        if (entry.isIntersecting) {
+          setIsVisible(true)
+        }
+      },
+      { threshold: 0.1 },
+    )
+
+    if (ref.current) observer.observe(ref.current)
+    return () => observer.disconnect()
+  }, [])
+
   return (
-    <section className="py-20 bg-gradient-to-b from-white to-gray-50">
-      <div className="container mx-auto px-4">
-        <div className="max-w-3xl mx-auto text-center space-y-8">
-          <h2 className="text-4xl font-bold text-[#232C65]">
-            Ready to Ship with Us?
-          </h2>
-          <p className="text-xl text-gray-600">
-            Experience hassle-free international shipping at competitive rates
+    <section id="contact" ref={ref} className="py-20 md:py-32 bg-gradient-to-r from-primary to-primary-dark">
+      <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
+        <div
+          className={`space-y-8 transition-all duration-1000 ${isVisible ? "opacity-100 scale-100" : "opacity-0 scale-95"}`}
+        >
+          <h2 className="text-5xl md:text-6xl font-bold text-white">Ready to Transform Your Logistics?</h2>
+
+          <p className="text-xl text-white/80 max-w-2xl mx-auto">
+            Join thousands of businesses that trust Express Hub for their delivery needs. Let's streamline your operations
+            today.
           </p>
-          <div className="flex flex-col sm:flex-row gap-4 justify-center">
-            <Button
-              className="bg-[#E31E24] hover:bg-[#C71D23] text-white px-8 py-3 text-lg"
-              onClick={() => {
-                router.push("tel:+918169155537");
-              }}
-            >
-              Get a Quote
-            </Button>
-            <Button
-              variant="outline"
-              className="border-[#E31E24] text-[#E31E24] hover:bg-red-50 px-8 py-3 text-lg"
-              onClick={() => {
-                router.push("tel:+918169155537");
-              }}
-            >
-              Contact Sales
-            </Button>
+
+          <div className="flex flex-col sm:flex-row gap-4 justify-center pt-4">
+            <button className="px-10 py-4 bg-accent hover:bg-accent-dark text-primary font-bold rounded-lg transition-all duration-300 hover:shadow-lg hover:scale-105">
+              Get Started Now
+            </button>
+            <button className="px-10 py-4 bg-white/20 hover:bg-white/30 text-white font-bold rounded-lg border-2 border-white transition-all duration-300 hover:shadow-lg hover:scale-105">
+              Schedule a Demo
+            </button>
           </div>
         </div>
       </div>
     </section>
-  );
+  )
 }

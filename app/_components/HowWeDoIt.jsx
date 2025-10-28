@@ -11,7 +11,7 @@ const steps = [
 
 export default function HowWeDoIt() {
   return (
-    <section className="py-28 bg-gray-50" id="how-we-do-it">
+    <section className="py-4 bg-gray-50" id="how-we-do-it">
       <div className="container mx-auto px-4">
         <div className="grid lg:grid-cols-2 gap-12 items-center">
           <div className="space-y-8">

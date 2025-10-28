@@ -119,7 +119,7 @@ export async function POST(request) {
       ConsigneeMobile: awb.receiver?.contact?.replace(/\D/g, ""),
       ConsigneeEmail: awb.receiver?.email,
       VendorName: "CJ",
-      ServiceName: "SELF",
+      ServiceName: awb.receiver?.country == "United Kingdom" ? "UK SELF" : "SELF",
       ProductCode: "SPX",
       Dox_Spx: "SPX",
       Pieces: awb.boxes?.length?.toString() || "1",

@@ -18,7 +18,7 @@ const KYC_TYPE_MAP = {
 export async function POST(request) {
   try {
     await connectToDB()
-    const { awbId, trackingNumber } = await request.json()
+    const { awbId, service } = await request.json()
 
     // Fetch AWB data
     const awb = await Awb.findById(awbId)
@@ -119,7 +119,7 @@ export async function POST(request) {
       ConsigneeMobile: awb.receiver?.contact?.replace(/\D/g, ""),
       ConsigneeEmail: awb.receiver?.email,
       VendorName: "CJ",
-      ServiceName: awb?.receiver?.country === "United Kingdom" ? "UK SELF" : "SELF",
+      ServiceName: service,
       ProductCode: "SPX",
       Dox_Spx: "SPX",
       Pieces: awb.boxes?.length?.toString() || "1",

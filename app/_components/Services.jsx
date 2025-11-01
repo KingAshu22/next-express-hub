@@ -30,7 +30,7 @@ export default function WhyChoose() {
       icon: Zap,
       title: "Smart Logistics Solutions",
       description:
-        "At Kargo Onee, we use the latest technology to make logistics smarter & more efficient. Our system, inspired by the top industry model's software for logistics supply, helps optimize the journey from warehouse to delivery. With Unique Tracking Number for precise inventory tracking & live updates on your shipments, we keep you informed every step of the way.",
+        "At Kargo One, we use the latest technology to make logistics smarter & more efficient. Our system, inspired by the top industry model's software for logistics supply, helps optimize the journey from warehouse to delivery. With Unique Tracking Number for precise inventory tracking & live updates on your shipments, we keep you informed every step of the way.",
       delay: 0,
     },
     {
@@ -44,14 +44,14 @@ export default function WhyChoose() {
       icon: Truck,
       title: "Same-Day Delivery Options",
       description:
-        "With efficient warehousing and delivery management, Kargo Onee enables same-day delivery to enhance customer satisfaction and keep your business competitive.",
+        "With efficient warehousing and delivery management, Kargo One enables same-day delivery to enhance customer satisfaction and keep your business competitive.",
       delay: 200,
     },
     {
       icon: Heart,
       title: "Customer-Centric Experience",
       description:
-        "Precision, reliability, and a personalized touch are central to Kargo Onee. We prioritize your customers' needs, ensuring every delivery is smooth and satisfying.",
+        "Precision, reliability, and a personalized touch are central to Kargo One. We prioritize your customers' needs, ensuring every delivery is smooth and satisfying.",
       delay: 300,
     },
   ]
@@ -62,7 +62,7 @@ export default function WhyChoose() {
       <div className="bg-accent mb-12 md:mb-16 py-8 md:py-12 px-4 md:px-8">
         <div className="max-w-7xl mx-auto">
           <h2 className="text-3xl md:text-4xl lg:text-5xl font-bold text-primary-darker leading-tight">
-            Why Kargo Onee is Your Top Choice?
+            Why Kargo One is Your Top Choice?
           </h2>
         </div>
       </div>

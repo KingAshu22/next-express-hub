@@ -50,7 +50,7 @@ export default function AWBView({ params }) {
             <div>
               <Image
                 src="/logo.jpg"
-                alt="Kargo Onee"
+                alt="Kargo One"
                 width={200}
                 height={60}
                 className=""
@@ -187,12 +187,12 @@ export default function AWBView({ params }) {
               be charged extra.
             </li>
             <li>
-              If the consignment is lost or damaged in transit by Kargo Onee
-              Company, the maximum claim payable by Kargo Onee Company will be
+              If the consignment is lost or damaged in transit by Kargo One
+              Company, the maximum claim payable by Kargo One Company will be
               Rs. 100/- per kg or Rs. 5,000, whichever is lower.
             </li>
             <li>
-              Kargo Onee Company will not be responsible for delayed delivery
+              Kargo One Company will not be responsible for delayed delivery
               due to fire, accidents, riots, strikes, and natural calamities,
               flight delay, offloading of cargo, airlines space problem,
               airlines bagging mis-routing, customs process delay, lockdown,
@@ -210,7 +210,7 @@ export default function AWBView({ params }) {
               the consignment.
             </li>
             <li>
-              The consignments handed over to Kargo Onee Company do not violate
+              The consignments handed over to Kargo One Company do not violate
               the rules and regulations of the Post & Telegraph Department and
               IATA under the Geneva Convention.
             </li>
@@ -219,7 +219,7 @@ export default function AWBView({ params }) {
               economy services.
             </li>
             <li>
-              Kargo Onee Company is not responsible for any duties/penalties or
+              Kargo One Company is not responsible for any duties/penalties or
               charges applied to any shipment by any government authorities of
               the destination country.
             </li>

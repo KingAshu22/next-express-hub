@@ -34,7 +34,7 @@ export default function GetQuoteSection() {
         >
           <form className="bg-white rounded-2xl shadow-xl p-4 sm:p-6 md:p-8 space-y-4 sm:space-y-5 w-full">
             <h3 className="text-lg sm:text-xl font-bold mb-2">
-              Explore <span className="text-[#232C65]">Kargo Onee</span>
+              Explore <span className="text-[#232C65]">Kargo One</span>
               <span className="text-yellow-500"> Pricing</span>
             </h3>
             <div className="flex flex-col sm:flex-row gap-3">

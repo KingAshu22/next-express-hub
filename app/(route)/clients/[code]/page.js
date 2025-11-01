@@ -350,7 +350,7 @@ export default function ClientMISPage() {
       const csvData = []
 
       // Add letterhead information
-      csvData.push(["Kargo Onee"])
+      csvData.push(["Kargo One"])
       csvData.push(["Management Information System (MIS) Report"])
       csvData.push([])
       csvData.push(["Report Generated:", currentDate])
@@ -546,7 +546,7 @@ export default function ClientMISPage() {
         <html>
         <head>
           <meta charset="utf-8">
-          <title>Kargo Onee MIS Report</title>
+          <title>Kargo One MIS Report</title>
           <style>
             body { font-family: Arial, sans-serif; margin: 20px; font-size: 12px; }
             .letterhead { text-align: center; margin-bottom: 30px; }
@@ -576,7 +576,7 @@ export default function ClientMISPage() {
         </head>
         <body>
           <div class="letterhead">
-            <div class="company-name">Kargo Onee</div>
+            <div class="company-name">Kargo One</div>
             <div class="report-title">Management Information System (MIS) Report</div>
             <div>Report Generated: ${currentDate}</div>
           </div>

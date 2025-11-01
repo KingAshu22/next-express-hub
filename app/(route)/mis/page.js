@@ -353,7 +353,7 @@ function AllAWBsMISPage() {
       const csvData = []
 
       // Add letterhead information
-      csvData.push(["Kargo Onee"])
+      csvData.push(["Kargo One"])
       csvData.push(["All AWBs Management Information System (MIS) Report"])
       csvData.push([])
       csvData.push(["Report Generated:", currentDate])
@@ -508,7 +508,7 @@ function AllAWBsMISPage() {
         <html>
         <head>
           <meta charset="utf-8">
-          <title>Kargo Onee All AWBs MIS Report</title>
+          <title>Kargo One All AWBs MIS Report</title>
           <style>
             body { font-family: Arial, sans-serif; margin: 20px; font-size: 12px; }
             .letterhead { text-align: center; margin-bottom: 30px; }
@@ -535,7 +535,7 @@ function AllAWBsMISPage() {
         </head>
         <body>
           <div class="letterhead">
-            <div class="company-name">Kargo Onee</div>
+            <div class="company-name">Kargo One</div>
             <div class="report-title">All AWBs Management Information System (MIS) Report</div>
             <div>Report Generated: ${currentDate}</div>
           </div>

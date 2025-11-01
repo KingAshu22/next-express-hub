@@ -26,7 +26,7 @@ export default function AWBViewClient({ awbData }) {
             <div>
               <Image
                 src="/placeholder.svg?height=60&width=200"
-                alt="Kargo Onee"
+                alt="Kargo One"
                 width={200}
                 height={60}
               />

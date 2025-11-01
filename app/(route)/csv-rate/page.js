@@ -206,7 +206,7 @@ export default function RateCalculator() {
     printWindow.document.write(`
       <html>
         <head>
-          <title>Rate Sheet - Kargo Onee</title>
+          <title>Rate Sheet - Kargo One</title>
           <style>
             body {
               font-family: Arial, sans-serif;
@@ -272,7 +272,7 @@ export default function RateCalculator() {
         </head>
         <body>
           <div class="letterhead">
-            <div class="company-name">Kargo Onee</div>
+            <div class="company-name">Kargo One</div>
             <div class="tagline">International & Domestic Courier & Cargo Services</div>
             <div class="contact">Mob No: +91 97699 93011 / +91 81691 55537</div>
           </div>
@@ -294,7 +294,7 @@ export default function RateCalculator() {
           ${tableContent}
           
           <div class="footer">
-            <p>Thank you for choosing Kargo Onee</p>
+            <p>Thank you for choosing Kargo One</p>
             <p>This rate sheet is as of ${new Date().toLocaleDateString()}</p>
           </div>
         </body>
@@ -498,7 +498,7 @@ export default function RateCalculator() {
           </CardHeader>
           <CardContent>
             <div className="text-center mb-6">
-              <h2 className="text-xl font-bold">Kargo Onee</h2>
+              <h2 className="text-xl font-bold">Kargo One</h2>
               <p className="text-sm italic">International & Domestic Courier & Cargo Services</p>
               <p className="text-xs mt-1">Mob No: +91 97699 93011 / +91 81691 55537</p>
             </div>
@@ -556,7 +556,7 @@ export default function RateCalculator() {
           </CardHeader>
           <CardContent>
             <div className="text-center mb-6">
-              <h2 className="text-xl font-bold">Kargo Onee</h2>
+              <h2 className="text-xl font-bold">Kargo One</h2>
               <p className="text-sm italic">International & Domestic Courier & Cargo Services</p>
               <p className="text-xs mt-1">Mob No: +91 97699 93011 / +91 81691 55537</p>
             </div>

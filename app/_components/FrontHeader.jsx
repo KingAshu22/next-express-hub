@@ -12,7 +12,7 @@ export default function FrontHeader() {
           <Link href="/" className="flex flex-col items-center mt-4">
             <Image
               src="/logo.jpg"
-              alt="Kargo Onee Logo"
+              alt="Kargo One Logo"
               width={180}
               height={40}
             />

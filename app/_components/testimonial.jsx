@@ -6,28 +6,28 @@ const testimonials = [
     name: "Mayank Kapoor",
     title: "Aariv Impex Owner, Gurugram",
     avatar: "/testimonials/user1.jpg",
-    text: "Kargo Onee's tracking is seamless and their door-to-door delivery is always reliable. The best part? Their support team is available whenever I need them!”",
+    text: "Kargo One's tracking is seamless and their door-to-door delivery is always reliable. The best part? Their support team is available whenever I need them!”",
     link: "#",
   },
   {
     name: "Yashika Khandelwal",
     title: "Auza Jewels Owner, Jaipur",
     avatar: "/testimonials/user2.jpg",
-    text: "“The pricing Kargo Onee offers is truly transparent. I always know what I’m paying, and my shipments reach my customers on time, every time.”",
+    text: "“The pricing Kargo One offers is truly transparent. I always know what I’m paying, and my shipments reach my customers on time, every time.”",
     link: "#",
   },
   {
     name: "Rohit Sharma",
     title: "Global Seller, Mumbai",
     avatar: "/testimonials/user3.jpg",
-    text: "“With Kargo Onee, I expanded my business overseas without any hassle. Their platform is easy to use and the rates are unbeatable.”",
+    text: "“With Kargo One, I expanded my business overseas without any hassle. Their platform is easy to use and the rates are unbeatable.”",
     link: "#",
   },
   {
     name: "Priya Menon",
     title: "Mother & Frequent Shipper, Kochi",
     avatar: "/testimonials/user4.jpg",
-    text: "“Sending gifts to my family abroad is now stress-free. Kargo Onee makes sure my parcels are delivered safely and quickly.”",
+    text: "“Sending gifts to my family abroad is now stress-free. Kargo One makes sure my parcels are delivered safely and quickly.”",
     link: "#",
   },
 ];
@@ -46,7 +46,7 @@ export default function Testimonial() {
             1 Crore+ Successful Shipments
           </h2>
           <p className="text-gray-700 max-w-lg">
-            From parents sending love overseas to new entrepreneurs growing their brands, Kargo Onee is trusted by all. Discover why so many choose us for their shipping needs.
+            From parents sending love overseas to new entrepreneurs growing their brands, Kargo One is trusted by all. Discover why so many choose us for their shipping needs.
           </p>
         </div>
 

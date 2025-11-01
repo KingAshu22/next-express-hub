@@ -64,7 +64,7 @@ const Header = () => {
         <div className="flex items-center gap-4">
           <SidebarTrigger />
           <Link href="/" className="flex flex-row items-center">
-            <h2>Kargo Onee</h2>
+            <h2>Kargo One</h2>
           </Link>
         </div>
         {isMounted && (

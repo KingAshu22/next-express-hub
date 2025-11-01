@@ -6,7 +6,7 @@ export default function Footer() {
           <div>
             <h3 className="text-xl font-bold mb-4">About Us</h3>
             <p className="text-gray-300">
-              Kargo Onee Company is a trusted provider of reliable and cost-effective cross-border shipping solutions for businesses and individuals. We specialize in delivering parcels and cargo quickly and securely, ensuring your shipments reach their destination on time. With a commitment to excellence and customer satisfaction, we simplify global shipping to connect people and businesses worldwide.
+              Kargo One Company is a trusted provider of reliable and cost-effective cross-border shipping solutions for businesses and individuals. We specialize in delivering parcels and cargo quickly and securely, ensuring your shipments reach their destination on time. With a commitment to excellence and customer satisfaction, we simplify global shipping to connect people and businesses worldwide.
             </p>
           </div>
           <div>
@@ -50,7 +50,7 @@ export default function Footer() {
         </div>
         <div className="border-t border-gray-700 mt-8 pt-8 text-center text-gray-300">
           <p>
-            &copy; {new Date().getFullYear()} Kargo Onee. All rights reserved | Created by{" "}
+            &copy; {new Date().getFullYear()} Kargo One. All rights reserved | Created by{" "}
             <a className="text-[#F44336]" href="https://ashish-prasad.netlify.app">
               Ashish Sanjay Prasad
             </a>

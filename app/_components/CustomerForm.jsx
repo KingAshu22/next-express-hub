@@ -137,7 +137,7 @@ export default function CustomerRegistrationForm({ isEdit = false, customer }) {
         <div className="flex justify-center mb-4">
           <Image
             src="/logo.jpg"
-            alt="Express Hub Logo"
+            alt="Kargo Onee Logo"
             width={200}
             height={60}
           />

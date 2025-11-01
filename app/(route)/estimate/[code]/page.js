@@ -91,7 +91,7 @@ export default function ViewEstimate() {
       >
         {/* Letterhead */}
         <div className="text-center mb-6">
-          <h2 className="text-3xl font-bold text-blue-900">Express Hub</h2>
+          <h2 className="text-3xl font-bold text-blue-900">Kargo Onee</h2>
           <p className="text-lg text-gray-700 mt-1">International Courier & Cargo Services</p>
           <p className="text-sm text-gray-600 mt-3">
             📞 +91 97699 93011 / +91 81691 55537 | ✉️ expresshub555@gmail.com | 🌐 www.expresshub.in

@@ -42,7 +42,7 @@ export default function Hero() {
                 <span className="text-accent">Every Time.</span>
               </h1>
               <p className="text-lg md:text-xl text-white/80 max-w-md leading-relaxed">
-                Streamline your logistics with Express Hub. Backed by 10+ years of expertise and innovative technology, we
+                Streamline your logistics with Kargo Onee. Backed by 10+ years of expertise and innovative technology, we
                 deliver precision, speed, and reliability for every shipment.
               </p>
             </div>
@@ -76,7 +76,7 @@ export default function Hero() {
                 src={"/Hero.png"} 
                 width={800} // Base width for quality
                 height={800} // Base height for aspect ratio
-                alt="Express Hub delivery professional with packages"
+                alt="Kargo Onee delivery professional with packages"
                 className="w-full h-auto" // Makes image responsive
                 priority // Load the hero image faster
               />

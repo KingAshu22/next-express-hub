@@ -4,7 +4,7 @@ import { ChevronDown } from "lucide-react";
 
 const faqs = [
   {
-    q: "How do I schedule a pickup with Express Hub?",
+    q: "How do I schedule a pickup with Kargo Onee?",
     a: "Simply sign up, fill in your shipment details, and choose your preferred pickup date. Our team will handle the rest and collect your parcel from your doorstep.",
   },
   {
@@ -17,7 +17,7 @@ const faqs = [
   },
   {
     q: "Do you support international shipping for small businesses?",
-    a: "Absolutely. Whether you’re shipping one parcel or hundreds, Express Hub is designed to help businesses of all sizes go global with ease.",
+    a: "Absolutely. Whether you’re shipping one parcel or hundreds, Kargo Onee is designed to help businesses of all sizes go global with ease.",
   },
   {
     q: "What if I need help with customs or documentation?",

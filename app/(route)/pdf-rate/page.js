@@ -97,7 +97,7 @@ export default function RateCalculator() {
     printWindow.document.write(`
       <html>
         <head>
-          <title>Rate Sheet - Express Hub</title>
+          <title>Rate Sheet - Kargo Onee</title>
           <style>
             body { font-family: Arial, sans-serif; padding: 20px; max-width: 1000px; margin: 0 auto; }
             .letterhead { text-align: center; margin-bottom: 30px; border-bottom: 2px solid #333; padding-bottom: 15px; }
@@ -111,7 +111,7 @@ export default function RateCalculator() {
         </head>
         <body>
           <div class="letterhead">
-            <div class="company-name">Express Hub</div>
+            <div class="company-name">Kargo Onee</div>
             <div class="tagline">International & Domestic Courier & Cargo Services</div>
             <div class="contact">Mob No: +91 97699 93011 / +91 81691 55537</div>
           </div>
@@ -139,7 +139,7 @@ export default function RateCalculator() {
           </table>
 
           <div class="footer">
-            <p>Thank you for choosing Express Hub</p>
+            <p>Thank you for choosing Kargo Onee</p>
           </div>
         </body>
       </html>
@@ -334,7 +334,7 @@ export default function RateCalculator() {
           </CardHeader>
           <CardContent>
             <div className="text-center mb-6">
-              <h2 className="text-xl font-bold">Express Hub</h2>
+              <h2 className="text-xl font-bold">Kargo Onee</h2>
               <p className="text-sm italic">International & Domestic Courier & Cargo Services</p>
               <p className="text-xs mt-1">Mob No: +91 97699 93011 / +91 81691 55537</p>
             </div>

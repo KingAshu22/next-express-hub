@@ -88,7 +88,7 @@ export default function BillPage() {
         <div className="flex justify-between items-center border-b pb-4">
           <div>
             <h1 className="text-2xl font-bold text-purple-700">
-              Express Hub
+              Kargo Onee
             </h1>
             <p>Andheri East, Mumbai 400 093</p>
             <p className="text-gray-600">GSTIN: </p>

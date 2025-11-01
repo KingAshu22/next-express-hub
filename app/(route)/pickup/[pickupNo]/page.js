@@ -122,7 +122,7 @@ export default function SinglePickupPage() {
           <div className="flex flex-col md:flex-col justify-between items-start md:items-center gap-4 text-center">
             <div>
               <h1 className="text-2xl md:text-3xl font-extrabold tracking-tight">
-                Express Hub
+                Kargo Onee
               </h1>
               <p className="text-blue-100 mt-1">International Courier & Cargo Services</p>
             </div>

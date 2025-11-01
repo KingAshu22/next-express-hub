@@ -29,7 +29,7 @@ export default function CTA() {
           <h2 className="text-5xl md:text-6xl font-bold text-white">Ready to Transform Your Logistics?</h2>
 
           <p className="text-xl text-white/80 max-w-2xl mx-auto">
-            Join thousands of businesses that trust Express Hub for their delivery needs. Let's streamline your operations
+            Join thousands of businesses that trust Kargo Onee for their delivery needs. Let's streamline your operations
             today.
           </p>
 

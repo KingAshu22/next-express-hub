@@ -87,7 +87,7 @@ function AWBCopy({ awb, copyLabel = "ADMIN COPY" }) {
         <div className="brand">
           <div className="brand-top">
             <span className="brand-code">WF691</span>
-            <span className="brand-name">Express Hub PRIVATE LIMITED</span>
+            <span className="brand-name">Kargo Onee PRIVATE LIMITED</span>
           </div>
           <div className="routing">
             <div className="routing-row">
@@ -303,7 +303,7 @@ function AWBCopy({ awb, copyLabel = "ADMIN COPY" }) {
               </div>
             </div>
             <div className="small">
-              ALL CHEQUES SHOULD BE DRAWN IN FAVOUR OF <b>WF691 Express Hub PRIVATE LIMITED</b>
+              ALL CHEQUES SHOULD BE DRAWN IN FAVOUR OF <b>WF691 Kargo Onee PRIVATE LIMITED</b>
             </div>
           </div>
         </div>

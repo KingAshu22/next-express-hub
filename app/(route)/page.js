@@ -12,6 +12,7 @@ import HowWeDoIt from "../_components/HowWeDoIt";
 import WhatWeOffer from "../_components/WhatWeOffer";
 import Services from "../_components/Services";
 import Features2 from "../_components/Features2";
+import InternationalRatesSection from "../_components/InternationalRatesSection";
 
 export default function Home() {
   const [scrollY, setScrollY] = useState(0)
@@ -28,6 +29,7 @@ export default function Home() {
       <Hero />
       <Features />
       <Features2 />
+      <InternationalRatesSection />
       <AreasWeServe />
       <Services />
       <HowWeDoIt />

@@ -13,8 +13,8 @@ export default function FrontHeader() {
             <Image
               src="/logo.jpg"
               alt="Kargo One Logo"
-              width={180}
-              height={40}
+              width={220}
+              height={60}
             />
           </Link>
 

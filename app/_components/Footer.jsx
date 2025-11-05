@@ -6,7 +6,7 @@ export default function Footer() {
           <div>
             <h3 className="text-xl font-bold mb-4">About Us</h3>
             <p className="text-gray-300">
-              Kargo One Company is a trusted provider of reliable and cost-effective cross-border shipping solutions for businesses and individuals. We specialize in delivering parcels and cargo quickly and securely, ensuring your shipments reach their destination on time. With a commitment to excellence and customer satisfaction, we simplify global shipping to connect people and businesses worldwide.
+              Kargo One is a trusted provider of reliable and cost-effective cross-border shipping solutions for businesses and individuals. We specialize in delivering parcels and cargo quickly and securely, ensuring your shipments reach their destination on time. With a commitment to excellence and customer satisfaction, we simplify global shipping to connect people and businesses worldwide.
             </p>
           </div>
           <div>
@@ -29,7 +29,7 @@ export default function Footer() {
           <div>
             <h3 className="text-xl font-bold mb-4">Contact Us</h3>
             <p className="text-gray-300 mb-2">
-              <span className="font-semibold">Phone:</span> +91 97699 93011 / +91 81691 55537
+              <span className="font-semibold">Phone:</span>+91 81691 55537
             </p>
             <div className="mb-4">
               <p className="font-semibold text-white">Mumbai Office:</p>
@@ -37,14 +37,8 @@ export default function Footer() {
                 Shop no 10, Ground floor Prakashwadi CHS Beside Summit Business park, Gundavali, Andheri East, Mumbai, Maharashtra 400093
               </p>
             </div>
-            <div className="mb-4">
-              <p className="font-semibold text-white">Hyderabad Service:</p>
-              <p className="text-gray-300">
-                Plot No 22, Gaganvihar Colony, OPP Vishwa Infrastructure, Bagavathapur, Begumpet Hyderabad -500016 TELANGANA,INDIA
-              </p>
-            </div>
             <div>
-              <p className="font-semibold text-white">Mumbai | Hyderabad | Bangalore | Kerala</p>
+              <p className="font-semibold text-white">Hyderabad | Bangalore | Kerala</p>
             </div>
           </div>
         </div>

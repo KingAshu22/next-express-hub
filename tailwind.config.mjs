@@ -22,8 +22,8 @@ export default {
   			primary: {
   				DEFAULT: '#1e5a96',
   				foreground: 'hsl(var(--primary-foreground))',
-				dark: '#154070',
-				darker: '#0d2847'
+  				dark: '#154070',
+  				darker: '#0d2847'
   			},
   			secondary: {
   				DEFAULT: 'hsl(var(--secondary))',
@@ -36,7 +36,7 @@ export default {
   			accent: {
   				DEFAULT: '#ffc107',
   				foreground: 'hsl(var(--accent-foreground))',
-				dark: '#ffb300'
+  				dark: '#ffb300'
   			},
   			destructive: {
   				DEFAULT: 'hsl(var(--destructive))',
@@ -67,6 +67,28 @@ export default {
   			lg: 'var(--radius)',
   			md: 'calc(var(--radius) - 2px)',
   			sm: 'calc(var(--radius) - 4px)'
+  		},
+  		keyframes: {
+  			'accordion-down': {
+  				from: {
+  					height: '0'
+  				},
+  				to: {
+  					height: 'var(--radix-accordion-content-height)'
+  				}
+  			},
+  			'accordion-up': {
+  				from: {
+  					height: 'var(--radix-accordion-content-height)'
+  				},
+  				to: {
+  					height: '0'
+  				}
+  			}
+  		},
+  		animation: {
+  			'accordion-down': 'accordion-down 0.2s ease-out',
+  			'accordion-up': 'accordion-up 0.2s ease-out'
   		}
   	}
   },

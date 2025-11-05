@@ -3,7 +3,7 @@
 import { useState, useEffect, use } from "react";
 import axios from "axios";
 import Image from "next/image";
-import { Mail, MapPin, MoveRight, Phone, Printer } from "lucide-react";
+import { Earth, Mail, MapPin, MoveRight, Phone, Printer } from "lucide-react";
 import Barcode from "react-barcode"; // Import the barcode package
 
 export default function AWBView({ params }) {
@@ -42,7 +42,7 @@ export default function AWBView({ params }) {
   };
 
   return (
-    <div className="container mx-auto px-1 max-w-4xl pt-0 mt-0">
+    <div className="container mx-auto px-1 max-w-4xl pt-4 mt-0">
       <div className="bg-white border border-black rounded-lg overflow-hidden pt-0 mt-0">
         <div className="p-4 pt-0 mt-0">
           {/* Flex container for logo, barcode, and title */}
@@ -58,10 +58,13 @@ export default function AWBView({ params }) {
               {/* Add contact info below the logo */}
               <div className="text-left mt-2">
                 <p className="text-sm text-gray-500 flex flex-row">
-                  <Phone className="h-4" /> +91 97699 93011 / +91 81691 55537
+                  <Phone className="h-4" />+91 81691 55537
                 </p>
                 <p className="text-sm text-gray-500 flex flex-row">
-                  <Mail className="h-4" /> expresshub555@gmail.com
+                  <Mail className="h-4" /> info@kargoone.com
+                </p>
+                <p className="text-sm text-gray-500 flex flex-row">
+                  <Earth className="h-4" /> www.kargoone.com
                 </p>
                 <p className="text-sm text-gray-500 flex flex-row">
                   <MapPin className="h-4" /> Mumbai | Hyderabad | Bangalore | Kerala
@@ -78,16 +81,16 @@ export default function AWBView({ params }) {
               />
             </div>
 
-            <div className="text-right">
-              <h1 className="text-2xl font-bold text-[#232C65]">Air Waybill</h1>
-              <p className="text-[#E31E24] font-semibold">
+            <div className="text-right ml-20">
+              <h1 className="text-2xl font-bold text-[#232C65] whitespace-nowrap">AIRWAY BILL</h1>
+              <p className="text-[#E31E24] text-xl font-semibold">
                 {awbData?.trackingNumber}
               </p>
             </div>
           </div>
           <div className="flex items-center justify-center">
             <div className="flex items-center justify-between">
-              <p className="flex gap-2 text-[#E31E24] font-bold">
+              <p className="ml-20 flex gap-2 text-[#E31E24] font-bold text-xl">
                 {awbData?.sender?.country} <MoveRight />{" "}
                 {awbData?.receiver?.country}
               </p>
@@ -187,12 +190,11 @@ export default function AWBView({ params }) {
               be charged extra.
             </li>
             <li>
-              If the consignment is lost or damaged in transit by Kargo One
-              Company, the maximum claim payable by Kargo One Company will be
+              If the consignment is lost or damaged in transit by Kargo One, the maximum claim payable by Kargo One will be
               Rs. 100/- per kg or Rs. 5,000, whichever is lower.
             </li>
             <li>
-              Kargo One Company will not be responsible for delayed delivery
+              Kargo One will not be responsible for delayed delivery
               due to fire, accidents, riots, strikes, and natural calamities,
               flight delay, offloading of cargo, airlines space problem,
               airlines bagging mis-routing, customs process delay, lockdown,
@@ -210,7 +212,7 @@ export default function AWBView({ params }) {
               the consignment.
             </li>
             <li>
-              The consignments handed over to Kargo One Company do not violate
+              The consignments handed over to Kargo One do not violate
               the rules and regulations of the Post & Telegraph Department and
               IATA under the Geneva Convention.
             </li>
@@ -219,7 +221,7 @@ export default function AWBView({ params }) {
               economy services.
             </li>
             <li>
-              Kargo One Company is not responsible for any duties/penalties or
+              Kargo One is not responsible for any duties/penalties or
               charges applied to any shipment by any government authorities of
               the destination country.
             </li>

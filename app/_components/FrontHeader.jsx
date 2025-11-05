@@ -18,7 +18,7 @@ export default function FrontHeader() {
             />
           </Link>
 
-          <nav className="hidden lg:flex items-center space-x-20 font-bold -ml-48">
+          <nav className="hidden lg:flex items-center space-x-20 font-bold -ml-48 mt-4 ml-2">
             <Link
               href="#what-we-offer"
               className="text-[#232C65] hover:text-[#E31E24] transition-colors"

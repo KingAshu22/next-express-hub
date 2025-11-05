@@ -129,7 +129,7 @@ export default function TrackingDetails({ parcelDetails }) {
   return (
     <div className="max-w-5xl mx-auto p-4 md:p-6 space-y-6">
       {/* Header Card (From → To) */}
-      <Card className="bg-gradient-to-r from-yellow-400 via-yellow-500 to-yellow-600 text-white shadow-lg overflow-hidden">
+      <Card className="bg-gradient-to-r from-red-500 via-red-600 to-red-700 text-white shadow-lg overflow-hidden">
         <CardContent className="p-6">
           <div className="flex items-center justify-center gap-3 md:gap-6">
             <div className="text-center">
@@ -173,7 +173,7 @@ export default function TrackingDetails({ parcelDetails }) {
         <CardHeader className="flex flex-col md:flex-row items-center justify-between">
           <CardTitle className="text-2xl font-bold flex items-center gap-3">
             Tracking Details
-            <span className="flex items-center bg-white text-indigo-700 rounded-lg px-3 py-1 text-sm font-semibold shadow-sm">
+            <span className="ml-48 flex items-center bg-white text-indigo-700 rounded-lg px-3 py-1 text-md font-semibold shadow-sm">
               <Barcode className="w-5 h-5 mr-2" />
               {parcelDetails?.trackingNumber || "N/A"}
             </span>

@@ -10,7 +10,8 @@ import { Label } from "@/components/ui/label"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { Badge } from "@/components/ui/badge"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import { ArrowLeft, Upload, Download, Check, X } from "lucide-react"
+import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group"
+import { ArrowLeft, Upload, Download, Check, X, Calculator } from "lucide-react"
 import { toast } from "@/hooks/use-toast"
 import * as XLSX from "xlsx"
 
@@ -24,6 +25,7 @@ export default function UploadRatePage() {
     originalName: "",
     covidCharges: "",
     fuelCharges: "",
+    rateType: "base", // Default to base rate
   })
   const [ratesValidation, setRatesValidation] = useState(null)
   const [zonesValidation, setZonesValidation] = useState(null)
@@ -33,7 +35,8 @@ export default function UploadRatePage() {
     const selectedFile = e.target.files[0]
     if (selectedFile) {
       setRatesFile(selectedFile)
-      processRatesFile(selectedFile)
+      // Re-process file if rate type changes
+      processRatesFile(selectedFile, rateData.rateType)
     }
   }
 
@@ -45,7 +48,15 @@ export default function UploadRatePage() {
     }
   }
 
-  const processRatesFile = async (file) => {
+  const handleRateTypeChange = (value) => {
+    setRateData({ ...rateData, rateType: value })
+    // Re-process rates file if it exists and rate type changes
+    if (ratesFile) {
+      processRatesFile(ratesFile, value)
+    }
+  }
+
+  const processRatesFile = async (file, rateType = "base") => {
     try {
       const data = await file.arrayBuffer()
       const workbook = XLSX.read(data, { type: "array" })
@@ -77,9 +88,13 @@ export default function UploadRatePage() {
 
         // Process zone rates (columns 1 onwards)
         for (let j = 1; j < row.length; j++) {
-          const rate = Number.parseFloat(row[j])
+          let rate = Number.parseFloat(row[j])
           if (!isNaN(rate) && rate > 0) {
-            rateEntry[j.toString()] = rate
+            // If rate type is "per kg", multiply by weight to get base rate
+            if (rateType === "perKg") {
+              rate = rate * kg
+            }
+            rateEntry[j.toString()] = Number(rate.toFixed(2)) // Round to 2 decimal places
             hasValidRates = true
           }
         }
@@ -90,6 +105,7 @@ export default function UploadRatePage() {
             row: i + 1,
             kg,
             zones: Object.keys(rateEntry).length - 1,
+            rateType: rateType === "perKg" ? "Calculated from Per Kg" : "Base Rate",
           })
         } else {
           rejected.push({
@@ -105,6 +121,7 @@ export default function UploadRatePage() {
         accepted,
         rejected,
         headers: jsonData[0] || [],
+        rateType: rateType,
       })
     } catch (error) {
       console.error("Error processing rates file:", error)
@@ -215,8 +232,9 @@ export default function UploadRatePage() {
     try {
       const payload = {
         ...rateData,
-        rates: ratesValidation.rates,
+        rates: ratesValidation.rates, // Already converted to base rates if needed
         zones: zonesValidation.zones,
+        uploadedRateType: rateData.rateType, // Track what type was uploaded for reference
       }
 
       const response = await fetch("/api/rates", {
@@ -230,7 +248,7 @@ export default function UploadRatePage() {
       if (response.ok) {
         toast({
           title: "Success",
-          description: "Rate uploaded successfully",
+          description: `Rate uploaded successfully${rateData.rateType === "perKg" ? " (converted from per kg to base rate)" : ""}`,
         })
         router.push("/rates")
       } else {
@@ -254,8 +272,19 @@ export default function UploadRatePage() {
   }
 
   const downloadRatesTemplate = () => {
+    const isPerKg = rateData.rateType === "perKg"
     const wb = XLSX.utils.book_new()
-    const wsData = [
+    
+    // Adjust template values based on rate type
+    const wsData = isPerKg ? [
+      ["kg", "1", "2", "3", "4", "5"],
+      [0.5, 2184, 2170, 2456, 2318, 2896], // These are per kg rates
+      [1, 1315, 1296, 1491, 1297, 1784],
+      [2, 768.5, 766.5, 875.5, 717, 1056.5],
+      [3, 586.33, 590, 670.33, 523.67, 814],
+      [4, 495.25, 501.75, 567.75, 427, 692.75],
+      [5, 440.6, 448.8, 506.2, 369, 620],
+    ] : [
       ["kg", "1", "2", "3", "4", "5"],
       [0.5, 1092, 1085, 1228, 1159, 1448],
       [1, 1315, 1296, 1491, 1297, 1784],
@@ -264,9 +293,10 @@ export default function UploadRatePage() {
       [4, 1981, 2007, 2271, 1708, 2771],
       [5, 2203, 2244, 2531, 1845, 3100],
     ]
+    
     const ws = XLSX.utils.aoa_to_sheet(wsData)
     XLSX.utils.book_append_sheet(wb, ws, "Rates")
-    XLSX.writeFile(wb, "rates_template.xlsx")
+    XLSX.writeFile(wb, `rates_template_${isPerKg ? "per_kg" : "base"}.xlsx`)
   }
 
   const downloadZonesTemplate = () => {
@@ -306,6 +336,39 @@ export default function UploadRatePage() {
           </CardHeader>
           <CardContent>
             <form onSubmit={handleSubmit} className="space-y-4">
+              {/* Rate Type Selection */}
+              <div className="border rounded-lg p-4 bg-muted/30">
+                <Label className="text-base font-semibold mb-3 flex items-center gap-2">
+                  <Calculator className="w-4 h-4" />
+                  Rate Type Selection
+                </Label>
+                <RadioGroup
+                  value={rateData.rateType}
+                  onValueChange={handleRateTypeChange}
+                  className="flex flex-col space-y-2 mt-3"
+                >
+                  <div className="flex items-center space-x-2">
+                    <RadioGroupItem value="base" id="base" />
+                    <Label htmlFor="base" className="font-normal cursor-pointer">
+                      Base Rate (Default) - Rates are already final amounts
+                    </Label>
+                  </div>
+                  <div className="flex items-center space-x-2">
+                    <RadioGroupItem value="perKg" id="perKg" />
+                    <Label htmlFor="perKg" className="font-normal cursor-pointer">
+                      Rate per Kg - Rates will be multiplied by weight to calculate base rate
+                    </Label>
+                  </div>
+                </RadioGroup>
+                {rateData.rateType === "perKg" && (
+                  <div className="mt-3 p-2 bg-blue-50 dark:bg-blue-950 rounded-md">
+                    <p className="text-sm text-blue-600 dark:text-blue-400">
+                      ℹ️ Rates in the file will be multiplied by the corresponding weight (kg) to calculate the base rate before saving.
+                    </p>
+                  </div>
+                )}
+              </div>
+
               <div className="grid md:grid-cols-3 gap-4">
                 <div>
                   <Label htmlFor="type">Type</Label>
@@ -341,7 +404,7 @@ export default function UploadRatePage() {
                   <Label htmlFor="covidCharges">Covid Charges</Label>
                   <Input
                     id="covidCharges"
-                    value={rateData.covideCharges}
+                    value={rateData.covidCharges}
                     onChange={(e) => setRateData({ ...rateData, covidCharges: e.target.value })}
                     placeholder="Covid charges per kg"
                     required
@@ -361,7 +424,9 @@ export default function UploadRatePage() {
 
               <div className="grid md:grid-cols-2 gap-4">
                 <div>
-                  <Label htmlFor="ratesFile">Upload Rates File</Label>
+                  <Label htmlFor="ratesFile">
+                    Upload Rates File {rateData.rateType === "perKg" && "(Per Kg Values)"}
+                  </Label>
                   <div className="flex gap-2">
                     <Input id="ratesFile" type="file" accept=".xlsx,.xls" onChange={handleRatesFileChange} required />
                     <Button type="button" variant="outline" onClick={downloadRatesTemplate}>
@@ -416,6 +481,12 @@ export default function UploadRatePage() {
                           <X className="w-4 h-4 mr-1" />
                           Rejected: {ratesValidation.rejected.length}
                         </Badge>
+                        {ratesValidation.rateType === "perKg" && (
+                          <Badge variant="secondary" className="text-blue-600">
+                            <Calculator className="w-4 h-4 mr-1" />
+                            Converted from Per Kg to Base Rate
+                          </Badge>
+                        )}
                       </div>
 
                       <div className="border rounded-lg overflow-hidden">
@@ -424,7 +495,14 @@ export default function UploadRatePage() {
                             <TableRow>
                               <TableHead>Weight (kg)</TableHead>
                               {ratesValidation.headers.slice(1).map((header, index) => (
-                                <TableHead key={index}>Zone {header}</TableHead>
+                                <TableHead key={index}>
+                                  Zone {header}
+                                  {ratesValidation.rateType === "perKg" && (
+                                    <span className="text-xs block text-muted-foreground">
+                                      (Base Rate)
+                                    </span>
+                                  )}
+                                </TableHead>
                               ))}
                             </TableRow>
                           </TableHeader>
@@ -435,7 +513,14 @@ export default function UploadRatePage() {
                                 {Object.entries(rate)
                                   .filter(([key]) => key !== "kg")
                                   .map(([zone, amount], zoneIndex) => (
-                                    <TableCell key={zoneIndex}>{amount}</TableCell>
+                                    <TableCell key={zoneIndex}>
+                                      {amount}
+                                      {ratesValidation.rateType === "perKg" && (
+                                        <span className="text-xs text-muted-foreground block">
+                                          ({(amount / rate.kg).toFixed(2)}/kg)
+                                        </span>
+                                      )}
+                                    </TableCell>
                                   ))}
                               </TableRow>
                             ))}

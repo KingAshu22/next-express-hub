@@ -5,35 +5,38 @@ import Rate from "@/models/Rate"; // Your mongoose model
 export async function GET(req) {
     const { searchParams } = new URL(req.url);
     const type = searchParams.get("type");
-    let weight = parseFloat(searchParams.get("weight"));
     const country = searchParams.get("country");
     const profitPercent = parseFloat(searchParams.get("profitPercent")) || 0;
+    const inputWeight = parseFloat(searchParams.get("weight"));
 
-    if (!type || !weight || !country) {
-        return NextResponse.json({ error: "Missing required parameters" }, { status: 400 });
+    if (!type || !inputWeight || !country) {
+        return NextResponse.json({ error: "Missing required parameters: type, weight, country" }, { status: 400 });
     }
 
-    // ✅ Round weight to nearest 0.5 kg
-    weight = Math.round(weight * 2) / 2;
+    // 1. Define the different weights to be used in calculations
+    // Weight for base rate calculation (rounded to nearest 0.5 kg)
+    const calculatedWeight = Math.round(inputWeight * 2) / 2;
+    // Weight for extra charges (rounded up to the next whole number)
+    const extraChargesWeight = Math.ceil(inputWeight);
 
     await connectToDB();
 
     try {
-        const rateResult = await Rate.findOne({ type });
+        const rateResult = await Rate.findOne({ originalName: type });
 
         if (!rateResult) {
-            return NextResponse.json({ error: "Type not found in rates" }, { status: 404 });
+            return NextResponse.json({ error: "Courier type not found in rates" }, { status: 404 });
         }
 
-        const { rates, zones } = rateResult;
+        const { rates, zones, fuelCharges: fuelChargesPercentFromDB } = rateResult;
 
-        // find zone for the given country
+        // Find the zone and its specific extra charges for the given country
         let selectedZone;
-        let extraCharges = {};
+        let zoneExtraCharges = {};
         for (const zoneObj of zones) {
             if (zoneObj.countries.includes(country)) {
                 selectedZone = zoneObj.zone;
-                extraCharges = zoneObj.extraCharges || {};
+                zoneExtraCharges = zoneObj.extraCharges || {};
                 break;
             }
         }
@@ -42,110 +45,120 @@ export async function GET(req) {
             return NextResponse.json({ error: "Zone not found for the given country" }, { status: 404 });
         }
 
-        // sort all available weights
+        // Find the correct rate slab for the calculated weight
         const sortedRates = rates
             .map(rate => ({ kg: parseFloat(rate.kg), data: rate }))
             .sort((a, b) => a.kg - b.kg);
 
-        // find exact match
-        let weightRate = sortedRates.find(r => r.kg === weight)?.data;
+        // Find exact match first
+        let weightRateData = sortedRates.find(r => r.kg === calculatedWeight)?.data;
+        let closestDbWeight;
 
-        // if no exact match, find closest lower or equal weight
-        let closestWeight, zoneRate;
-        if (!weightRate) {
-            const fallbackRate = [...sortedRates].reverse().find(r => r.kg <= weight);
+        // If no exact match, find the closest lower or equal weight slab
+        if (!weightRateData) {
+            const fallbackRate = [...sortedRates].reverse().find(r => r.kg <= calculatedWeight);
             if (fallbackRate) {
-                weightRate = fallbackRate.data;
-                closestWeight = fallbackRate.kg;
+                weightRateData = fallbackRate.data;
+                closestDbWeight = fallbackRate.kg;
             } else {
-                return NextResponse.json({ error: "No suitable rate found for the weight" }, { status: 404 });
+                return NextResponse.json({ error: "No suitable rate found for the given weight" }, { status: 404 });
             }
         } else {
-            closestWeight = weight;
+            closestDbWeight = calculatedWeight;
         }
 
-        zoneRate = weightRate[selectedZone];
-        if (!zoneRate) {
+        const zoneRateValue = weightRateData[selectedZone];
+        if (zoneRateValue === undefined || zoneRateValue === null) {
             return NextResponse.json({ error: "Rate not found for the selected zone" }, { status: 404 });
         }
+        
+        // --- START NEW CALCULATION LOGIC ---
 
-        // ✅ calculate per kg rate from closest available weight
-        const perKgRate = parseFloat((zoneRate / closestWeight).toFixed(2));
+        // 1. Get the Base Rate
+        const perKgRate = zoneRateValue / closestDbWeight;
+        const baseRate = perKgRate * calculatedWeight;
 
-        // ✅ base charge using rounded weight
-        const baseCharge = parseFloat((perKgRate * weight).toFixed(2));
-        let baseCharges = baseCharge;
+        // 2. Add Profit (or skip for special rates with refCode)
+        const isSpecialRate = !!rateResult.refCode; // Check if refCode exists and is not empty
+        let profitCharges = 0;
+        let subtotalAfterProfit = baseRate;
 
-        // --- COVID charges ---
-        let covidCharges = 0;
-        if (rateResult.covidCharges !== undefined && rateResult.covidCharges !== null) {
-            // use value from DB (assumed per-kg)
-            covidCharges = parseFloat((rateResult.covidCharges * weight).toFixed(2));
-        } else if (["aramex"].includes(type)) {
-            // fallback logic
-            const covidChargePerKg = 15;
-            covidCharges = parseFloat((covidChargePerKg * weight).toFixed(2));
+        if (!isSpecialRate) {
+            profitCharges = (profitPercent / 100) * baseRate;
+            subtotalAfterProfit += profitCharges;
         }
-        baseCharges += covidCharges;
 
-        // --- Extra charges ---
+        // 3. Add Extra Charges (calculated with upper rounded weight)
         let extraChargeTotal = 0;
-        for (const chargeValue of Object.values(extraCharges)) {
-            const charge = parseFloat((chargeValue * weight).toFixed(2));
-            extraChargeTotal += charge;
+        let extraChargesBreakdown = {};
+        for (const [chargeName, chargeValue] of Object.entries(zoneExtraCharges)) {
+            const chargeAmount = chargeValue * extraChargesWeight;
+            extraChargesBreakdown[chargeName] = chargeAmount;
+            extraChargeTotal += chargeAmount;
         }
-        baseCharges += extraChargeTotal;
+        const subtotalAfterExtraCharges = subtotalAfterProfit + extraChargeTotal;
 
-        // --- Fuel charges ---
-        let fuelCharges = 0;
-        if (rateResult.fuelCharges !== undefined && rateResult.fuelCharges !== null) {
-            // use value from DB (assumed percentage of baseCharges)
-            fuelCharges = parseFloat(((rateResult.fuelCharges / 100) * baseCharges).toFixed(2));
+        // 4. Add Fuel Charges
+        let fuelChargePercent = 0;
+        if (fuelChargesPercentFromDB !== undefined && fuelChargesPercentFromDB !== null) {
+            fuelChargePercent = fuelChargesPercentFromDB;
         } else {
-            // fallback logic
-            if (type === "dhl") {
-                fuelCharges = parseFloat(((27.5 / 100) * baseCharges).toFixed(2));
-            } else if (type === "fedex") {
-                fuelCharges = parseFloat(((29 / 100) * baseCharges).toFixed(2));
-            } else if (type === "ups") {
-                fuelCharges = parseFloat(((30.5 / 100) * baseCharges).toFixed(2));
-            } else if (type === "dtdc") {
-                fuelCharges = parseFloat(((36 / 100) * baseCharges).toFixed(2));
-            } else if (["aramex", "orbit"].includes(type)) {
-                fuelCharges = parseFloat(((35.5 / 100) * baseCharges).toFixed(2));
-            }
+            // Fallback logic if not defined in DB
+            const fallbackFuel = {
+                "dhl": 27.5, "fedex": 29, "ups": 30.5,
+                "dtdc": 36, "aramex": 35.5, "orbit": 35.5
+            };
+            fuelChargePercent = fallbackFuel[rateResult.type] || 0;
         }
-        baseCharges += fuelCharges;
+        
+        const fuelCharges = (fuelChargePercent / 100) * subtotalAfterExtraCharges;
+        const subtotalBeforeGST = subtotalAfterExtraCharges + fuelCharges;
 
-        // --- Profit ---
-        const profitCharges = parseFloat(((profitPercent / 100) * baseCharges).toFixed(2));
-        const total = parseFloat((baseCharges + profitCharges).toFixed(2));
+        // 5. Add GST (18%)
+        const gstAmount = (18 / 100) * subtotalBeforeGST;
 
-        // --- GST ---
-        const GST = parseFloat(((18 / 100) * total).toFixed(2));
-        const totalWithGST = parseFloat((total + GST).toFixed(2));
+        // 6. Calculate Final Total
+        const finalTotal = subtotalBeforeGST + gstAmount;
+
+        // --- END NEW CALCULATION LOGIC ---
 
         return NextResponse.json({
+            // Input Details
             service: rateResult.service,
+            originalName: rateResult.originalName,
             zone: selectedZone,
-            requestedWeight: weight, // ✅ final rounded weight used
-            weight: closestWeight,   // ✅ closest db weight used for per-kg rate
-            rate: perKgRate,
-            zoneRate: parseFloat(zoneRate.toFixed(2)),
-            baseCharge,
-            covidCharges,
-            extraCharges,
-            extraChargeTotal,
-            fuelCharges,
-            baseCharges: parseFloat(baseCharges.toFixed(2)),
-            profitPercent,
-            profitCharges,
-            total,
-            GST,
-            totalWithGST,
+            inputWeight,
+
+            // Weight Calculation Details
+            calculatedWeight,       // Weight used for rate lookup (rounded to 0.5)
+            extraChargesWeight,     // Weight used for extra charges (rounded up)
+            closestDbWeight,        // The DB weight slab used for the per-kg rate
+
+            // Rate Calculation Breakdown
+            isSpecialRate,
+            refCode: weightRateData.refCode || null,
+            baseRate: parseFloat(baseRate.toFixed(2)),
+            
+            // Charges Breakdown
+            profitPercent: isSpecialRate ? 0 : profitPercent,
+            profitCharges: parseFloat(profitCharges.toFixed(2)),
+            
+            extraChargesBreakdown,
+            extraChargeTotal: parseFloat(extraChargeTotal.toFixed(2)),
+            
+            fuelChargePercent,
+            fuelCharges: parseFloat(fuelCharges.toFixed(2)),
+
+            subtotalBeforeGST: parseFloat(subtotalBeforeGST.toFixed(2)),
+            
+            gstAmount: parseFloat(gstAmount.toFixed(2)),
+
+            // Final Total
+            total: parseFloat(finalTotal.toFixed(2)),
         });
+
     } catch (error) {
-        console.error(error);
+        console.error("Error in rate calculation:", error);
         return NextResponse.json({ error: "Internal Server Error" }, { status: 500 });
     }
 }

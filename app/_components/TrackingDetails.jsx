@@ -169,23 +169,23 @@ export default function TrackingDetails({ parcelDetails }) {
       )}
 
       {/* Latest Status Card */}
-      <Card className="bg-gradient-to-r from-orange-500 to-orange-600 text-white shadow-lg">
+      <Card className="bg-gradient-to-r from-yellow-400 to-orange-600 text-black shadow-lg">
         <CardHeader className="flex flex-col md:flex-row items-center justify-between">
           <CardTitle className="text-2xl font-bold flex items-center gap-3">
             Tracking Details
-            <span className="ml-48 flex items-center bg-white text-indigo-700 rounded-lg px-3 py-1 font-semibold shadow-sm">
+            <span className="ml-48 flex items-center bg-white text-blackupda rounded-lg px-3 py-1 font-semibold shadow-sm">
               <Barcode className="w-5 h-5 mr-2" />
               {parcelDetails?.trackingNumber || "N/A"}
             </span>
           </CardTitle>
         </CardHeader>
 
-        <CardContent className="flex flex-col md:flex-row justify-between items-start md:items-center p-6 gap-4">
+        <CardContent className="flex flex-col md:flex-row justify-between items-start md:items-center p-6 gap-4 text-black">
           <div className="flex items-center space-x-3">
             {getStatusIcon(latestStatus)}
             <div>
               <h2 className="text-2xl font-bold">{latestStatus}</h2>
-              <p className="text-sm text-indigo-100">
+              <p className="text-sm text-black">
                 Last updated:{" "}
                 {events.length > 0
                   ? cjData

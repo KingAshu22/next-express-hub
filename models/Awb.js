@@ -17,6 +17,7 @@ const AwbSchema = new Schema({
   shippingCurrency: String,
   via: String,
   refCode: String,
+  clientRefNo: String,
   sender: UserSchema,
   receiver: UserSchema,
   billTo: UserSchema,

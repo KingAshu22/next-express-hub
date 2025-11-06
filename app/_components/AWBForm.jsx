@@ -136,6 +136,7 @@ export default function AWBForm({ isEdit = false, awb }) {
 
   const [refCode, setRefCode] = useState(awb?.refCode || "")
   const [refOptions, setRefOptions] = useState([])
+  const [clientRefNo, setClientRefNo] = useState(awb?.clientRefNo || "")
   const [refSearchTerm, setRefSearchTerm] = useState("")
   const [isRefDropdownOpen, setIsRefDropdownOpen] = useState(false)
   const [selectedRefOption, setSelectedRefOption] = useState(null)
@@ -956,6 +957,7 @@ const [isClient, setIsClient] = useState(userType === "client");
         via,
         shipmentType,
         refCode,
+        clientRefNo,
         forwardingNumber,
         forwardingLink,
         cNoteNumber,
@@ -1146,7 +1148,7 @@ const [isClient, setIsClient] = useState(userType === "client");
           <CardHeader className="-mt-4">
             <CardTitle className="text-sm text-[#232C65]">Basic Details</CardTitle>
           </CardHeader>
-          <CardContent className="grid grid-cols-8 gap-1 -my-6">
+          <CardContent className="grid grid-cols-9 gap-1 -my-6">
             <div className="space-y-1">
               <Label htmlFor="invoiceNumber" className="text-xs">
                 Sr No:
@@ -1284,7 +1286,7 @@ const [isClient, setIsClient] = useState(userType === "client");
             </div>
               <div className="relative">
                 <Label htmlFor="refCode" className="text-xs">
-                  Reference Code
+                  Client
                 </Label>
                 {localStorage.getItem("userType") === "admin" ||
                 localStorage.getItem("userType") === "branch" ||
@@ -1343,6 +1345,20 @@ const [isClient, setIsClient] = useState(userType === "client");
                   />
                 )}
               </div>
+              <div className="space-y-1">
+              <Label htmlFor="clientRefNo" className="text-xs">
+                Client Ref No:
+              </Label>
+              <Input
+                id="clientRefNo"
+                type="text"
+                placeholder="Client Ref No."
+                value={clientRefNo}
+                onChange={(e) => setClientRefNo(e.target.value)}
+                className="h-6 text-xs"
+                disabled={true}
+              />
+            </div>
             {isEdit && (
               <>
                 <div className="space-y-1">

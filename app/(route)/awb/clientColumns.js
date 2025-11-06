@@ -84,6 +84,12 @@ export const clientColumns = [
             return (
                 <div className="flex flex-rows gap-2">
                     <Button
+                        className="px-2 py-1 bg-purple-800"
+                        onClick={() => router.push(`/edit-awb/${trackingNumber}`)}
+                    >
+                        Edit
+                    </Button>
+                    <Button
                         className="px-2 py-1 bg-yellow-800"
                         onClick={() => window.open(`/track/${trackingNumber}`)}
                     >

@@ -1,6 +1,6 @@
-"use client";
+"use client"
 
-import { Button } from "@/components/ui/button";
+import { Button } from "@/components/ui/button"
 import {
   AlertDialog,
   AlertDialogAction,
@@ -11,231 +11,218 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
   AlertDialogTrigger,
-} from "@/components/ui/alert-dialog";
-import {
-  ArrowUpDown,
-  Eye,
-  LayoutDashboard,
-  Pencil,
-  Trash,
-  Plane,
-  Barcode,
-} from "lucide-react";
-import { useEffect, useState } from "react";
-import axios from "axios";
-import { useRouter } from "next/navigation";
+} from "@/components/ui/alert-dialog"
+import { LayoutDashboard, Pencil, Trash, Plane, Barcode } from "lucide-react"
+import { useEffect, useState } from "react"
+import axios from "axios"
+import { useRouter } from "next/navigation"
+
+// --- START: OPTIMIZATION LOGIC ---
+
+// Helper function to truncate text if it exceeds a certain length.
+const truncateText = (text, maxLength = 20) => {
+  if (!text) return "N/A"
+  if (text.length <= maxLength) {
+    return text
+  }
+  return text.slice(0, maxLength) + "..."
+}
+
+// Module-level promise to cache the client/franchise data.
+// This ensures we only fetch this data ONCE per page load, for all components.
+let dataMapPromise = null
+
+const getClientAndFranchiseMap = () => {
+  // If the promise doesn't exist, create it.
+  if (!dataMapPromise) {
+    dataMapPromise = new Promise(async (resolve, reject) => {
+      try {
+        // Fetch both clients and franchises at the same time.
+        const [clientsRes, franchisesRes] = await Promise.all([
+          axios.get("/api/clients").catch(() => ({ data: [] })), // Add catch to prevent one failure from breaking both
+          axios.get("/api/franchises").catch(() => ({ data: [] })),
+        ])
+
+        // Use a Map for fast O(1) lookups by ID/code.
+        const combinedMap = new Map()
+
+        // Process clients and add them to the map.
+        ;(clientsRes.data || []).forEach((c) => {
+          const key = c.code || c.id
+          const name = c.companyName || c.name || "Unnamed Client"
+          if (key) combinedMap.set(key, name)
+        })
+
+        // Process franchises. They will overwrite clients if keys conflict (which is fine).
+        ;(franchisesRes.data || []).forEach((f) => {
+          const key = f.code || f.id
+          const name = f.firmName || f.name || "Unnamed Franchise"
+          if (key) combinedMap.set(key, name)
+        })
+
+        resolve(combinedMap)
+      } catch (error) {
+        console.error("Failed to pre-fetch client/franchise data:", error)
+        dataMapPromise = null // Reset on failure so the next component can retry.
+        reject(error)
+      }
+    })
+  }
+  // Return the promise (either the one we just created or the existing one).
+  return dataMapPromise
+}
+
+// The new, highly-optimized ShowName component.
+const ShowName = ({ id }) => {
+  const [name, setName] = useState("Loading...")
+
+  useEffect(() => {
+    if (!id) {
+      setName("N/A")
+      return
+    }
+
+    let isMounted = true
+
+    // Use the cached data fetching function.
+    getClientAndFranchiseMap()
+      .then((dataMap) => {
+        if (isMounted) {
+          const foundName = dataMap.get(id)
+          setName(foundName || "Unknown")
+        }
+      })
+      .catch(() => {
+        if (isMounted) setName("Error")
+      })
+
+    // Cleanup function to prevent state updates on unmounted components.
+    return () => {
+      isMounted = false
+    }
+  }, [id])
+
+  return <span>{truncateText(name)}</span>
+}
+
+// --- END: OPTIMIZATION LOGIC ---
 
 const deleteAwb = async (trackingNumber) => {
   try {
     await axios.delete(`/api/awb/${trackingNumber}`, {
       withCredentials: true,
-    });
+    })
+    // Reload the page to reflect the deletion.
+    // In a more complex app, you might trigger a state update instead.
+    window.location.reload()
   } catch (error) {
-    console.error("Error Deleting AWB:", error);
+    console.error("Error Deleting AWB:", error)
+    // You could show an error toast to the user here.
   }
-};
-
-const ShowName = ({ id }) => {
-  const [name, setName] = useState("Loading...");
-
-  useEffect(() => {
-    const fetchClient = async () => {
-      try {
-        let data = null;
-
-        // Try franchise API
-        try {
-          const franchiseRes = await axios.get(`/api/franchises/${id}`);
-          data = franchiseRes.data;
-        } catch (err) {
-          if (err.response && err.response.status === 404) {
-            // If 404, fallback to clients API
-            try {
-              const clientRes = await axios.get(`/api/clients/${id}`);
-              data = clientRes.data[0];
-            } catch (clientErr) {
-              if (clientErr.response && clientErr.response.status === 404) {
-                setName("Error"); // not found in both
-                return;
-              } else {
-                throw clientErr; // other error from clients API
-              }
-            }
-          } else {
-            throw err; // other error from franchises API
-          }
-        }
-
-        setName(data?.companyName || data?.firmName.slice(0, 10) || data?.name || "Unknown Client");
-      } catch (err) {
-        console.error("Error fetching client:", err);
-        setName("Error");
-      }
-    };
-
-    if (id) fetchClient();
-  }, [id]);
-
-  return <span>{name}</span>;
-};
+}
 
 export const adminColumns = [
   {
     accessorKey: "date",
     header: "Date",
     cell: ({ row }) => {
-      const date = row.original.date;
-      return (
-        <span>
-          {date
-            ? new Date(date).toLocaleDateString("en-GB")
-            : "No date available"}
-        </span>
-      );
+      const date = row.original.date
+      return <span>{date ? new Date(date).toLocaleDateString("en-GB") : "N/A"}</span>
     },
-  },
-  {
-    accessorKey: "invoiceNumber",
-    header: ({ column }) => (
-      <span
-        onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}
-        className="flex items-center gap-1 cursor-pointer"
-      >
-        INV <ArrowUpDown className="ml-2 h-4 w-4" />
-      </span>
-    ),
   },
   {
     accessorKey: "trackingNumber",
-    header: ({ column }) => (
-      <span
-        onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}
-        className="flex items-center gap-1 cursor-pointer"
-      >
-        Tracking <ArrowUpDown className="ml-2 h-4 w-4" />
-      </span>
-    ),
+    header: "Tracking",
     cell: ({ row }) => {
-      const trackingNumber = row.original.trackingNumber;
-      const hasForwardingInfo =
-        row.original?.forwardingNumber?.length > 0 &&
-        row.original?.forwardingLink?.length > 0;
-
-      const handleClick = () => {
-        window.location.href = `/awb/${trackingNumber}`;
-      };
+      const trackingNumber = row.original.trackingNumber
+      const hasForwardingInfo = row.original?.forwardingNumber?.length > 0 && row.original?.forwardingLink?.length > 0
+      
+      // The useRouter hook must be called inside the cell render prop.
+      const router = useRouter()
 
       return (
         <span
-          className={`cursor-pointer ${hasForwardingInfo ? "text-black" : "text-red-500"}`}
-          onClick={handleClick}
+          className={`cursor-pointer hover:underline ${hasForwardingInfo ? "text-blue-600" : "text-red-500"}`}
+          onClick={() => router.push(`/awb/${trackingNumber}`)}
         >
           {trackingNumber}
         </span>
-      );
+      )
     },
   },
-
   {
-    accessorKey: "staffId",
-    header: ({ column }) => (
-      <span
-        onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}
-        className="flex items-center gap-1 cursor-pointer"
-      >
-        Client <ArrowUpDown className="ml-2 h-4 w-4" />
-      </span>
-    ),
+    accessorKey: "refCode", // Correct key for client/franchise reference
+    header: "Client / Franchise",
     cell: ({ row }) => {
-      const refCode = row.original.refCode;
-      return refCode ? <ShowName id={refCode} /> : <span>Unknown</span>;
+      const refCode = row.original.refCode
+      // Use the new, efficient ShowName component.
+      return refCode ? <ShowName id={refCode} /> : <span>N/A</span>
     },
   },
   {
-    accessorKey: "country",
+    accessorKey: "receiver.country", // Use dot notation for nested data
     header: "Country",
     cell: ({ row }) => {
-      const country = row.original.receiver?.country;
-      return <span>{country ? country.slice(0, 20) : "Unknown"}</span>;
+      const country = row.original.receiver?.country
+      return <span>{truncateText(country)}</span>
     },
   },
   {
-    accessorKey: "senderName",
+    accessorKey: "sender.name", // Use dot notation for nested data
     header: "Sender Name",
     cell: ({ row }) => {
-      const senderName = row.original.sender?.name;
-      return <span>{senderName ? senderName.slice(0, 20) : "Unknown"}</span>;
+      const senderName = row.original.sender?.name
+      return <span>{truncateText(senderName)}</span>
     },
   },
   {
-    accessorKey: "receiverName",
+    accessorKey: "receiver.name", // Use dot notation for nested data
     header: "Receiver Name",
     cell: ({ row }) => {
-      const receiverName = row.original.receiver?.name;
-      return <span>{receiverName ? receiverName.slice(0, 20) : "Unknown"}</span>;
+      const receiverName = row.original.receiver?.name
+      return <span>{truncateText(receiverName)}</span>
     },
   },
   {
     id: "actions",
     header: "Actions",
     cell: ({ row }) => {
-      const router = useRouter();
-      const { trackingNumber } = row.original;
+      const router = useRouter()
+      const { trackingNumber } = row.original
 
       return (
-        <div className="flex gap-2">
-          <Button
-            className="bg-blue-400"
-            onClick={() => router.push(`/shipping-and-label/${trackingNumber}`)}
-          >
-            <Plane className="w-5 h-5" />
-            <Barcode className="w-5 h-5" />
+        <div className="flex items-center gap-2">
+          <Button title="Shipping & Label" size="icon" className="h-8 w-8 bg-blue-400" onClick={() => router.push(`/shipping-and-label/${trackingNumber}`)}>
+            <Plane className="w-4 h-4" />
           </Button>
-          <Button
-            className="bg-blue-800"
-            onClick={() => router.push(`/edit-awb/${trackingNumber}`)}
-          >
-            <Pencil className="w-5 h-5" />
+          <Button title="Edit AWB" size="icon" className="h-8 w-8 bg-blue-800" onClick={() => router.push(`/edit-awb/${trackingNumber}`)}>
+            <Pencil className="w-4 h-4" />
           </Button>
-          <Button
-            onClick={() => router.push(`/awb/update-track/${trackingNumber}`)}
-          >
-            <LayoutDashboard className="w-5 h-5" />
-          </Button>
-          <Button
-            onClick={() => router.push(`/shipping-invoice/${trackingNumber}`)}
-          >
-            <Plane className="w-5 h-5" />
-          </Button>
-          <Button onClick={() => router.push(`/label/${trackingNumber}`)}>
-            <Barcode className="w-5 h-5" />
+          <Button title="Update Tracking" size="icon" className="h-8 w-8" onClick={() => router.push(`/awb/update-track/${trackingNumber}`)}>
+            <LayoutDashboard className="w-4 h-4" />
           </Button>
           <AlertDialog>
             <AlertDialogTrigger asChild>
-              <Button variant="ghost">
-                <Trash className="w-5 h-5 text-red-500" />
+              <Button title="Delete AWB" variant="ghost" size="icon" className="h-8 w-8 hover:bg-red-100">
+                <Trash className="w-4 h-4 text-red-500" />
               </Button>
             </AlertDialogTrigger>
             <AlertDialogContent>
               <AlertDialogHeader>
-                <AlertDialogTitle>Are you sure?</AlertDialogTitle>
+                <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
                 <AlertDialogDescription>
-                  Deleting AWB with Tracking Number:{" "}
-                  <strong>{trackingNumber}</strong> cannot be undone.
+                  This action cannot be undone. This will permanently delete the AWB with Tracking Number:{" "}
+                  <strong>{trackingNumber}</strong>.
                 </AlertDialogDescription>
               </AlertDialogHeader>
               <AlertDialogFooter>
                 <AlertDialogCancel>Cancel</AlertDialogCancel>
-                <AlertDialogAction
-                  onClick={() => deleteAwb(trackingNumber)}
-                >
-                  Delete
-                </AlertDialogAction>
+                <AlertDialogAction className="bg-red-500 hover:bg-red-600" onClick={() => deleteAwb(trackingNumber)}>Delete</AlertDialogAction>
               </AlertDialogFooter>
             </AlertDialogContent>
           </AlertDialog>
         </div>
-      );
+      )
     },
   },
-];
+]

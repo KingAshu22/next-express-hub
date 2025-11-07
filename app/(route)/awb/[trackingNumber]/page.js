@@ -5,6 +5,7 @@ import axios from "axios";
 import Image from "next/image";
 import { Earth, Mail, MapPin, MoveRight, Phone, Printer } from "lucide-react";
 import Barcode from "react-barcode"; // Import the barcode package
+import Link from "next/link";
 
 export default function AWBView({ params }) {
   const { trackingNumber } = use(params);
@@ -73,8 +74,8 @@ export default function AWBView({ params }) {
             </div>
 
             {/* Barcode Section */}
-            <div className="mx-4">
-              <Barcode
+            <div className="mx-4 cursor-pointer" onClick={() => window.open(`/track/${awbData?.trackingNumber}`)}>
+                <Barcode
                 height={60}
                 fontSize={15}
                 value={awbData?.trackingNumber}

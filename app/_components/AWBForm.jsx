@@ -185,7 +185,7 @@ export default function AWBForm({ isEdit = false, awb }) {
   const [vendorBoxes, setVendorBoxes] = useState(awb?.vendorBoxes || [])
 
   const userType = typeof window !== "undefined" ? localStorage.getItem("userType") : "";
-const [isClient, setIsClient] = useState(userType === "client");
+  const [isClient, setIsClient] = useState(userType === "client");
 
   // Derived state
   const [totalChargeableWeight, setTotalChargeableWeight] = useState("")
@@ -345,50 +345,50 @@ const [isClient, setIsClient] = useState(userType === "client");
   }, [])
 
   useEffect(() => {
-  const userType = localStorage.getItem("userType");
-  const code = localStorage.getItem("code");
+    const userType = localStorage.getItem("userType");
+    const code = localStorage.getItem("code");
 
-  if (userType === "client" && code) {
-    const fetchClientData = async () => {
-      try {
-        const res = await axios.get(`/api/clients/${code}`);
-        const client = Array.isArray(res.data) ? res.data[0] : res.data;
+    if (userType === "client" && code) {
+      const fetchClientData = async () => {
+        try {
+          const res = await axios.get(`/api/clients/${code}`);
+          const client = Array.isArray(res.data) ? res.data[0] : res.data;
 
-        if (client) {
-          setSenderName(client.name || "");
-          setSenderCompanyName(client.companyName || "");
-          setSenderZipCode(client.zip || "");
-          setSenderCountry(client.country || "India");
-          setSenderContact(client.contact?.toString() || "");
-          setSenderAddress(client.address || "");
-          setKycType(client.kyc?.type || "Aadhaar No");
-          setKyc(client.kyc?.kyc || "");
-          setKycDocument(client.kyc?.document || "");
-          setGst(client.gstNo || "");
+          if (client) {
+            setSenderName(client.name || "");
+            setSenderCompanyName(client.companyName || "");
+            setSenderZipCode(client.zip || "");
+            setSenderCountry(client.country || "India");
+            setSenderContact(client.contact?.toString() || "");
+            setSenderAddress(client.address || "");
+            setKycType(client.kyc?.type || "Aadhaar No");
+            setKyc(client.kyc?.kyc || "");
+            setKycDocument(client.kyc?.document || "");
+            setGst(client.gstNo || "");
+          }
+        } catch (err) {
+          console.error("Error fetching client data:", err);
+          toast.error("Failed to fetch client details");
         }
-      } catch (err) {
-        console.error("Error fetching client data:", err);
-        toast.error("Failed to fetch client details");
-      }
-    };
+      };
 
-    fetchClientData();
-  }
-}, []);
+      fetchClientData();
+    }
+  }, []);
 
   useEffect(() => {
-  if (isEdit) {
-    const storedCode = awb?.refCode || "";
+    if (isEdit) {
+      const storedCode = awb?.refCode || "";
 
-    if (storedCode && refOptions.length > 0) {
-      const matchingOption = refOptions.find((opt) => opt.code === storedCode);
+      if (storedCode && refOptions.length > 0) {
+        const matchingOption = refOptions.find((opt) => opt.code === storedCode);
 
-      if (matchingOption) {
-        setRefSearchTerm(matchingOption.name); // show name in input
+        if (matchingOption) {
+          setRefSearchTerm(matchingOption.name); // show name in input
+        }
       }
     }
-  }
-}, [isEdit, refOptions]);
+  }, [isEdit, refOptions]);
 
   const filteredRefOptions = refOptions.filter(
     (option) =>
@@ -530,26 +530,45 @@ const [isClient, setIsClient] = useState(userType === "client");
 
   // Fetch postal location data
   const fetchPostalData = async (postalCode, countryCode) => {
-    try {
-      const response = await axios.get(`https://api.worldpostallocations.com/pincode`, {
-        params: {
-          apikey: process.env.NEXT_PUBLIC_POSTAL_API_KEY,
-          postalcode: postalCode,
-          countrycode: countryCode,
-        },
-      })
+    const maxRetries = 3;
+    const delay = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 
-      console.log("Postal data response:", response.data)
+    for (let attempt = 1; attempt <= maxRetries; attempt++) {
+      try {
+        console.log(`Attempt ${attempt} to fetch postal data...`);
 
-      if (response.data && response.data.status === true && response.data.result && response.data.result.length > 0) {
-        return response.data.result[0] // Return the first result
+        const response = await axios.get(`https://api.worldpostallocations.com/pincode`, {
+          params: {
+            apikey: process.env.NEXT_PUBLIC_POSTAL_API_KEY,
+            postalcode: postalCode,
+            countrycode: countryCode,
+          },
+        });
+
+        console.log("Postal data response:", response.data);
+
+        if (
+          response.data &&
+          response.data.status === true &&
+          response.data.result &&
+          response.data.result.length > 0
+        ) {
+          return response.data.result[0]; // ✅ Return the first valid result
+        }
+
+        console.warn(`Attempt ${attempt} failed: Invalid response, retrying...`);
+
+      } catch (error) {
+        console.error(`Attempt ${attempt} error:`, error.message);
       }
-      return null
-    } catch (error) {
-      console.error("Error fetching postal data:", error)
-      return null
+
+      // Wait 1 second before retrying (optional)
+      if (attempt < maxRetries) await delay(1000);
     }
-  }
+
+    console.error("❌ Failed to fetch postal data after 3 attempts.");
+    return null;
+  };
 
   // Auto-fill sender address when zip code changes
   useEffect(() => {
@@ -561,11 +580,17 @@ const [isClient, setIsClient] = useState(userType === "client");
         const postalData = await fetchPostalData(senderZipCode, countryCode)
         if (postalData) {
           const { postalLocation, province, district, state } = postalData
-          const formattedAddress = [postalLocation, province, district, state].filter(Boolean).join(", ")
+          const formattedAddress = [postalLocation, province].filter(Boolean).join(", ")
 
           // Only update if address is empty or user confirms
           if (!senderAddress) {
             setSenderAddress(formattedAddress)
+          }
+          if (!senderCity) {
+            setSenderCity(district)
+          }
+          if (!senderState) {
+            setSenderState(state)
           }
         }
       }
@@ -584,11 +609,17 @@ const [isClient, setIsClient] = useState(userType === "client");
         const postalData = await fetchPostalData(receiverZipCode, countryCode)
         if (postalData) {
           const { postalLocation, province, district, state } = postalData
-          const formattedAddress = [postalLocation, province, district, state].filter(Boolean).join(", ")
+          const formattedAddress = [postalLocation, province].filter(Boolean).join(", ")
 
           // Only update if address is empty
           if (!receiverAddress) {
             setReceiverAddress(formattedAddress)
+          }
+          if (!receiverCity) {
+            setReceiverCity(district)
+          }
+          if (!receiverState) {
+            setReceiverState(state)
           }
         }
       }
@@ -1000,16 +1031,16 @@ const [isClient, setIsClient] = useState(userType === "client");
         ...(isEdit
           ? {}
           : {
-              parcelStatus: [
-                {
-                  status: "Shipment AWB Prepared - BOM HUB",
-                  timestamp: new Date(),
-                  comment: "",
-                },
-              ],
-              ourBoxes: boxes,
-              vendorBoxes: boxes,
-            }),
+            parcelStatus: [
+              {
+                status: "Shipment AWB Prepared - BOM HUB",
+                timestamp: new Date(),
+                comment: "",
+              },
+            ],
+            ourBoxes: boxes,
+            vendorBoxes: boxes,
+          }),
         // Add selected rate information if available
         ...(selectedRate && {
           rateInfo: {
@@ -1284,68 +1315,68 @@ const [isClient, setIsClient] = useState(userType === "client");
                 </PopoverContent>
               </Popover>
             </div>
-              <div className="relative">
-                <Label htmlFor="refCode" className="text-xs">
-                  Client
-                </Label>
-                {localStorage.getItem("userType") === "admin" ||
+            <div className="relative">
+              <Label htmlFor="refCode" className="text-xs">
+                Client
+              </Label>
+              {localStorage.getItem("userType") === "admin" ||
                 localStorage.getItem("userType") === "branch" ||
                 localStorage.getItem("userType") === "franchise" ? (
-                  <div className="relative">
-                    <Input
-                      id="refCode"
-                      type="text"
-                      placeholder={localStorage.getItem("name") || "Franchise/Client Name"}
-                      value={refSearchTerm}
-                      onChange={(e) => {
-                        setRefSearchTerm(e.target.value)
-                        setIsRefDropdownOpen(true)
-                      }}
-                      onFocus={() => setIsRefDropdownOpen(true)}
-                      className="h-6 text-xs pr-8"
-                      autoComplete="off"
-                    />
-                    <ChevronDown
-                      className="absolute right-2 top-1/2 transform -translate-y-1/2 h-3 w-3 text-gray-400 cursor-pointer"
-                      onClick={() => setIsRefDropdownOpen(!isRefDropdownOpen)}
-                    />
-
-                    {isRefDropdownOpen && (
-                      <div className="absolute z-50 w-full mt-1 bg-white border border-gray-300 rounded-md shadow-lg max-h-40 overflow-y-auto">
-                        {filteredRefOptions.length > 0 ? (
-                          filteredRefOptions.map((option) => (
-                            <div
-                              key={`${option.type}-${option.code}`}
-                              className="px-3 py-2 hover:bg-gray-100 cursor-pointer text-xs flex justify-between items-center"
-                              onClick={() => handleRefOptionSelect(option)}
-                            >
-                              <span className="text-[10px]">{option.name}</span>
-                              <span className="text-gray-500 text-[10px]">
-                                {option.type === "franchise" ? "F" : "C"}-{option.code}
-                              </span>
-                            </div>
-                          ))
-                        ) : (
-                          <div className="px-3 py-2 text-gray-500 text-xs">No options found</div>
-                        )}
-                      </div>
-                    )}
-                  </div>
-                ) : (
+                <div className="relative">
                   <Input
                     id="refCode"
-                    type="number"
-                    placeholder="Reference Code"
-                    required
-                    value={refCode}
-                    onChange={(e) => setRefCode(e.target.value)}
+                    type="text"
+                    placeholder={localStorage.getItem("name") || "Franchise/Client Name"}
+                    value={refSearchTerm}
+                    onChange={(e) => {
+                      setRefSearchTerm(e.target.value)
+                      setIsRefDropdownOpen(true)
+                    }}
+                    onFocus={() => setIsRefDropdownOpen(true)}
+                    className="h-6 text-xs pr-8"
                     autoComplete="off"
-                    className="h-6 text-xs"
-                    disabled={isClient}
                   />
-                )}
-              </div>
-              <div className="space-y-1">
+                  <ChevronDown
+                    className="absolute right-2 top-1/2 transform -translate-y-1/2 h-3 w-3 text-gray-400 cursor-pointer"
+                    onClick={() => setIsRefDropdownOpen(!isRefDropdownOpen)}
+                  />
+
+                  {isRefDropdownOpen && (
+                    <div className="absolute z-50 w-full mt-1 bg-white border border-gray-300 rounded-md shadow-lg max-h-40 overflow-y-auto">
+                      {filteredRefOptions.length > 0 ? (
+                        filteredRefOptions.map((option) => (
+                          <div
+                            key={`${option.type}-${option.code}`}
+                            className="px-3 py-2 hover:bg-gray-100 cursor-pointer text-xs flex justify-between items-center"
+                            onClick={() => handleRefOptionSelect(option)}
+                          >
+                            <span className="text-[10px]">{option.name}</span>
+                            <span className="text-gray-500 text-[10px]">
+                              {option.type === "franchise" ? "F" : "C"}-{option.code}
+                            </span>
+                          </div>
+                        ))
+                      ) : (
+                        <div className="px-3 py-2 text-gray-500 text-xs">No options found</div>
+                      )}
+                    </div>
+                  )}
+                </div>
+              ) : (
+                <Input
+                  id="refCode"
+                  type="number"
+                  placeholder="Reference Code"
+                  required
+                  value={refCode}
+                  onChange={(e) => setRefCode(e.target.value)}
+                  autoComplete="off"
+                  className="h-6 text-xs"
+                  disabled={isClient}
+                />
+              )}
+            </div>
+            <div className="space-y-1">
               <Label htmlFor="clientRefNo" className="text-xs">
                 Client Ref No:
               </Label>
@@ -1823,12 +1854,12 @@ const [isClient, setIsClient] = useState(userType === "client");
                 <Label htmlFor="senderAddress" className="text-xs">
                   Address Line 1*
                 </Label>
-                <Textarea
+                <Input
                   id="senderAddress"
                   placeholder="Sender Address"
                   value={senderAddress}
                   onChange={(e) => setSenderAddress(e.target.value)}
-                  rows={2}
+                  rows={1}
                   required
                   className="text-xs resize-none"
                   disabled={isClient}
@@ -1838,13 +1869,12 @@ const [isClient, setIsClient] = useState(userType === "client");
                 <Label htmlFor="senderAddress2" className="text-xs">
                   Address Line 2
                 </Label>
-                <Textarea
+                <Input
                   id="senderAddress2"
                   placeholder="Sender Address 2"
                   value={senderAddress2}
                   onChange={(e) => setSenderAddress2(e.target.value)}
-                  rows={2}
-                  required
+                  rows={1}
                   className="text-xs resize-none"
                   disabled={isClient}
                 />
@@ -1859,6 +1889,7 @@ const [isClient, setIsClient] = useState(userType === "client");
                   type="text"
                   placeholder="Sender City"
                   value={senderCity}
+                  required
                   onChange={(e) => setSenderCity(e.target.value)}
                   className="h-6 text-xs"
                 />
@@ -1873,6 +1904,7 @@ const [isClient, setIsClient] = useState(userType === "client");
                   type="text"
                   placeholder="Sender State"
                   value={senderState}
+                  required
                   onChange={(e) => setSenderState(e.target.value)}
                   className="h-6 text-xs"
                 />
@@ -1915,7 +1947,7 @@ const [isClient, setIsClient] = useState(userType === "client");
                   disabled={isClient}
                 />
               </div>
-              <div className="space-y-1">
+              {/* <div className="space-y-1">
                 <Label htmlFor="kycDocument" className="text-xs">
                   KYC Document*
                 </Label>
@@ -1925,11 +1957,10 @@ const [isClient, setIsClient] = useState(userType === "client");
                   placeholder="KYC Document"
                   value={kycDocument}
                   onChange={(e) => setKycDocument(e.target.value)}
-                  required
                   className="h-6 text-xs"
                   disabled={isClient}
                 />
-              </div>
+              </div> */}
               <div className="space-y-1">
                 <Label htmlFor="gst" className="text-xs">
                   GST
@@ -2049,9 +2080,9 @@ const [isClient, setIsClient] = useState(userType === "client");
               </div>
               <div className="space-y-1 col-span-3">
                 <Label htmlFor="receiverAddress" className="text-xs">
-                  Address*
+                  Address Line 1*
                 </Label>
-                <Textarea
+                <Input
                   id="receiverAddress"
                   placeholder="Receiver Address"
                   value={receiverAddress}
@@ -2066,13 +2097,12 @@ const [isClient, setIsClient] = useState(userType === "client");
                 <Label htmlFor="receiverAddress2" className="text-xs">
                   Address Line 2
                 </Label>
-                <Textarea
+                <Input
                   id="receiverAddress2"
                   placeholder="Receiver Address 2"
                   value={receiverAddress2}
                   onChange={(e) => setReceiverAddress2(e.target.value)}
                   rows={2}
-                  required
                   className="text-xs resize-none"
                   disabled={isClient}
                 />
@@ -2087,6 +2117,7 @@ const [isClient, setIsClient] = useState(userType === "client");
                   type="text"
                   placeholder="Receiver City"
                   value={receiverCity}
+                  required
                   onChange={(e) => setReceiverCity(e.target.value)}
                   className="h-6 text-xs"
                 />
@@ -2101,6 +2132,7 @@ const [isClient, setIsClient] = useState(userType === "client");
                   type="text"
                   placeholder="Receiver State"
                   value={receiverState}
+                  required
                   onChange={(e) => setReceiverState(e.target.value)}
                   className="h-6 text-xs"
                 />

@@ -94,3 +94,79 @@ export async function GET(req) {
     return NextResponse.json({ error: "Failed to fetch Awb" }, { status: 500 })
   }
 }
+
+export async function POST(req) {
+  try {
+    console.log("Inside /api/awb");
+    await connectToDB();
+    const data = await req.json();
+
+    console.log(data);
+
+    const awb = new Awb(data);
+    await awb.save();
+
+    // Update or create customer1 (sender)
+    await Customer.findOneAndUpdate(
+      {
+        name: data.sender.name,
+        owner: data.staffId
+      },
+      {
+        $set: {
+          companyName: data.sender.companyName,
+          email: data.sender.email,
+          address: data.sender.address,
+          address2: data.sender.address2,
+          city: data.sender.city,
+          state: data.sender.state,
+          country: data.sender.country,
+          zip: data.sender.zip,
+          contact: data.sender.contact,
+          kyc: data.sender.kyc,
+          gst: data.sender.gst,
+          role: "customer",
+          owner: data.staffId,
+        },
+      },
+      { upsert: true, new: true }
+    );
+
+    // Update or create customer2 (receiver)
+    await Customer.findOneAndUpdate(
+      {
+        name: data.receiver.name,
+        owner: data.staffId
+      },
+      {
+        $set: {
+          companyName: data.receiver.companyName,
+          email: data.receiver.email,
+          address: data.receiver.address,
+          address2: data.receiver.address2,
+          city: data.receiver.city,
+          state: data.receiver.state,
+          country: data.receiver.country,
+          zip: data.receiver.zip,
+          contact: data.receiver.contact,
+          kyc: data.receiver.kyc,
+          gst: data.receiver.gst,
+          role: "customer",
+          owner: data.staffId,
+        },
+      },
+      { upsert: true, new: true }
+    );
+
+    return NextResponse.json(
+      { message: "Parcel added successfully!", awb },
+      { status: 200 }
+    );
+  } catch (error) {
+    console.error("Error in POST /api/awb:", error.message);
+    return NextResponse.json(
+      { error: "Internal Server Error" },
+      { status: 500 }
+    );
+  }
+}

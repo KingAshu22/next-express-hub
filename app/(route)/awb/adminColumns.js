@@ -135,7 +135,7 @@ export const adminColumns = [
     header: "Tracking",
     cell: ({ row }) => {
       const trackingNumber = row.original.trackingNumber
-      const hasForwardingInfo = row.original?.forwardingNumber?.length > 0 && row.original?.forwardingLink?.length > 0
+      const hasForwardingInfo = row.original?.forwardingNumber?.length > 0 && row.original?.forwardingLink?.length > 0 || row.original?.cNoteNumber?.length > 0
       
       // The useRouter hook must be called inside the cell render prop.
       const router = useRouter()

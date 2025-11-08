@@ -2104,7 +2104,6 @@ export default function AWBForm({ isEdit = false, awb }) {
                   onChange={(e) => setReceiverAddress2(e.target.value)}
                   rows={2}
                   className="text-xs resize-none"
-                  disabled={isClient}
                 />
               </div>
 

@@ -61,7 +61,7 @@ export async function GET(req) {
     let baseQuery = Awb.find(query)
       .sort({ date: -1 })
       .select(
-        "date invoiceNumber trackingNumber refCode receiver.country receiver.name sender.name forwardingNumber forwardingLink parcelStatus",
+        "date invoiceNumber trackingNumber refCode receiver.country receiver.name sender.name forwardingNumber forwardingLink parcelStatus cNoteNumber",
       )
 
     if (isPaginated) {

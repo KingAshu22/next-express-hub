@@ -75,6 +75,9 @@ export const clientColumns = [
       const { trackingNumber } = row.original
       return (
         <div className="flex flex-wrap gap-2">
+          <Button size="sm" className="px-2 py-1 bg-green-800" onClick={() => router.push(`/awb/${trackingNumber}`)}>
+            AWB
+          </Button>
           <Button size="sm" className="px-2 py-1 bg-purple-800" onClick={() => router.push(`/edit-awb/${trackingNumber}`)}>
             Edit
           </Button>

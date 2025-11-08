@@ -109,7 +109,7 @@ export async function POST(request) {
       ShipperPin: awb.sender?.zip,
       ShipperTelno: awb.sender?.contact?.replace(/\D/g, ""),
       ShipperMobile: awb.sender?.contact?.replace(/\D/g, ""),
-      ShipperEmail: awb.sender?.email,
+      ShipperEmail: "info@kargoone.com",
       DocumentType: documentType,
       DocumentNumber: documentNumber,
       ConsigneeName: awb.receiver?.name,

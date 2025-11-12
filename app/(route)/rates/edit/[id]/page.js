@@ -422,42 +422,55 @@ export default function EditRatePage() {
             <div className="grid md:grid-cols-3 gap-4">
               <div>
                 <Label htmlFor="type">Type</Label>
-                <Input id="type" value={rate.type} onChange={(e) => setRate({ ...rate, type: e.target.value })} />
+                {/* Use ?? '' to prevent uncontrolled -> controlled error */}
+                <Input id="type" value={rate.type ?? ''} onChange={(e) => setRate({ ...rate, type: e.target.value })} />
               </div>
               <div>
                 <Label htmlFor="service">Service</Label>
+                {/* Use ?? '' to prevent uncontrolled -> controlled error */}
                 <Input
                   id="service"
-                  value={rate.service}
+                  value={rate.service ?? ''}
                   onChange={(e) => setRate({ ...rate, service: e.target.value })}
                 />
               </div>
               <div>
                 <Label htmlFor="originalName">Original Name</Label>
+                {/* Use ?? '' to prevent uncontrolled -> controlled error */}
                 <Input
                   id="originalName"
-                  value={rate.originalName}
+                  value={rate.originalName ?? ''}
                   onChange={(e) => setRate({ ...rate, originalName: e.target.value })}
                 />
               </div>
               <div>
                 <Label htmlFor="covidCharges">Covid Charges</Label>
+                {/* FIX: Corrected typo "covideCharges" to "covidCharges" and added ?? '' */}
                 <Input
                   id="covidCharges"
-                  value={rate.covideCharges}
+                  value={rate.covidCharges ?? ''}
                   onChange={(e) => setRate({ ...rate, covidCharges: e.target.value })}
                   placeholder="Covid charges per kg"
-                  required
                 />
               </div>
               <div>
                 <Label htmlFor="fuelCharges">Fuel Charges</Label>
+                {/* Use ?? '' to prevent uncontrolled -> controlled error */}
                 <Input
                   id="fuelCharges"
-                  value={rate.fuelCharges}
+                  value={rate.fuelCharges ?? ''}
                   onChange={(e) => setRate({ ...rate, fuelCharges: e.target.value })}
                   placeholder="Fuel charges in percentage"
-                  required
+                />
+              </div>
+              <div>
+                <Label htmlFor="awbCharges">AWB Charges</Label>
+                {/* FIX: The specific input causing the error */}
+                <Input
+                  id="awbCharges"
+                  value={rate.awbCharges ?? ''}
+                  onChange={(e) => setRate({ ...rate, awbCharges: e.target.value })}
+                  placeholder="AWB charges" // Updated placeholder for clarity
                 />
               </div>
             </div>

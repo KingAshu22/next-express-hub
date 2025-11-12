@@ -25,6 +25,7 @@ export default function UploadRatePage() {
     originalName: "",
     covidCharges: "",
     fuelCharges: "",
+    awbCharges: "",
     rateType: "base", // Default to base rate
   })
   const [ratesValidation, setRatesValidation] = useState(null)
@@ -407,7 +408,6 @@ export default function UploadRatePage() {
                     value={rateData.covidCharges}
                     onChange={(e) => setRateData({ ...rateData, covidCharges: e.target.value })}
                     placeholder="Covid charges per kg"
-                    required
                   />
                 </div>
                 <div>
@@ -417,7 +417,15 @@ export default function UploadRatePage() {
                     value={rateData.fuelCharges}
                     onChange={(e) => setRateData({ ...rateData, fuelCharges: e.target.value })}
                     placeholder="Fuel charges in percentage"
-                    required
+                  />
+                </div>
+                <div>
+                  <Label htmlFor="awbCharges">AWB Charges</Label>
+                  <Input
+                    id="awbCharges"
+                    value={rateData.awbCharges}
+                    onChange={(e) => setRateData({ ...rateData, awbCharges: e.target.value })}
+                    placeholder="AWB charges per shipment"
                   />
                 </div>
               </div>

@@ -136,7 +136,6 @@ export default function AWBForm({ isEdit = false, awb }) {
 
   const [refCode, setRefCode] = useState(awb?.refCode || "")
   const [refOptions, setRefOptions] = useState([])
-  const [clientRefNo, setClientRefNo] = useState(awb?.clientRefNo || "")
   const [refSearchTerm, setRefSearchTerm] = useState("")
   const [isRefDropdownOpen, setIsRefDropdownOpen] = useState(false)
   const [selectedRefOption, setSelectedRefOption] = useState(null)
@@ -156,9 +155,6 @@ export default function AWBForm({ isEdit = false, awb }) {
   const [senderCompanyName, setSenderCompanyName] = useState(awb?.sender?.companyName || "")
   const [senderEmail, setSenderEmail] = useState(awb?.sender?.email || "")
   const [senderAddress, setSenderAddress] = useState(awb?.sender?.address || "")
-  const [senderAddress2, setSenderAddress2] = useState(awb?.sender?.address2 || "")
-  const [senderCity, setSenderCity] = useState(awb?.sender?.city || "")
-  const [senderState, setSenderState] = useState(awb?.sender?.state || "")
   const [senderCountry, setSenderCountry] = useState(awb?.sender?.country || "India")
   const [senderZipCode, setSenderZipCode] = useState(awb?.sender?.zip || "")
   const [senderContact, setSenderContact] = useState(awb?.sender?.contact || "")
@@ -172,9 +168,6 @@ export default function AWBForm({ isEdit = false, awb }) {
   const [receiverCompanyName, setReceiverCompanyName] = useState(awb?.receiver?.companyName || "")
   const [receiverEmail, setReceiverEmail] = useState(awb?.receiver?.email || "")
   const [receiverAddress, setReceiverAddress] = useState(awb?.receiver?.address || "")
-  const [receiverAddress2, setReceiverAddress2] = useState(awb?.receiver?.address2 || "")
-  const [receiverCity, setReceiverCity] = useState(awb?.receiver?.city || "")
-  const [receiverState, setReceiverState] = useState(awb?.receiver?.state || "")
   const [receiverCountry, setReceiverCountry] = useState(awb?.receiver?.country || "")
   const [receiverZipCode, setReceiverZipCode] = useState(awb?.receiver?.zip || "")
   const [receiverContact, setReceiverContact] = useState(awb?.receiver?.contact || "")
@@ -184,8 +177,10 @@ export default function AWBForm({ isEdit = false, awb }) {
   const [ourBoxes, setOurBoxes] = useState(awb?.ourBoxes || [])
   const [vendorBoxes, setVendorBoxes] = useState(awb?.vendorBoxes || [])
 
+  const [availableTypes, setAvailableTypes] = useState([]);
+
   const userType = typeof window !== "undefined" ? localStorage.getItem("userType") : "";
-  const [isClient, setIsClient] = useState(userType === "client");
+const [isClient, setIsClient] = useState(userType === "client");
 
   // Derived state
   const [totalChargeableWeight, setTotalChargeableWeight] = useState("")
@@ -252,6 +247,7 @@ export default function AWBForm({ isEdit = false, awb }) {
   const [error, setError] = useState(null)
 
   useEffect(() => {
+    fetchServices();
     const fetchRefOptions = async () => {
       const userType = localStorage.getItem("userType") || ""
       const code = localStorage.getItem("code") || ""
@@ -345,50 +341,50 @@ export default function AWBForm({ isEdit = false, awb }) {
   }, [])
 
   useEffect(() => {
-    const userType = localStorage.getItem("userType");
-    const code = localStorage.getItem("code");
+  const userType = localStorage.getItem("userType");
+  const code = localStorage.getItem("code");
 
-    if (userType === "client" && code) {
-      const fetchClientData = async () => {
-        try {
-          const res = await axios.get(`/api/clients/${code}`);
-          const client = Array.isArray(res.data) ? res.data[0] : res.data;
+  if (userType === "client" && code) {
+    const fetchClientData = async () => {
+      try {
+        const res = await axios.get(`/api/clients/${code}`);
+        const client = Array.isArray(res.data) ? res.data[0] : res.data;
 
-          if (client) {
-            setSenderName(client.name || "");
-            setSenderCompanyName(client.companyName || "");
-            setSenderZipCode(client.zip || "");
-            setSenderCountry(client.country || "India");
-            setSenderContact(client.contact?.toString() || "");
-            setSenderAddress(client.address || "");
-            setKycType(client.kyc?.type || "Aadhaar No");
-            setKyc(client.kyc?.kyc || "");
-            setKycDocument(client.kyc?.document || "");
-            setGst(client.gstNo || "");
-          }
-        } catch (err) {
-          console.error("Error fetching client data:", err);
-          toast.error("Failed to fetch client details");
+        if (client) {
+          setSenderName(client.name || "");
+          setSenderCompanyName(client.companyName || "");
+          setSenderZipCode(client.zip || "");
+          setSenderCountry(client.country || "India");
+          setSenderContact(client.contact?.toString() || "");
+          setSenderAddress(client.address || "");
+          setKycType(client.kyc?.type || "Aadhaar No");
+          setKyc(client.kyc?.kyc || "");
+          setKycDocument(client.kyc?.document || "");
+          setGst(client.gstNo || "");
         }
-      };
+      } catch (err) {
+        console.error("Error fetching client data:", err);
+        toast.error("Failed to fetch client details");
+      }
+    };
 
-      fetchClientData();
-    }
-  }, []);
+    fetchClientData();
+  }
+}, []);
 
   useEffect(() => {
-    if (isEdit) {
-      const storedCode = awb?.refCode || "";
+  if (isEdit) {
+    const storedCode = awb?.refCode || "";
 
-      if (storedCode && refOptions.length > 0) {
-        const matchingOption = refOptions.find((opt) => opt.code === storedCode);
+    if (storedCode && refOptions.length > 0) {
+      const matchingOption = refOptions.find((opt) => opt.code === storedCode);
 
-        if (matchingOption) {
-          setRefSearchTerm(matchingOption.name); // show name in input
-        }
+      if (matchingOption) {
+        setRefSearchTerm(matchingOption.name); // show name in input
       }
     }
-  }, [isEdit, refOptions]);
+  }
+}, [isEdit, refOptions]);
 
   const filteredRefOptions = refOptions.filter(
     (option) =>
@@ -415,9 +411,11 @@ export default function AWBForm({ isEdit = false, awb }) {
         const code = localStorage.getItem("code") || ""
         const normCountry = receiverCountry.trim().toLowerCase()
 
-        if (ut === "admin") {
+        if (ut === "admin" || ut === "branch") {
           // Admin enters profit manually - do nothing here
           setLoading(false)
+          console.log("Admin/Branch user - set profit percent manually")
+          setProfitPercent(0);
           return
         }
 
@@ -431,6 +429,7 @@ export default function AWBForm({ isEdit = false, awb }) {
           const fRest = fRates.find((r) => r.country.trim().toLowerCase() === "rest of world")
 
           const percent = Number(fMatch?.percent ?? fRest?.percent ?? 0)
+          console.log("Franchise Profit Percent:", percent)
           setProfitPercent(percent)
           setLoading(false)
           return
@@ -468,6 +467,8 @@ export default function AWBForm({ isEdit = false, awb }) {
           console.log("Franchise Profit Percent:", franchisePercent)
           console.log("Total Profit Percent:", total)
 
+          console.log("Setting total profit percent for client user:", total)
+
           setProfitPercent(total)
           setLoading(false)
           return
@@ -496,9 +497,6 @@ export default function AWBForm({ isEdit = false, awb }) {
         setSenderCompanyName(customer.companyName || "")
         setSenderEmail(customer.email || "")
         setSenderAddress(customer.address || "")
-        setSenderAddress2(customer.address2 || "")
-        setSenderCity(customer.city || "")
-        setSenderState(customer.state || "")
         setSenderCountry(customer.country || "India")
         setSenderZipCode(customer.zip || "")
         setSenderContact(customer.contact ? customer.contact.replace(/^\+\d+\s+/, "") : "")
@@ -518,9 +516,6 @@ export default function AWBForm({ isEdit = false, awb }) {
         setReceiverCompanyName(customer.companyName || "")
         setReceiverEmail(customer.email || "")
         setReceiverAddress(customer.address || "")
-        setReceiverAddress2(customer.address2 || "")
-        setReceiverCity(customer.city || "")
-        setReceiverState(customer.state || "")
         setReceiverCountry(customer.country || "")
         setReceiverZipCode(customer.zip || "")
         setReceiverContact(customer.contact ? customer.contact.replace(/^\+\d+\s+/, "") : "")
@@ -530,45 +525,26 @@ export default function AWBForm({ isEdit = false, awb }) {
 
   // Fetch postal location data
   const fetchPostalData = async (postalCode, countryCode) => {
-    const maxRetries = 3;
-    const delay = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
+    try {
+      const response = await axios.get(`https://api.worldpostallocations.com/pincode`, {
+        params: {
+          apikey: process.env.NEXT_PUBLIC_POSTAL_API_KEY,
+          postalcode: postalCode,
+          countrycode: countryCode,
+        },
+      })
 
-    for (let attempt = 1; attempt <= maxRetries; attempt++) {
-      try {
-        console.log(`Attempt ${attempt} to fetch postal data...`);
+      console.log("Postal data response:", response.data)
 
-        const response = await axios.get(`https://api.worldpostallocations.com/pincode`, {
-          params: {
-            apikey: process.env.NEXT_PUBLIC_POSTAL_API_KEY,
-            postalcode: postalCode,
-            countrycode: countryCode,
-          },
-        });
-
-        console.log("Postal data response:", response.data);
-
-        if (
-          response.data &&
-          response.data.status === true &&
-          response.data.result &&
-          response.data.result.length > 0
-        ) {
-          return response.data.result[0]; // ✅ Return the first valid result
-        }
-
-        console.warn(`Attempt ${attempt} failed: Invalid response, retrying...`);
-
-      } catch (error) {
-        console.error(`Attempt ${attempt} error:`, error.message);
+      if (response.data && response.data.status === true && response.data.result && response.data.result.length > 0) {
+        return response.data.result[0] // Return the first result
       }
-
-      // Wait 1 second before retrying (optional)
-      if (attempt < maxRetries) await delay(1000);
+      return null
+    } catch (error) {
+      console.error("Error fetching postal data:", error)
+      return null
     }
-
-    console.error("❌ Failed to fetch postal data after 3 attempts.");
-    return null;
-  };
+  }
 
   // Auto-fill sender address when zip code changes
   useEffect(() => {
@@ -580,17 +556,11 @@ export default function AWBForm({ isEdit = false, awb }) {
         const postalData = await fetchPostalData(senderZipCode, countryCode)
         if (postalData) {
           const { postalLocation, province, district, state } = postalData
-          const formattedAddress = [postalLocation, province].filter(Boolean).join(", ")
+          const formattedAddress = [postalLocation, province, district, state].filter(Boolean).join(", ")
 
           // Only update if address is empty or user confirms
           if (!senderAddress) {
             setSenderAddress(formattedAddress)
-          }
-          if (!senderCity) {
-            setSenderCity(district)
-          }
-          if (!senderState) {
-            setSenderState(state)
           }
         }
       }
@@ -609,17 +579,11 @@ export default function AWBForm({ isEdit = false, awb }) {
         const postalData = await fetchPostalData(receiverZipCode, countryCode)
         if (postalData) {
           const { postalLocation, province, district, state } = postalData
-          const formattedAddress = [postalLocation, province].filter(Boolean).join(", ")
+          const formattedAddress = [postalLocation, province, district, state].filter(Boolean).join(", ")
 
           // Only update if address is empty
           if (!receiverAddress) {
             setReceiverAddress(formattedAddress)
-          }
-          if (!receiverCity) {
-            setReceiverCity(district)
-          }
-          if (!receiverState) {
-            setReceiverState(state)
           }
         }
       }
@@ -904,6 +868,22 @@ export default function AWBForm({ isEdit = false, awb }) {
     setShowSearchDialog(false)
   }
 
+  const fetchServices = async () => {
+    try {
+      const response = await fetch("/api/services", {
+        headers: {
+          userType: localStorage.getItem("userType"),
+          userId: localStorage.getItem("code"),
+        },
+      });
+      const data = await response.json();
+      console.log("Fetched services:", data);
+      setAvailableTypes(data);
+    } catch (error) {
+      console.error("Error fetching services:", error);
+    }
+  };
+
   // Rate fetching function
   const fetchRates = async () => {
     if (!canFetchRates) {
@@ -914,8 +894,7 @@ export default function AWBForm({ isEdit = false, awb }) {
     setFetchingRates(true)
 
     try {
-      const courierTypes = ["dhl", "fedex", "ups", "dtdc", "aramex", "orbit"]
-      const ratePromises = courierTypes.map((type) =>
+      const ratePromises = availableTypes.map((type) =>
         axios
           .get("/api/rate", {
             params: {
@@ -923,6 +902,7 @@ export default function AWBForm({ isEdit = false, awb }) {
               weight: totalChargeableWeight,
               country: receiverCountry,
               profitPercent,
+              gst:false
             },
           })
           .then((response) => ({
@@ -988,7 +968,6 @@ export default function AWBForm({ isEdit = false, awb }) {
         via,
         shipmentType,
         refCode,
-        clientRefNo,
         forwardingNumber,
         forwardingLink,
         cNoteNumber,
@@ -1000,9 +979,6 @@ export default function AWBForm({ isEdit = false, awb }) {
           companyName: senderCompanyName,
           email: senderEmail,
           address: senderAddress,
-          address2: senderAddress2,
-          city: senderCity,
-          state: senderState,
           country: senderCountry,
           zip: senderZipCode,
           contact: formattedSenderContact,
@@ -1019,9 +995,6 @@ export default function AWBForm({ isEdit = false, awb }) {
           companyName: receiverCompanyName,
           email: receiverEmail,
           address: receiverAddress,
-          address2: receiverAddress2,
-          city: receiverCity,
-          state: receiverState,
           country: receiverCountry,
           zip: receiverZipCode,
           contact: formattedReceiverContact,
@@ -1031,26 +1004,28 @@ export default function AWBForm({ isEdit = false, awb }) {
         ...(isEdit
           ? {}
           : {
-            parcelStatus: [
-              {
-                status: "Shipment AWB Prepared - BOM HUB",
-                timestamp: new Date(),
-                comment: "",
-              },
-            ],
-            ourBoxes: boxes,
-            vendorBoxes: boxes,
-          }),
+              parcelStatus: [
+                {
+                  status: "Shipment AWB Prepared - BOM HUB",
+                  timestamp: new Date(),
+                  comment: "",
+                },
+              ],
+              ourBoxes: boxes,
+              vendorBoxes: boxes,
+            }),
         // Add selected rate information if available
         ...(selectedRate && {
           rateInfo: {
             courier: selectedCourier,
             zone: selectedRate.zone,
+            weight: selectedRate.closestDbWeight,
             rate: selectedRate.rate,
-            baseCharge: selectedRate.baseCharge,
-            totalWithGST: selectedRate.totalWithGST,
+            baseCharge: selectedRate.baseRate + selectedRate.profitCharges,
+            fuelSurcharge: selectedRate.fuelCharges,
+            otherCharges: selectedRate.extraChargeTotal,
             GST: selectedRate.GST,
-            weight: selectedRate.weight,
+            totalWithGST: selectedRate.total,
           },
         }),
       }
@@ -1179,7 +1154,7 @@ export default function AWBForm({ isEdit = false, awb }) {
           <CardHeader className="-mt-4">
             <CardTitle className="text-sm text-[#232C65]">Basic Details</CardTitle>
           </CardHeader>
-          <CardContent className="grid grid-cols-9 gap-1 -my-6">
+          <CardContent className="grid grid-cols-8 gap-1 -my-6">
             <div className="space-y-1">
               <Label htmlFor="invoiceNumber" className="text-xs">
                 Sr No:
@@ -1315,81 +1290,68 @@ export default function AWBForm({ isEdit = false, awb }) {
                 </PopoverContent>
               </Popover>
             </div>
-            <div className="relative">
-              <Label htmlFor="refCode" className="text-xs">
-                Client
-              </Label>
-              {localStorage.getItem("userType") === "admin" ||
+              <div className="relative">
+                <Label htmlFor="refCode" className="text-xs">
+                  Reference Code
+                </Label>
+                {localStorage.getItem("userType") === "admin" ||
                 localStorage.getItem("userType") === "branch" ||
                 localStorage.getItem("userType") === "franchise" ? (
-                <div className="relative">
+                  <div className="relative">
+                    <Input
+                      id="refCode"
+                      type="text"
+                      placeholder={localStorage.getItem("name") || "Franchise/Client Name"}
+                      value={refSearchTerm}
+                      onChange={(e) => {
+                        setRefSearchTerm(e.target.value)
+                        setIsRefDropdownOpen(true)
+                      }}
+                      onFocus={() => setIsRefDropdownOpen(true)}
+                      className="h-6 text-xs pr-8"
+                      autoComplete="off"
+                      required
+                    />
+                    <ChevronDown
+                      className="absolute right-2 top-1/2 transform -translate-y-1/2 h-3 w-3 text-gray-400 cursor-pointer"
+                      onClick={() => setIsRefDropdownOpen(!isRefDropdownOpen)}
+                    />
+
+                    {isRefDropdownOpen && (
+                      <div className="absolute z-50 w-full mt-1 bg-white border border-gray-300 rounded-md shadow-lg max-h-40 overflow-y-auto">
+                        {filteredRefOptions.length > 0 ? (
+                          filteredRefOptions.map((option) => (
+                            <div
+                              key={`${option.type}-${option.code}`}
+                              className="px-3 py-2 hover:bg-gray-100 cursor-pointer text-xs flex justify-between items-center"
+                              onClick={() => handleRefOptionSelect(option)}
+                            >
+                              <span className="text-[10px]">{option.name}</span>
+                              <span className="text-gray-500 text-[10px]">
+                                {option.type === "franchise" ? "F" : "C"}-{option.code}
+                              </span>
+                            </div>
+                          ))
+                        ) : (
+                          <div className="px-3 py-2 text-gray-500 text-xs">No options found</div>
+                        )}
+                      </div>
+                    )}
+                  </div>
+                ) : (
                   <Input
                     id="refCode"
-                    type="text"
-                    placeholder={localStorage.getItem("name") || "Franchise/Client Name"}
-                    value={refSearchTerm}
-                    onChange={(e) => {
-                      setRefSearchTerm(e.target.value)
-                      setIsRefDropdownOpen(true)
-                    }}
-                    onFocus={() => setIsRefDropdownOpen(true)}
-                    className="h-6 text-xs pr-8"
+                    type="number"
+                    placeholder="Reference Code"
+                    required
+                    value={refCode}
+                    onChange={(e) => setRefCode(e.target.value)}
                     autoComplete="off"
+                    className="h-6 text-xs"
+                    disabled={isClient}
                   />
-                  <ChevronDown
-                    className="absolute right-2 top-1/2 transform -translate-y-1/2 h-3 w-3 text-gray-400 cursor-pointer"
-                    onClick={() => setIsRefDropdownOpen(!isRefDropdownOpen)}
-                  />
-
-                  {isRefDropdownOpen && (
-                    <div className="absolute z-50 w-full mt-1 bg-white border border-gray-300 rounded-md shadow-lg max-h-40 overflow-y-auto">
-                      {filteredRefOptions.length > 0 ? (
-                        filteredRefOptions.map((option) => (
-                          <div
-                            key={`${option.type}-${option.code}`}
-                            className="px-3 py-2 hover:bg-gray-100 cursor-pointer text-xs flex justify-between items-center"
-                            onClick={() => handleRefOptionSelect(option)}
-                          >
-                            <span className="text-[10px]">{option.name}</span>
-                            <span className="text-gray-500 text-[10px]">
-                              {option.type === "franchise" ? "F" : "C"}-{option.code}
-                            </span>
-                          </div>
-                        ))
-                      ) : (
-                        <div className="px-3 py-2 text-gray-500 text-xs">No options found</div>
-                      )}
-                    </div>
-                  )}
-                </div>
-              ) : (
-                <Input
-                  id="refCode"
-                  type="number"
-                  placeholder="Reference Code"
-                  required
-                  value={refCode}
-                  onChange={(e) => setRefCode(e.target.value)}
-                  autoComplete="off"
-                  className="h-6 text-xs"
-                  disabled={isClient}
-                />
-              )}
-            </div>
-            <div className="space-y-1">
-              <Label htmlFor="clientRefNo" className="text-xs">
-                Client Ref No:
-              </Label>
-              <Input
-                id="clientRefNo"
-                type="text"
-                placeholder="Client Ref No."
-                value={clientRefNo}
-                onChange={(e) => setClientRefNo(e.target.value)}
-                className="h-6 text-xs"
-                disabled={true}
-              />
-            </div>
+                )}
+              </div>
             {isEdit && (
               <>
                 <div className="space-y-1">
@@ -1647,9 +1609,9 @@ export default function AWBForm({ isEdit = false, awb }) {
                                 </div>
                               </TableCell>
                               <TableCell className="text-xs p-1 uppercase">{rate.type}</TableCell>
-                              <TableCell className="text-xs p-1 font-semibold">₹{rate.totalWithGST}</TableCell>
+                              <TableCell className="text-xs p-1 font-semibold">₹{rate.total}</TableCell>
                               <TableCell className="text-xs p-1">
-                                ₹{(rate.totalWithGST / Number.parseFloat(totalChargeableWeight || 1)).toFixed(2)}
+                                ₹{(rate.total / Number.parseFloat(totalChargeableWeight || 1)).toFixed(2)}
                               </TableCell>
                             </TableRow>
                           ))}
@@ -1852,64 +1814,19 @@ export default function AWBForm({ isEdit = false, awb }) {
               </div>
               <div className="space-y-1 col-span-3">
                 <Label htmlFor="senderAddress" className="text-xs">
-                  Address Line 1*
+                  Address*
                 </Label>
-                <Input
+                <Textarea
                   id="senderAddress"
                   placeholder="Sender Address"
                   value={senderAddress}
                   onChange={(e) => setSenderAddress(e.target.value)}
-                  rows={1}
+                  rows={2}
                   required
                   className="text-xs resize-none"
                   disabled={isClient}
                 />
               </div>
-              <div className="space-y-1 col-span-3">
-                <Label htmlFor="senderAddress2" className="text-xs">
-                  Address Line 2
-                </Label>
-                <Input
-                  id="senderAddress2"
-                  placeholder="Sender Address 2"
-                  value={senderAddress2}
-                  onChange={(e) => setSenderAddress2(e.target.value)}
-                  rows={1}
-                  className="text-xs resize-none"
-                  disabled={isClient}
-                />
-              </div>
-
-              <div className="space-y-1">
-                <Label htmlFor="senderCity" className="text-xs">
-                  City
-                </Label>
-                <Input
-                  id="senderCity"
-                  type="text"
-                  placeholder="Sender City"
-                  value={senderCity}
-                  required
-                  onChange={(e) => setSenderCity(e.target.value)}
-                  className="h-6 text-xs"
-                />
-              </div>
-
-              <div className="space-y-1">
-                <Label htmlFor="senderState" className="text-xs">
-                  Sender State
-                </Label>
-                <Input
-                  id="senderState"
-                  type="text"
-                  placeholder="Sender State"
-                  value={senderState}
-                  required
-                  onChange={(e) => setSenderState(e.target.value)}
-                  className="h-6 text-xs"
-                />
-              </div>
-
               <div className="space-y-1">
                 <Label className="text-xs">KYC Type*</Label>
                 <Select value={kycType} onValueChange={setKycType} disabled={isClient} required>
@@ -1947,7 +1864,7 @@ export default function AWBForm({ isEdit = false, awb }) {
                   disabled={isClient}
                 />
               </div>
-              {/* <div className="space-y-1">
+              <div className="space-y-1">
                 <Label htmlFor="kycDocument" className="text-xs">
                   KYC Document*
                 </Label>
@@ -1957,10 +1874,11 @@ export default function AWBForm({ isEdit = false, awb }) {
                   placeholder="KYC Document"
                   value={kycDocument}
                   onChange={(e) => setKycDocument(e.target.value)}
+                  required
                   className="h-6 text-xs"
                   disabled={isClient}
                 />
-              </div> */}
+              </div>
               <div className="space-y-1">
                 <Label htmlFor="gst" className="text-xs">
                   GST
@@ -2080,9 +1998,9 @@ export default function AWBForm({ isEdit = false, awb }) {
               </div>
               <div className="space-y-1 col-span-3">
                 <Label htmlFor="receiverAddress" className="text-xs">
-                  Address Line 1*
+                  Address*
                 </Label>
-                <Input
+                <Textarea
                   id="receiverAddress"
                   placeholder="Receiver Address"
                   value={receiverAddress}
@@ -2090,50 +2008,6 @@ export default function AWBForm({ isEdit = false, awb }) {
                   rows={2}
                   required
                   className="text-xs resize-none"
-                />
-              </div>
-
-              <div className="space-y-1 col-span-3">
-                <Label htmlFor="receiverAddress2" className="text-xs">
-                  Address Line 2
-                </Label>
-                <Input
-                  id="receiverAddress2"
-                  placeholder="Receiver Address 2"
-                  value={receiverAddress2}
-                  onChange={(e) => setReceiverAddress2(e.target.value)}
-                  rows={2}
-                  className="text-xs resize-none"
-                />
-              </div>
-
-              <div className="space-y-1">
-                <Label htmlFor="receiverCity" className="text-xs">
-                  City
-                </Label>
-                <Input
-                  id="receiverCity"
-                  type="text"
-                  placeholder="Receiver City"
-                  value={receiverCity}
-                  required
-                  onChange={(e) => setReceiverCity(e.target.value)}
-                  className="h-6 text-xs"
-                />
-              </div>
-
-              <div className="space-y-1">
-                <Label htmlFor="receiverState" className="text-xs">
-                  State
-                </Label>
-                <Input
-                  id="receiverState"
-                  type="text"
-                  placeholder="Receiver State"
-                  value={receiverState}
-                  required
-                  onChange={(e) => setReceiverState(e.target.value)}
-                  className="h-6 text-xs"
                 />
               </div>
             </CardContent>

@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import { Check, ChevronsUpDown, Loader2, Info, PackageSearch } from 'lucide-react'
-import { cn } from "@/lib/utils" // Ensure you have this utility file from shadcn/ui
+import { cn } from "@/lib/utils"
 import { Input } from '@/components/ui/input'
 import { Button } from '@/components/ui/button'
 import { Card, CardHeader, CardTitle, CardContent, CardDescription } from '@/components/ui/card'
@@ -10,6 +10,7 @@ import { Popover, PopoverTrigger, PopoverContent } from "@/components/ui/popover
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem } from "@/components/ui/command"
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion"
 import { Label } from '@/components/ui/label'
+import { Checkbox } from '@/components/ui/checkbox' // <-- Import Checkbox
 import { Countries } from '@/app/constants/country'
 import axios from 'axios'
 import { Separator } from '@/components/ui/separator'
@@ -76,11 +77,12 @@ const ResultCard = ({ data, billedWeight, showProfit }) => {
                                 </div>
                             )}
 
+                            {/* UPDATED: Display Extra Charges section if total is > 0 */}
                             {data.extraChargeTotal > 0 && (
                                 <>
                                     <Separator className="my-2" />
                                     <div className="flex justify-between font-medium">
-                                        <span>Extra Charges Total:</span>
+                                        <span>Extra Charges:</span>
                                         <span className="font-mono">{formatCurrency(data.extraChargeTotal)}</span>
                                     </div>
                                     <div className="pl-4 border-l-2 ml-2">
@@ -91,8 +93,15 @@ const ResultCard = ({ data, billedWeight, showProfit }) => {
                                             </div>
                                         ))}
                                     </div>
-                                    <Separator className="my-2" />
                                 </>
+                            )}
+                            
+                            {/* NEW: Display AWB Charges if they exist */}
+                            {data.awbCharges > 0 && (
+                                <div className="flex justify-between">
+                                    <span>AWB Charges:</span>
+                                    <span className="font-mono">{formatCurrency(data.awbCharges)}</span>
+                                </div>
                             )}
 
                             <div className="flex justify-between">
@@ -101,13 +110,17 @@ const ResultCard = ({ data, billedWeight, showProfit }) => {
                             </div>
                             <Separator className="my-2" />
                             <div className="flex justify-between font-semibold">
-                                <span>Subtotal (before GST):</span>
+                                <span>Subtotal:</span>
                                 <span className="font-mono">{formatCurrency(data.subtotalBeforeGST)}</span>
                             </div>
-                            <div className="flex justify-between">
-                                <span>GST (18%):</span>
-                                <span className="font-mono">{formatCurrency(data.gstAmount)}</span>
-                            </div>
+
+                            {/* NEW: Conditionally display GST based on API response */}
+                            {data.gstApplied && data.gstAmount > 0 && (
+                                <div className="flex justify-between">
+                                    <span>GST (18%):</span>
+                                    <span className="font-mono">{formatCurrency(data.gstAmount)}</span>
+                                </div>
+                            )}
                         </AccordionContent>
                     </AccordionItem>
                 </Accordion>
@@ -125,6 +138,7 @@ export default function GetRatesPage() {
     const [country, setCountry] = useState('');
     const [profitPercent, setProfitPercent] = useState('0');
     const [countrySearchOpen, setCountrySearchOpen] = useState(false);
+    const [applyGst, setApplyGst] = useState(false); // <-- State for GST checkbox
 
     // State for calculated values
     const [volumetricWeight, setVolumetricWeight] = useState(0);
@@ -253,6 +267,10 @@ export default function GetRatesPage() {
         try {
             const promises = availableTypes.map(async (type) => {
                 const params = new URLSearchParams({ type, weight: billedWeight, country, profitPercent });
+                // NEW: Conditionally add 'gst=false' if the checkbox is unchecked
+                if (!applyGst) {
+                    params.append('gst', 'false');
+                }
                 const res = await fetch(`/api/rate?${params.toString()}`);
                 if (!res.ok) {
                     const errorData = await res.json();
@@ -303,8 +321,6 @@ export default function GetRatesPage() {
                                                 <CommandGroup className="max-h-60 overflow-y-auto">
                                                     {Countries.map((c) => (
                                                         <CommandItem key={c} value={c} onSelect={(currentValue) => {
-                                                            // *** THIS IS THE FIX ***
-                                                            // Find the correctly cased country from the list.
                                                             const selectedCountry = Countries.find(countryInList => countryInList.toLowerCase() === currentValue.toLowerCase());
                                                             setCountry(country === selectedCountry ? "" : selectedCountry);
                                                             setCountrySearchOpen(false);
@@ -345,12 +361,21 @@ export default function GetRatesPage() {
                                     <Input id="billedWeight" value={billedWeight.toFixed(2)} readOnly className="mt-1 bg-blue-50 border-blue-400 font-bold" />
                                 </div>
                             </div>
-                            {showProfit && (
-                                <div className="md:col-span-2">
-                                    <Label htmlFor="profit" className="font-semibold">Profit %</Label>
-                                    <Input id="profit" type="number" placeholder="e.g., 50" value={profitPercent} onChange={(e) => setProfitPercent(e.target.value)} className="mt-1" />
+                            <div className="md:col-span-2 flex items-center justify-between gap-4">
+                                {showProfit && (
+                                    <div className="flex-grow">
+                                        <Label htmlFor="profit" className="font-semibold">Profit %</Label>
+                                        <Input id="profit" type="number" placeholder="e.g., 50" value={profitPercent} onChange={(e) => setProfitPercent(e.target.value)} className="mt-1" />
+                                    </div>
+                                )}
+                                {/* NEW: GST Checkbox */}
+                                <div className="flex items-center space-x-2 pt-6">
+                                    <Checkbox id="gst" checked={applyGst} onCheckedChange={setApplyGst} />
+                                    <Label htmlFor="gst" className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70">
+                                        Include GST
+                                    </Label>
                                 </div>
-                            )}
+                            </div>
                             <div className="md:col-span-2 mt-4">
                                 <Button onClick={handleFetchRates} disabled={loading || billedWeight <= 0 || !country} className="w-full text-lg py-6">
                                     {loading ? (<><Loader2 className="mr-2 h-5 w-5 animate-spin" /> Fetching Best Rates...</>) : ('Get Rates')}

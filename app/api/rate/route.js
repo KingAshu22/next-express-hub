@@ -8,6 +8,8 @@ export async function GET(req) {
     const country = searchParams.get("country");
     const profitPercent = parseFloat(searchParams.get("profitPercent")) || 0;
     const inputWeight = parseFloat(searchParams.get("weight"));
+    // NEW: Check if GST should be applied. Defaults to true.
+    const applyGst = searchParams.get("gst") !== "false";
 
     if (!type || !inputWeight || !country) {
         return NextResponse.json({ error: "Missing required parameters: type, weight, country" }, { status: 400 });
@@ -28,7 +30,8 @@ export async function GET(req) {
             return NextResponse.json({ error: "Courier type not found in rates" }, { status: 404 });
         }
 
-        const { rates, zones, fuelCharges: fuelChargesPercentFromDB } = rateResult;
+        // UPDATED: Destructure awbCharges along with other properties
+        const { rates, zones, fuelCharges: fuelChargesPercentFromDB, awbCharges } = rateResult;
 
         // Find the zone and its specific extra charges for the given country
         let selectedZone;
@@ -50,11 +53,9 @@ export async function GET(req) {
             .map(rate => ({ kg: parseFloat(rate.kg), data: rate }))
             .sort((a, b) => a.kg - b.kg);
 
-        // Find exact match first
         let weightRateData = sortedRates.find(r => r.kg === calculatedWeight)?.data;
         let closestDbWeight;
 
-        // If no exact match, find the closest lower or equal weight slab
         if (!weightRateData) {
             const fallbackRate = [...sortedRates].reverse().find(r => r.kg <= calculatedWeight);
             if (fallbackRate) {
@@ -78,8 +79,8 @@ export async function GET(req) {
         const perKgRate = zoneRateValue / closestDbWeight;
         const baseRate = perKgRate * calculatedWeight;
 
-        // 2. Add Profit (or skip for special rates with refCode)
-        const isSpecialRate = !!rateResult.refCode; // Check if refCode exists and is not empty
+        // 2. Add Profit
+        const isSpecialRate = !!rateResult.refCode;
         let profitCharges = 0;
         let subtotalAfterProfit = baseRate;
 
@@ -88,7 +89,7 @@ export async function GET(req) {
             subtotalAfterProfit += profitCharges;
         }
 
-        // 3. Add Extra Charges (calculated with upper rounded weight)
+        // 3. Add Per-KG Extra Charges (calculated with upper rounded weight)
         let extraChargeTotal = 0;
         let extraChargesBreakdown = {};
         for (const [chargeName, chargeValue] of Object.entries(zoneExtraCharges)) {
@@ -97,28 +98,32 @@ export async function GET(req) {
             extraChargeTotal += chargeAmount;
         }
         const subtotalAfterExtraCharges = subtotalAfterProfit + extraChargeTotal;
+        
+        // 4. NEW: Add Fixed AWB Charges (if any)
+        const awbChargeAmount = parseFloat(awbCharges) || 0;
+        const subtotalAfterFixedCharges = subtotalAfterExtraCharges + awbChargeAmount;
 
-        // 4. Add Fuel Charges
+        // 5. Add Fuel Charges (as a percentage of the new subtotal)
         let fuelChargePercent = 0;
         if (fuelChargesPercentFromDB !== undefined && fuelChargesPercentFromDB !== null) {
-            fuelChargePercent = fuelChargesPercentFromDB;
+            fuelChargePercent = parseFloat(fuelChargesPercentFromDB) || 0;
         } else {
-            // Fallback logic if not defined in DB
-            const fallbackFuel = {
-                "dhl": 27.5, "fedex": 29, "ups": 30.5,
-                "dtdc": 36, "aramex": 35.5, "orbit": 35.5
-            };
+            // Fallback logic remains the same
+            const fallbackFuel = { "dhl": 27.5, "fedex": 29, "ups": 30.5, "dtdc": 36, "aramex": 35.5, "orbit": 35.5 };
             fuelChargePercent = fallbackFuel[rateResult.type] || 0;
         }
         
-        const fuelCharges = (fuelChargePercent / 100) * subtotalAfterExtraCharges;
-        const subtotalBeforeGST = subtotalAfterExtraCharges + fuelCharges;
+        const fuelCharges = (fuelChargePercent / 100) * subtotalAfterFixedCharges;
+        const subtotalBeforeGST = subtotalAfterFixedCharges + fuelCharges;
 
-        // 5. Add GST (18%)
-        const gstAmount = (18 / 100) * subtotalBeforeGST;
+        // 6. NEW: Conditionally Add GST (18%)
+        let gstAmount = 0;
+        let finalTotal = subtotalBeforeGST; // Start with the pre-GST total
 
-        // 6. Calculate Final Total
-        const finalTotal = subtotalBeforeGST + gstAmount;
+        if (applyGst) {
+            gstAmount = (18 / 100) * subtotalBeforeGST;
+            finalTotal += gstAmount; // Add GST to the final total
+        }
 
         // --- END NEW CALCULATION LOGIC ---
 
@@ -130,9 +135,9 @@ export async function GET(req) {
             inputWeight,
 
             // Weight Calculation Details
-            calculatedWeight,       // Weight used for rate lookup (rounded to 0.5)
-            extraChargesWeight,     // Weight used for extra charges (rounded up)
-            closestDbWeight,        // The DB weight slab used for the per-kg rate
+            calculatedWeight,
+            extraChargesWeight,
+            closestDbWeight,
 
             // Rate Calculation Breakdown
             isSpecialRate,
@@ -145,12 +150,15 @@ export async function GET(req) {
             
             extraChargesBreakdown,
             extraChargeTotal: parseFloat(extraChargeTotal.toFixed(2)),
+
+            awbCharges: awbChargeAmount, // Added AWB charge to response
             
             fuelChargePercent,
             fuelCharges: parseFloat(fuelCharges.toFixed(2)),
 
             subtotalBeforeGST: parseFloat(subtotalBeforeGST.toFixed(2)),
             
+            gstApplied: applyGst, // Added GST flag to response
             gstAmount: parseFloat(gstAmount.toFixed(2)),
 
             // Final Total

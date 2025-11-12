@@ -155,6 +155,9 @@ export default function AWBForm({ isEdit = false, awb }) {
   const [senderCompanyName, setSenderCompanyName] = useState(awb?.sender?.companyName || "")
   const [senderEmail, setSenderEmail] = useState(awb?.sender?.email || "")
   const [senderAddress, setSenderAddress] = useState(awb?.sender?.address || "")
+  const [senderAddress2, setSenderAddress2] = useState(awb?.sender?.address2 || "")
+  const [senderCity, setSenderCity] = useState(awb?.sender?.city || "")
+  const [senderState, setSenderState] = useState(awb?.sender?.state || "")
   const [senderCountry, setSenderCountry] = useState(awb?.sender?.country || "India")
   const [senderZipCode, setSenderZipCode] = useState(awb?.sender?.zip || "")
   const [senderContact, setSenderContact] = useState(awb?.sender?.contact || "")
@@ -168,6 +171,9 @@ export default function AWBForm({ isEdit = false, awb }) {
   const [receiverCompanyName, setReceiverCompanyName] = useState(awb?.receiver?.companyName || "")
   const [receiverEmail, setReceiverEmail] = useState(awb?.receiver?.email || "")
   const [receiverAddress, setReceiverAddress] = useState(awb?.receiver?.address || "")
+  const [receiverAddress2, setReceiverAddress2] = useState(awb?.receiver?.address2 || "")
+  const [receiverCity, setReceiverCity] = useState(awb?.receiver?.city || "")
+  const [receiverState, setReceiverState] = useState(awb?.receiver?.state || "")
   const [receiverCountry, setReceiverCountry] = useState(awb?.receiver?.country || "")
   const [receiverZipCode, setReceiverZipCode] = useState(awb?.receiver?.zip || "")
   const [receiverContact, setReceiverContact] = useState(awb?.receiver?.contact || "")
@@ -357,6 +363,9 @@ const [isClient, setIsClient] = useState(userType === "client");
           setSenderCountry(client.country || "India");
           setSenderContact(client.contact?.toString() || "");
           setSenderAddress(client.address || "");
+          setSenderAddress2(client.address2 || "")
+        setSenderCity(client.city || "")
+        setSenderState(client.state || "")
           setKycType(client.kyc?.type || "Aadhaar No");
           setKyc(client.kyc?.kyc || "");
           setKycDocument(client.kyc?.document || "");
@@ -414,8 +423,6 @@ const [isClient, setIsClient] = useState(userType === "client");
         if (ut === "admin" || ut === "branch") {
           // Admin enters profit manually - do nothing here
           setLoading(false)
-          console.log("Admin/Branch user - set profit percent manually")
-          setProfitPercent(0);
           return
         }
 
@@ -429,7 +436,6 @@ const [isClient, setIsClient] = useState(userType === "client");
           const fRest = fRates.find((r) => r.country.trim().toLowerCase() === "rest of world")
 
           const percent = Number(fMatch?.percent ?? fRest?.percent ?? 0)
-          console.log("Franchise Profit Percent:", percent)
           setProfitPercent(percent)
           setLoading(false)
           return
@@ -467,8 +473,6 @@ const [isClient, setIsClient] = useState(userType === "client");
           console.log("Franchise Profit Percent:", franchisePercent)
           console.log("Total Profit Percent:", total)
 
-          console.log("Setting total profit percent for client user:", total)
-
           setProfitPercent(total)
           setLoading(false)
           return
@@ -497,6 +501,9 @@ const [isClient, setIsClient] = useState(userType === "client");
         setSenderCompanyName(customer.companyName || "")
         setSenderEmail(customer.email || "")
         setSenderAddress(customer.address || "")
+        setSenderAddress2(customer.address2 || "")
+        setSenderCity(customer.city || "")
+        setSenderState(customer.state || "")
         setSenderCountry(customer.country || "India")
         setSenderZipCode(customer.zip || "")
         setSenderContact(customer.contact ? customer.contact.replace(/^\+\d+\s+/, "") : "")
@@ -516,6 +523,9 @@ const [isClient, setIsClient] = useState(userType === "client");
         setReceiverCompanyName(customer.companyName || "")
         setReceiverEmail(customer.email || "")
         setReceiverAddress(customer.address || "")
+        setReceiverAddress2(customer.address2 || "")
+        setReceiverCity(customer.city || "")
+        setReceiverState(customer.state || "")
         setReceiverCountry(customer.country || "")
         setReceiverZipCode(customer.zip || "")
         setReceiverContact(customer.contact ? customer.contact.replace(/^\+\d+\s+/, "") : "")
@@ -979,6 +989,9 @@ const [isClient, setIsClient] = useState(userType === "client");
           companyName: senderCompanyName,
           email: senderEmail,
           address: senderAddress,
+          address2: senderAddress2,
+          city: senderCity,
+          state: senderState,
           country: senderCountry,
           zip: senderZipCode,
           contact: formattedSenderContact,
@@ -995,6 +1008,9 @@ const [isClient, setIsClient] = useState(userType === "client");
           companyName: receiverCompanyName,
           email: receiverEmail,
           address: receiverAddress,
+          address2: receiverAddress2,
+          city: receiverCity,
+          state: receiverState,
           country: receiverCountry,
           zip: receiverZipCode,
           contact: formattedReceiverContact,
@@ -1814,7 +1830,7 @@ const [isClient, setIsClient] = useState(userType === "client");
               </div>
               <div className="space-y-1 col-span-3">
                 <Label htmlFor="senderAddress" className="text-xs">
-                  Address*
+                  Address Line 1*
                 </Label>
                 <Textarea
                   id="senderAddress"
@@ -1825,6 +1841,49 @@ const [isClient, setIsClient] = useState(userType === "client");
                   required
                   className="text-xs resize-none"
                   disabled={isClient}
+                />
+              </div>
+              <div className="space-y-1 col-span-3">
+                <Label htmlFor="senderAddress2" className="text-xs">
+                  Address Line 2
+                </Label>
+                <Textarea
+                  id="senderAddress2"
+                  placeholder="Sender Address 2"
+                  value={senderAddress2}
+                  onChange={(e) => setSenderAddress2(e.target.value)}
+                  rows={2}
+                  required
+                  className="text-xs resize-none"
+                  disabled={isClient}
+                />
+              </div>
+
+              <div className="space-y-1">
+                <Label htmlFor="senderCity" className="text-xs">
+                  City
+                </Label>
+                <Input
+                  id="senderCity"
+                  type="text"
+                  placeholder="Sender City"
+                  value={senderCity}
+                  onChange={(e) => setSenderCity(e.target.value)}
+                  className="h-6 text-xs"
+                />
+              </div>
+
+              <div className="space-y-1">
+                <Label htmlFor="senderState" className="text-xs">
+                  Sender State
+                </Label>
+                <Input
+                  id="senderState"
+                  type="text"
+                  placeholder="Sender State"
+                  value={senderState}
+                  onChange={(e) => setSenderState(e.target.value)}
+                  className="h-6 text-xs"
                 />
               </div>
               <div className="space-y-1">
@@ -1998,7 +2057,7 @@ const [isClient, setIsClient] = useState(userType === "client");
               </div>
               <div className="space-y-1 col-span-3">
                 <Label htmlFor="receiverAddress" className="text-xs">
-                  Address*
+                  Address Line 1*
                 </Label>
                 <Textarea
                   id="receiverAddress"
@@ -2008,6 +2067,49 @@ const [isClient, setIsClient] = useState(userType === "client");
                   rows={2}
                   required
                   className="text-xs resize-none"
+                />
+              </div>
+              <div className="space-y-1 col-span-3">
+                <Label htmlFor="receiverAddress2" className="text-xs">
+                  Address Line 2
+                </Label>
+                <Textarea
+                  id="receiverAddress2"
+                  placeholder="Receiver Address 2"
+                  value={receiverAddress2}
+                  onChange={(e) => setReceiverAddress2(e.target.value)}
+                  rows={2}
+                  required
+                  className="text-xs resize-none"
+                  disabled={isClient}
+                />
+              </div>
+
+              <div className="space-y-1">
+                <Label htmlFor="receiverCity" className="text-xs">
+                  City
+                </Label>
+                <Input
+                  id="receiverCity"
+                  type="text"
+                  placeholder="Receiver City"
+                  value={receiverCity}
+                  onChange={(e) => setReceiverCity(e.target.value)}
+                  className="h-6 text-xs"
+                />
+              </div>
+
+              <div className="space-y-1">
+                <Label htmlFor="receiverState" className="text-xs">
+                  State
+                </Label>
+                <Input
+                  id="receiverState"
+                  type="text"
+                  placeholder="Receiver State"
+                  value={receiverState}
+                  onChange={(e) => setReceiverState(e.target.value)}
+                  className="h-6 text-xs"
                 />
               </div>
             </CardContent>

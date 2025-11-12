@@ -211,7 +211,7 @@ export default function EnhancedShippingPage() {
                       <strong>Country:</strong>${awbData.sender?.country}
                   </p>
                   <p><strong>Cont No:</strong> ${awbData.sender?.contact}</p>
-                  <p><strong>Email:</strong> ${awbData.sender?.email || "expresshub555@gmail.com"}</p>
+                  <p><strong>Email:</strong> ${awbData.sender?.email || "info@kargoone.com"}</p>
                   <p><strong>${awbData.sender.kyc.type}</strong> ${awbData.sender.kyc.kyc}</p>
               </div>
               <div class="border border-gray-300 rounded-lg p-1">
@@ -224,7 +224,7 @@ export default function EnhancedShippingPage() {
                       <strong>Country:</strong>${awbData.receiver?.country}
                   </p>
                   <p><strong>Cont No:</strong> ${awbData.receiver?.contact}</p>
-                  <p><strong>Email:</strong> ${awbData.receiver?.email || "expresshub555@gmail.com"}</p>
+                  <p><strong>Email:</strong> ${awbData.receiver?.email || "info@kargoone.com"}</p>
               </div>
           </div>
 

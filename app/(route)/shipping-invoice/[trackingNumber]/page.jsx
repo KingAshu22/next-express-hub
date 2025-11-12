@@ -246,7 +246,7 @@ export default function ShippingInvoicePage() {
           <div>${safe(awbData.sender?.address)}</div>
           <div><strong>Zip Code:</strong> ${safe(awbData.sender?.zip)} &nbsp;&nbsp; <strong>Country:</strong> ${safe(awbData.sender?.country)}</div>
           <div><strong>Cont No:</strong> ${safe(awbData.sender?.contact)}</div>
-          <div><strong>Email:</strong> ${safe(awbData.sender?.email) || "expresshub555@gmail.com"}</div>
+          <div><strong>Email:</strong> ${safe(awbData.sender?.email) || "info@kargoone.com"}</div>
           ${
             awbData.sender?.kyc?.type || awbData.sender?.kyc?.kyc
               ? `<div><strong>${safe(awbData.sender?.kyc?.type)}</strong> ${safe(awbData.sender?.kyc?.kyc)}</div>`
@@ -260,7 +260,7 @@ export default function ShippingInvoicePage() {
           <div>${safe(awbData.receiver?.address)}</div>
           <div><strong>Zip Code:</strong> ${safe(awbData.receiver?.zip)} &nbsp;&nbsp; <strong>Country:</strong> ${safe(awbData.receiver?.country)}</div>
           <div><strong>Cont No:</strong> ${safe(awbData.receiver?.contact)}</div>
-          <div><strong>Email:</strong> ${safe(awbData.receiver?.email) || "expresshub555@gmail.com"}</div>
+          <div><strong>Email:</strong> ${safe(awbData.receiver?.email) || "info@kargoone.com"}</div>
         </div>
       </div>
     `
@@ -518,7 +518,7 @@ export default function ShippingInvoicePage() {
                 <strong>Cont No:</strong> {awbData.sender?.contact}
               </p>
               <p>
-                <strong>Email:</strong> {awbData.sender?.email || "expresshub555@gmail.com"}
+                <strong>Email:</strong> {awbData.sender?.email || "info@kargoone.com"}
               </p>
               <p>
                 <strong>{awbData.sender?.kyc?.type}</strong> {awbData.sender?.kyc?.kyc}
@@ -540,7 +540,7 @@ export default function ShippingInvoicePage() {
                 <strong>Cont No:</strong> {awbData.receiver?.contact}
               </p>
               <p>
-                <strong>Email:</strong> {awbData.receiver?.email || "expresshub555@gmail.com"}
+                <strong>Email:</strong> {awbData.receiver?.email || "info@kargoone.com"}
               </p>
             </div>
           </div>

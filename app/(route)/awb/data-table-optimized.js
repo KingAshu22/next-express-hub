@@ -3,6 +3,7 @@
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
+import { Checkbox } from "@/components/ui/checkbox"
 import { useState, useEffect, useRef, useCallback } from "react"
 import {
   DropdownMenu,
@@ -10,8 +11,10 @@ import {
   DropdownMenuContent,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
-import { Search, RotateCcw, ChevronLeft, ChevronRight, Loader2, Settings2 } from "lucide-react"
+import { Search, RotateCcw, ChevronLeft, ChevronRight, Loader2, Settings2, Download } from "lucide-react"
+import { generateManifestPDF } from "@/app/_utils/pdf-manifest"
 import axios from "axios"
+import toast from "react-hot-toast"
 
 const DEFAULT_PAGE_SIZE = 20
 const DEBOUNCE_DELAY = 500
@@ -34,20 +37,14 @@ export function DataTableOptimized({ columns, userType, userId }) {
   const [clientOptions, setClientOptions] = useState([])
   const [showDropdown, setShowDropdown] = useState(false)
   const [showClientFilter, setShowClientFilter] = useState(false)
+  const [selectedRows, setSelectedRows] = useState(new Set())
+  const [isGeneratingPdf, setIsGeneratingPdf] = useState(false)
 
-  // Refs
   const dropdownRef = useRef(null)
   const debounceTimer = useRef(null)
 
   const fetchData = useCallback(
-    async (
-      currentPage,
-      currentSearch,
-      currentCountry,
-      currentClientCode,
-      currentStartDate,
-      currentEndDate
-    ) => {
+    async (currentPage, currentSearch, currentCountry, currentClientCode, currentStartDate, currentEndDate) => {
       setLoading(true)
       setError(null)
       try {
@@ -67,6 +64,7 @@ export function DataTableOptimized({ columns, userType, userId }) {
         setTotalPages(response.data.pagination?.totalPages || 1)
         setTotalCount(response.data.pagination?.totalCount || response.data.totalCount || 0)
         setPage(response.data.pagination?.page || currentPage)
+        setSelectedRows(new Set())
       } catch (err) {
         console.error("Error fetching data:", err)
         setError("Failed to fetch data. Please try again.")
@@ -75,10 +73,9 @@ export function DataTableOptimized({ columns, userType, userId }) {
         setLoading(false)
       }
     },
-    [pageSize, userType, userId] // Dependencies for the function definition itself
+    [pageSize, userType, userId],
   )
 
-  // Initialize columns on mount
   useEffect(() => {
     const initialVisibility = {}
     columns?.forEach((col) => {
@@ -87,13 +84,10 @@ export function DataTableOptimized({ columns, userType, userId }) {
     setVisibleColumns(initialVisibility)
   }, [columns])
 
-  // Fetch initial data on mount
   useEffect(() => {
     fetchData(1, "", "", "", "", "")
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []) // Only on mount
+  }, [])
 
-  // --- START: CORRECTED CLIENT/FRANCHISE FETCHER ---
   useEffect(() => {
     const fetchRefOptions = async () => {
       try {
@@ -102,13 +96,25 @@ export function DataTableOptimized({ columns, userType, userId }) {
             axios.get("/api/franchises").catch(() => ({ data: [] })),
             axios.get("/api/clients").catch(() => ({ data: [] })),
           ])
-          const franchises = (franchiseRes.data || []).map((f) => ({ value: f.code || f.id, label: f.firmName || f.name, type: "franchise" }))
-          const clients = (clientRes.data || []).map((c) => ({ value: c.code || c.id, label: c.companyName || c.name, type: "client" }))
+          const franchises = (franchiseRes.data || []).map((f) => ({
+            value: f.code || f.id,
+            label: f.firmName || f.name,
+            type: "franchise",
+          }))
+          const clients = (clientRes.data || []).map((c) => ({
+            value: c.code || c.id,
+            label: c.companyName || c.name,
+            type: "client",
+          }))
           setClientOptions([...franchises, ...clients])
           setShowClientFilter(true)
         } else if (userType === "franchise") {
           const clientRes = await axios.get("/api/clients", { headers: { userType, userId } })
-          const clients = (clientRes.data || []).map((c) => ({ value: c.code || c.id, label: c.companyName || c.name, type: "client" }))
+          const clients = (clientRes.data || []).map((c) => ({
+            value: c.code || c.id,
+            label: c.companyName || c.name,
+            type: "client",
+          }))
           if (clients.length > 0) {
             setClientOptions(clients)
             setShowClientFilter(true)
@@ -124,14 +130,11 @@ export function DataTableOptimized({ columns, userType, userId }) {
       }
     }
 
-    // THE FIX: Only check for `userType`, as `userId` is not always required.
     if (userType) {
       fetchRefOptions()
     }
   }, [userType, userId])
-  // --- END: CORRECTED CLIENT/FRANCHISE FETCHER ---
 
-  // Close dropdown on outside click
   useEffect(() => {
     const handleClickOutside = (e) => {
       if (dropdownRef.current && !dropdownRef.current.contains(e.target)) {
@@ -146,8 +149,8 @@ export function DataTableOptimized({ columns, userType, userId }) {
     setSearchTerm(value)
     clearTimeout(debounceTimer.current)
     debounceTimer.current = setTimeout(() => {
-        setPage(1)
-        fetchData(1, value, countryFilter, clientFilter, startDate, endDate)
+      setPage(1)
+      fetchData(1, value, countryFilter, clientFilter, startDate, endDate)
     }, DEBOUNCE_DELAY)
   }
 
@@ -173,8 +176,46 @@ export function DataTableOptimized({ columns, userType, userId }) {
     setShowDropdown(false)
   }
 
+  const handleRowSelect = (rowId) => {
+    const newSelected = new Set(selectedRows)
+    if (newSelected.has(rowId)) {
+      newSelected.delete(rowId)
+    } else {
+      newSelected.add(rowId)
+    }
+    setSelectedRows(newSelected)
+  }
+
+  const handleSelectAll = () => {
+    if (selectedRows.size === data.length && data.length > 0) {
+      setSelectedRows(new Set())
+    } else {
+      const allIds = new Set(data.map((row, idx) => idx))
+      setSelectedRows(allIds)
+    }
+  }
+
+  const handleExportManifest = async () => {
+    if (selectedRows.size === 0) {
+      toast.error("Please select at least one AWB")
+      return
+    }
+
+    try {
+      setIsGeneratingPdf(true)
+      const selectedAwbs = data.filter((_, idx) => selectedRows.has(idx))
+      await generateManifestPDF(selectedAwbs)
+      toast.success(`Manifest generated for ${selectedAwbs.length} shipments`)
+    } catch (err) {
+      console.error("Error generating manifest:", err)
+      toast.error("Failed to generate manifest PDF")
+    } finally {
+      setIsGeneratingPdf(false)
+    }
+  }
+
   const filteredClientOptions = clientOptions.filter((opt) =>
-    opt.label.toLowerCase().includes(clientNameInput.toLowerCase())
+    opt.label.toLowerCase().includes(clientNameInput.toLowerCase()),
   )
 
   const CellRenderer = ({ row, column }) => {
@@ -234,7 +275,11 @@ export function DataTableOptimized({ columns, userType, userId }) {
                 {showDropdown && filteredClientOptions.length > 0 && (
                   <ul className="absolute top-full left-0 right-0 bg-background border rounded-md shadow-lg mt-1 max-h-40 overflow-auto z-20">
                     {filteredClientOptions.map((opt, idx) => (
-                      <li key={idx} onClick={() => handleSelectClient(opt)} className="px-3 py-2 hover:bg-muted cursor-pointer text-sm">
+                      <li
+                        key={idx}
+                        onClick={() => handleSelectClient(opt)}
+                        className="px-3 py-2 hover:bg-muted cursor-pointer text-sm"
+                      >
                         {opt.label} <span className="text-xs text-muted-foreground">({opt.type})</span>
                       </li>
                     ))}
@@ -246,18 +291,40 @@ export function DataTableOptimized({ columns, userType, userId }) {
           <div className="flex-1 min-w-[220px]">
             <label className="text-sm font-medium mb-1.5 block">Date Range</label>
             <div className="flex gap-2 items-center">
-              <input type="date" value={startDate} onChange={(e) => setStartDate(e.target.value)} className="w-full h-9 px-2 py-1 border rounded-md text-sm bg-background" />
-              <input type="date" value={endDate} onChange={(e) => setEndDate(e.target.value)} className="w-full h-9 px-2 py-1 border rounded-md text-sm bg-background" />
+              <input
+                type="date"
+                value={startDate}
+                onChange={(e) => setStartDate(e.target.value)}
+                className="w-full h-9 px-2 py-1 border rounded-md text-sm bg-background"
+              />
+              <input
+                type="date"
+                value={endDate}
+                onChange={(e) => setEndDate(e.target.value)}
+                className="w-full h-9 px-2 py-1 border rounded-md text-sm bg-background"
+              />
             </div>
           </div>
           <div className="flex gap-2">
-            <Button size="sm" onClick={applyFilters}>Apply</Button>
+            <Button size="sm" onClick={applyFilters}>
+              Apply
+            </Button>
             <Button variant="outline" size="sm" onClick={handleResetFilters} title="Reset Filters">
               <RotateCcw className="w-4 h-4" />
             </Button>
+            <Button
+              size="sm"
+              onClick={handleExportManifest}
+              disabled={selectedRows.size === 0 || isGeneratingPdf}
+              className="gap-2 bg-green-600 hover:bg-green-700 text-white"
+              title="Export selected AWBs as manifest"
+            >
+              <Download className="w-4 h-4" />
+              {isGeneratingPdf ? "Generating..." : `Manifest (${selectedRows.size})`}
+            </Button>
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
-                <Button variant="outline" size="sm" className="gap-2" title="Toggle Columns">
+                <Button variant="outline" size="sm" className="gap-2 bg-transparent" title="Toggle Columns">
                   <Settings2 className="w-4 h-4" />
                 </Button>
               </DropdownMenuTrigger>
@@ -266,7 +333,9 @@ export function DataTableOptimized({ columns, userType, userId }) {
                   <DropdownMenuCheckboxItem
                     key={col.accessorKey || col.id}
                     checked={visibleColumns[col.accessorKey || col.id] ?? true}
-                    onCheckedChange={(checked) => setVisibleColumns((prev) => ({ ...prev, [col.accessorKey || col.id]: checked }))}
+                    onCheckedChange={(checked) =>
+                      setVisibleColumns((prev) => ({ ...prev, [col.accessorKey || col.id]: checked }))
+                    }
                     className="capitalize"
                   >
                     {typeof col.header === "function" ? col.id : col.header}
@@ -278,7 +347,10 @@ export function DataTableOptimized({ columns, userType, userId }) {
         </div>
       </div>
       <div className="flex justify-between items-center text-sm text-muted-foreground flex-wrap gap-2">
-        <span>Showing {data.length > 0 ? (page - 1) * pageSize + 1 : 0} to {Math.min(page * pageSize, totalCount)} of {totalCount} results</span>
+        <span>
+          Showing {data.length > 0 ? (page - 1) * pageSize + 1 : 0} to {Math.min(page * pageSize, totalCount)} of{" "}
+          {totalCount} results
+        </span>
         <div className="flex items-center gap-2">
           <span>Rows per page:</span>
           <select
@@ -291,7 +363,11 @@ export function DataTableOptimized({ columns, userType, userId }) {
             }}
             className="border rounded px-2 py-1 text-sm bg-background"
           >
-            {[10, 20, 50, 100].map((size) => <option key={size} value={size}>{size}</option>)}
+            {[10, 20, 50, 100].map((size) => (
+              <option key={size} value={size}>
+                {size}
+              </option>
+            ))}
           </select>
         </div>
       </div>
@@ -299,6 +375,14 @@ export function DataTableOptimized({ columns, userType, userId }) {
         <Table>
           <TableHeader>
             <TableRow>
+              <TableHead className="w-10">
+                <Checkbox
+                  checked={selectedRows.size === data.length && data.length > 0}
+                  indeterminate={selectedRows.size > 0 && selectedRows.size < data.length ? true : undefined}
+                  onCheckedChange={handleSelectAll}
+                  title="Select all"
+                />
+              </TableHead>
               {columns?.map((col) => {
                 const key = col.accessorKey || col.id
                 if (visibleColumns[key] === false) return null
@@ -313,7 +397,7 @@ export function DataTableOptimized({ columns, userType, userId }) {
           <TableBody>
             {loading && data.length === 0 ? (
               <TableRow>
-                <TableCell colSpan={columns.length} className="h-24 text-center">
+                <TableCell colSpan={columns.length + 1} className="h-24 text-center">
                   <div className="flex items-center justify-center gap-2 text-muted-foreground">
                     <Loader2 className="w-5 h-5 animate-spin" />
                     Loading initial data...
@@ -322,11 +406,19 @@ export function DataTableOptimized({ columns, userType, userId }) {
               </TableRow>
             ) : error ? (
               <TableRow>
-                <TableCell colSpan={columns.length} className="h-24 text-center text-red-500">{error}</TableCell>
+                <TableCell colSpan={columns.length + 1} className="h-24 text-center text-red-500">
+                  {error}
+                </TableCell>
               </TableRow>
             ) : data.length > 0 ? (
               data.map((row, idx) => (
-                <TableRow key={row.id || idx} className="hover:bg-muted/50">
+                <TableRow
+                  key={row.id || idx}
+                  className={`hover:bg-muted/50 ${selectedRows.has(idx) ? "bg-blue-50" : ""}`}
+                >
+                  <TableCell className="w-10">
+                    <Checkbox checked={selectedRows.has(idx)} onCheckedChange={() => handleRowSelect(idx)} />
+                  </TableCell>
                   {columns?.map((col) => {
                     const key = col.accessorKey || col.id
                     if (visibleColumns[key] === false) return null
@@ -340,8 +432,18 @@ export function DataTableOptimized({ columns, userType, userId }) {
               ))
             ) : (
               <TableRow>
-                <TableCell colSpan={columns?.filter((c) => visibleColumns[c.accessorKey || c.id] !== false).length} className="text-center py-8 text-muted-foreground">
-                  {loading ? <div className="flex items-center justify-center gap-2"><Loader2 className="w-4 h-4 animate-spin"/>Searching...</div> : 'No results found'}
+                <TableCell
+                  colSpan={columns?.filter((c) => visibleColumns[c.accessorKey || c.id] !== false).length + 1}
+                  className="text-center py-8 text-muted-foreground"
+                >
+                  {loading ? (
+                    <div className="flex items-center justify-center gap-2">
+                      <Loader2 className="w-4 h-4 animate-spin" />
+                      Searching...
+                    </div>
+                  ) : (
+                    "No results found"
+                  )}
                 </TableCell>
               </TableRow>
             )}
@@ -349,12 +451,24 @@ export function DataTableOptimized({ columns, userType, userId }) {
         </Table>
       </div>
       <div className="flex items-center justify-between flex-wrap gap-3">
-        <div className="text-sm text-muted-foreground">Page {page} of {totalPages}</div>
+        <div className="text-sm text-muted-foreground">
+          Page {page} of {totalPages}
+        </div>
         <div className="flex gap-2">
-          <Button variant="outline" size="sm" onClick={() => fetchData(page - 1, searchTerm, countryFilter, clientFilter, startDate, endDate)} disabled={page === 1 || loading}>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => fetchData(page - 1, searchTerm, countryFilter, clientFilter, startDate, endDate)}
+            disabled={page === 1 || loading}
+          >
             <ChevronLeft className="w-4 h-4 mr-1" /> Previous
           </Button>
-          <Button variant="outline" size="sm" onClick={() => fetchData(page + 1, searchTerm, countryFilter, clientFilter, startDate, endDate)} disabled={page === totalPages || loading}>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => fetchData(page + 1, searchTerm, countryFilter, clientFilter, startDate, endDate)}
+            disabled={page === totalPages || loading}
+          >
             Next <ChevronRight className="w-4 h-4 ml-1" />
           </Button>
         </div>

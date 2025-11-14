@@ -12,10 +12,11 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog"
-import { LayoutDashboard, Pencil, Trash, Plane, Barcode } from "lucide-react"
+import { LayoutDashboard, Pencil, Trash, Plane, Copy } from "lucide-react"
 import { useEffect, useState } from "react"
 import axios from "axios"
 import { useRouter } from "next/navigation"
+import toast from "react-hot-toast"
 
 // --- START: OPTIMIZATION LOGIC ---
 
@@ -39,7 +40,9 @@ const getClientAndFranchiseMap = () => {
       try {
         // Fetch both clients and franchises at the same time.
         const [clientsRes, franchisesRes] = await Promise.all([
-          axios.get("/api/clients").catch(() => ({ data: [] })), // Add catch to prevent one failure from breaking both
+          axios
+            .get("/api/clients")
+            .catch(() => ({ data: [] })), // Add catch to prevent one failure from breaking both
           axios.get("/api/franchises").catch(() => ({ data: [] })),
         ])
 
@@ -121,6 +124,29 @@ const deleteAwb = async (trackingNumber) => {
   }
 }
 
+const handleCloneAwb = async (awb, router) => {
+  try {
+    const response = await fetch("/api/awb/clone", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({ sourceAwbId: awb._id }),
+    })
+
+    if (!response.ok) {
+      throw new Error("Failed to clone AWB")
+    }
+
+    const clonedAwb = await response.json()
+    toast.success("AWB cloned successfully")
+    router.push(`/edit-awb/${clonedAwb.data.trackingNumber}?cloned=true`)
+  } catch (error) {
+    console.error("Error cloning AWB:", error)
+    toast.error("Failed to clone AWB")
+  }
+}
+
 export const adminColumns = [
   {
     accessorKey: "date",
@@ -135,8 +161,10 @@ export const adminColumns = [
     header: "Tracking",
     cell: ({ row }) => {
       const trackingNumber = row.original.trackingNumber
-      const hasForwardingInfo = row.original?.forwardingNumber?.length > 0 && row.original?.forwardingLink?.length > 0 || row.original?.cNoteNumber?.length > 0
-      
+      const hasForwardingInfo =
+        (row.original?.forwardingNumber?.length > 0 && row.original?.forwardingLink?.length > 0) ||
+        row.original?.cNoteNumber?.length > 0
+
       // The useRouter hook must be called inside the cell render prop.
       const router = useRouter()
 
@@ -192,13 +220,36 @@ export const adminColumns = [
 
       return (
         <div className="flex items-center gap-2">
-          <Button title="Shipping & Label" size="icon" className="h-8 w-8 bg-blue-400" onClick={() => router.push(`/shipping-and-label/${trackingNumber}`)}>
+          <Button
+            title="Shipping & Label"
+            size="icon"
+            className="h-8 w-8 bg-blue-400"
+            onClick={() => router.push(`/shipping-and-label/${trackingNumber}`)}
+          >
             <Plane className="w-4 h-4" />
           </Button>
-          <Button title="Edit AWB" size="icon" className="h-8 w-8 bg-blue-800" onClick={() => router.push(`/edit-awb/${trackingNumber}`)}>
+          <Button
+            title="Edit AWB"
+            size="icon"
+            className="h-8 w-8 bg-blue-800"
+            onClick={() => router.push(`/edit-awb/${trackingNumber}`)}
+          >
             <Pencil className="w-4 h-4" />
           </Button>
-          <Button title="Update Tracking" size="icon" className="h-8 w-8" onClick={() => router.push(`/awb/update-track/${trackingNumber}`)}>
+          <Button
+            title="Clone AWB"
+            size="icon"
+            className="h-8 w-8 bg-cyan-600 hover:bg-cyan-700"
+            onClick={() => handleCloneAwb(row.original, router)}
+          >
+            <Copy className="w-4 h-4" />
+          </Button>
+          <Button
+            title="Update Tracking"
+            size="icon"
+            className="h-8 w-8"
+            onClick={() => router.push(`/awb/update-track/${trackingNumber}`)}
+          >
             <LayoutDashboard className="w-4 h-4" />
           </Button>
           <AlertDialog>
@@ -217,7 +268,9 @@ export const adminColumns = [
               </AlertDialogHeader>
               <AlertDialogFooter>
                 <AlertDialogCancel>Cancel</AlertDialogCancel>
-                <AlertDialogAction className="bg-red-500 hover:bg-red-600" onClick={() => deleteAwb(trackingNumber)}>Delete</AlertDialogAction>
+                <AlertDialogAction className="bg-red-500 hover:bg-red-600" onClick={() => deleteAwb(trackingNumber)}>
+                  Delete
+                </AlertDialogAction>
               </AlertDialogFooter>
             </AlertDialogContent>
           </AlertDialog>

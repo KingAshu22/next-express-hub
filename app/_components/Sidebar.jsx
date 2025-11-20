@@ -54,6 +54,7 @@ export function AppSidebar() {
         { title: "Clients", url: "/clients", icon: User },
         { title: "Franchise", url: "/franchise", icon: User },
         { title: "Pickup", url: "/pickup", icon: Truck },
+        { title: "Rate", url: "/rates", icon: Percent },
         { title: "Estimate", url: "/estimate", icon: IndianRupee },
         { title: "Blogs", url: "/admin-blogs", icon: Rss }
       );

@@ -8,165 +8,190 @@ export async function GET(req) {
     const country = searchParams.get("country");
     const profitPercent = parseFloat(searchParams.get("profitPercent")) || 0;
     const inputWeight = parseFloat(searchParams.get("weight"));
-    // NEW: Check if GST should be applied. Defaults to true.
-    const applyGst = searchParams.get("gst") !== "false";
+    const userId = req.headers.get("userId");
+    const userType = req.headers.get("userType");
+
+    // --- DEBUG STEP 0: Log initial request parameters ---
+    console.log("\n--- [START] /api/rate Request ---");
+    console.log(`Params: type=${type}, country=${country}, weight=${inputWeight}`);
+    console.log(`User Context: userType=${userType}, userId=${userId}`);
 
     if (!type || !inputWeight || !country) {
+        console.error("DEBUG: Missing required parameters.");
         return NextResponse.json({ error: "Missing required parameters: type, weight, country" }, { status: 400 });
     }
 
-    // 1. Define the different weights to be used in calculations
-    // Weight for base rate calculation (rounded to nearest 0.5 kg)
     const calculatedWeight = Math.round(inputWeight * 2) / 2;
-    // Weight for extra charges (rounded up to the next whole number)
     const extraChargesWeight = Math.ceil(inputWeight);
 
     await connectToDB();
 
     try {
-        const rateResult = await Rate.findOne({ originalName: type });
+        // --- DEBUG STEP 1: Building and logging the initial database query ---
+        let rateQuery = { originalName: type };
+        if (userType === 'franchise' || userType === 'client') {
+            if (!userId) {
+                rateQuery.status = 'live';
+            } else {
+                rateQuery['$or'] = [{ status: 'live' }, { status: 'unlisted', assignedTo: userId }];
+            }
+        } else if (userType !== 'admin' && userType !== 'branch') {
+            rateQuery.status = 'live';
+        }
+        // If user is 'admin' or 'branch', no extra filters are added.
+        console.log("DEBUG [Checkpoint 1]: Executing query to find rate sheet:", JSON.stringify(rateQuery));
+        
+        const rateResult = await Rate.findOne(rateQuery);
 
         if (!rateResult) {
-            return NextResponse.json({ error: "Courier type not found in rates" }, { status: 404 });
+            console.error(`DEBUG [FAIL] Checkpoint 1: Rate sheet for query ${JSON.stringify(rateQuery)} not found.`);
+            return NextResponse.json({ error: `Service "${type}" not found or is not available for your account.` }, { status: 404 });
         }
+        console.log(`DEBUG [SUCCESS] Checkpoint 1: Found rate sheet: ${rateResult.originalName} (ID: ${rateResult._id})`);
 
-        // UPDATED: Destructure awbCharges along with other properties
-        const { rates, zones, fuelCharges: fuelChargesPercentFromDB, awbCharges } = rateResult;
-
-        // Find the zone and its specific extra charges for the given country
+        const { rates, zones } = rateResult;
+        const dbCharges = rateResult.charges || [];
+        
+        // --- DEBUG STEP 2: Finding the zone for the country ---
         let selectedZone;
-        let zoneExtraCharges = {};
+        let zoneExtraCharges = [];
+        console.log(`DEBUG [Checkpoint 2]: Searching for country "${country}" in zones...`);
+
         for (const zoneObj of zones) {
-            if (zoneObj.countries.includes(country)) {
+            // Log each zone being checked
+            // console.log(`  - Checking zone "${zoneObj.zone}" with countries: [${zoneObj.countries?.join(', ')}]`);
+            if (zoneObj.countries && zoneObj.countries.includes(country)) {
                 selectedZone = zoneObj.zone;
-                zoneExtraCharges = zoneObj.extraCharges || {};
+                console.log(`DEBUG [SUCCESS] Checkpoint 2: Found country in zone "${selectedZone}".`);
+                if (zoneObj.extraCharges) {
+                    if (Array.isArray(zoneObj.extraCharges)) {
+                        zoneExtraCharges = zoneObj.extraCharges;
+                    } else if (typeof zoneObj.extraCharges === 'object') {
+                        zoneExtraCharges = Object.entries(zoneObj.extraCharges).map(([name, value]) => ({
+                            chargeName: name, chargeType: 'perKg', chargeValue: value
+                        }));
+                    }
+                }
                 break;
             }
         }
 
         if (!selectedZone) {
-            return NextResponse.json({ error: "Zone not found for the given country" }, { status: 404 });
+            console.error(`DEBUG [FAIL] Checkpoint 2: Country "${country}" was not found in any zone for service "${type}".`);
+            return NextResponse.json({ error: `Zone not found for country '${country}' in service '${type}'.` }, { status: 404 });
         }
 
-        // Find the correct rate slab for the calculated weight
-        const sortedRates = rates
-            .map(rate => ({ kg: parseFloat(rate.kg), data: rate }))
-            .sort((a, b) => a.kg - b.kg);
-
-        let weightRateData = sortedRates.find(r => r.kg === calculatedWeight)?.data;
+        // --- DEBUG STEP 3: Finding the weight slab ---
+        console.log(`DEBUG [Checkpoint 3]: Finding rate for calculatedWeight=${calculatedWeight} (from inputWeight=${inputWeight})...`);
+        const sortedRates = rates.map(rate => ({ kg: parseFloat(rate.kg), data: rate })).sort((a, b) => a.kg - b.kg);
+        let weightRateData;
         let closestDbWeight;
 
-        if (!weightRateData) {
+        const exactMatch = sortedRates.find(r => r.kg === calculatedWeight);
+        if (exactMatch) {
+            weightRateData = exactMatch.data;
+            closestDbWeight = calculatedWeight;
+            console.log(`DEBUG [SUCCESS] Checkpoint 3: Found exact weight slab for ${calculatedWeight}kg.`);
+        } else {
+            console.log(`DEBUG: No exact match for ${calculatedWeight}kg. Looking for fallback slab...`);
             const fallbackRate = [...sortedRates].reverse().find(r => r.kg <= calculatedWeight);
             if (fallbackRate) {
                 weightRateData = fallbackRate.data;
                 closestDbWeight = fallbackRate.kg;
+                console.log(`DEBUG [SUCCESS] Checkpoint 3: Found fallback weight slab: ${closestDbWeight}kg.`);
             } else {
-                return NextResponse.json({ error: "No suitable rate found for the given weight" }, { status: 404 });
+                console.error(`DEBUG [FAIL] Checkpoint 3: No suitable rate slab found for weight ${calculatedWeight}. Smallest slab is likely > ${calculatedWeight}.`);
+                return NextResponse.json({ error: `No suitable rate found for weight ${inputWeight}kg.` }, { status: 404 });
             }
-        } else {
-            closestDbWeight = calculatedWeight;
         }
 
+        // --- DEBUG STEP 4: Finding the rate value within the slab ---
+        console.log(`DEBUG [Checkpoint 4]: Looking for rate of zone "${selectedZone}" in the selected weight slab.`);
         const zoneRateValue = weightRateData[selectedZone];
         if (zoneRateValue === undefined || zoneRateValue === null) {
-            return NextResponse.json({ error: "Rate not found for the selected zone" }, { status: 404 });
+            console.error(`DEBUG [FAIL] Checkpoint 4: The key for zone "${selectedZone}" does not exist or is null in the rate data for weight ${closestDbWeight}kg.`);
+            console.error("Available keys in rate data:", Object.keys(weightRateData));
+            return NextResponse.json({ error: `Rate for zone '${selectedZone}' is not defined for this weight.` }, { status: 404 });
         }
+        console.log(`DEBUG [SUCCESS] Checkpoint 4: Found zone rate value: ${zoneRateValue}.`);
         
-        // --- START NEW CALCULATION LOGIC ---
-
-        // 1. Get the Base Rate
+        // --- If all checkpoints pass, proceed with calculation ---
+        console.log("--- All checkpoints passed. Starting final calculation. ---");
+        
         const perKgRate = zoneRateValue / closestDbWeight;
         const baseRate = perKgRate * calculatedWeight;
 
-        // 2. Add Profit
-        const isSpecialRate = !!rateResult.refCode;
+        const isSpecialRate = rateResult.status === 'unlisted';
         let profitCharges = 0;
         let subtotalAfterProfit = baseRate;
-
         if (!isSpecialRate) {
             profitCharges = (profitPercent / 100) * baseRate;
             subtotalAfterProfit += profitCharges;
         }
 
-        // 3. Add Per-KG Extra Charges (calculated with upper rounded weight)
-        let extraChargeTotal = 0;
-        let extraChargesBreakdown = {};
-        for (const [chargeName, chargeValue] of Object.entries(zoneExtraCharges)) {
-            const chargeAmount = chargeValue * extraChargesWeight;
-            extraChargesBreakdown[chargeName] = chargeAmount;
-            extraChargeTotal += chargeAmount;
-        }
-        const subtotalAfterExtraCharges = subtotalAfterProfit + extraChargeTotal;
+        let chargesBreakdown = {};
         
-        // 4. NEW: Add Fixed AWB Charges (if any)
-        const awbChargeAmount = parseFloat(awbCharges) || 0;
-        const subtotalAfterFixedCharges = subtotalAfterExtraCharges + awbChargeAmount;
+        const processCharges = (chargeList, weightForPerKg) => {
+            if (!Array.isArray(chargeList)) return 0;
+            let total = 0;
+            chargeList.forEach(charge => {
+                if (!charge || typeof charge.chargeValue !== 'number') return;
+                let chargeAmount = 0;
+                switch (charge.chargeType) {
+                    case 'perKg': chargeAmount = charge.chargeValue * weightForPerKg; break;
+                    case 'oneTime': chargeAmount = charge.chargeValue; break;
+                }
+                if (charge.chargeType !== 'percentage') {
+                    chargesBreakdown[charge.chargeName] = (chargesBreakdown[charge.chargeName] || 0) + chargeAmount;
+                    total += chargeAmount;
+                }
+            });
+            return total;
+        };
 
-        // 5. Add Fuel Charges (as a percentage of the new subtotal)
-        let fuelChargePercent = 0;
-        if (fuelChargesPercentFromDB !== undefined && fuelChargesPercentFromDB !== null) {
-            fuelChargePercent = parseFloat(fuelChargesPercentFromDB) || 0;
-        } else {
-            // Fallback logic remains the same
-            const fallbackFuel = { "dhl": 27.5, "fedex": 29, "ups": 30.5, "dtdc": 36, "aramex": 35.5, "orbit": 35.5 };
-            fuelChargePercent = fallbackFuel[rateResult.type] || 0;
-        }
+        const mainFixedCharges = processCharges(dbCharges, extraChargesWeight);
+        const zoneFixedCharges = processCharges(zoneExtraCharges, extraChargesWeight);
+        let subtotalAfterFixedCharges = subtotalAfterProfit + mainFixedCharges + zoneFixedCharges;
+
+        const allCharges = [...dbCharges, ...zoneExtraCharges];
+        allCharges.filter(c => c && c.chargeType === 'percentage').forEach(charge => {
+            if (typeof charge.chargeValue === 'number') {
+                const chargeAmount = (charge.chargeValue / 100) * subtotalAfterFixedCharges;
+                chargesBreakdown[charge.chargeName] = (chargesBreakdown[charge.chargeName] || 0) + chargeAmount;
+            }
+        });
         
-        const fuelCharges = (fuelChargePercent / 100) * subtotalAfterFixedCharges;
-        const subtotalBeforeGST = subtotalAfterFixedCharges + fuelCharges;
+        const totalCharges = Object.values(chargesBreakdown).reduce((sum, val) => sum + val, 0);
+        const subtotalBeforeGST = subtotalAfterProfit + totalCharges;
+        const gstAmount = (18 / 100) * subtotalBeforeGST;
+        const finalTotal = subtotalBeforeGST + gstAmount;
 
-        // 6. NEW: Conditionally Add GST (18%)
-        let gstAmount = 0;
-        let finalTotal = subtotalBeforeGST; // Start with the pre-GST total
-
-        if (applyGst) {
-            gstAmount = (18 / 100) * subtotalBeforeGST;
-            finalTotal += gstAmount; // Add GST to the final total
-        }
-
-        // --- END NEW CALCULATION LOGIC ---
-
+        console.log("--- [END] Request Processed Successfully ---");
         return NextResponse.json({
-            // Input Details
             service: rateResult.service,
             originalName: rateResult.originalName,
             zone: selectedZone,
             inputWeight,
-
-            // Weight Calculation Details
             calculatedWeight,
             extraChargesWeight,
             closestDbWeight,
-
-            // Rate Calculation Breakdown
             isSpecialRate,
-            refCode: weightRateData.refCode || null,
+            refCode: rateResult.refCode || null,
             baseRate: parseFloat(baseRate.toFixed(2)),
-            
-            // Charges Breakdown
             profitPercent: isSpecialRate ? 0 : profitPercent,
             profitCharges: parseFloat(profitCharges.toFixed(2)),
-            
-            extraChargesBreakdown,
-            extraChargeTotal: parseFloat(extraChargeTotal.toFixed(2)),
-
-            awbCharges: awbChargeAmount, // Added AWB charge to response
-            
-            fuelChargePercent,
-            fuelCharges: parseFloat(fuelCharges.toFixed(2)),
-
+            chargesBreakdown: Object.entries(chargesBreakdown).reduce((acc, [key, value]) => {
+                acc[key] = parseFloat(value.toFixed(2));
+                return acc;
+            }, {}),
+            totalCharges: parseFloat(totalCharges.toFixed(2)),
             subtotalBeforeGST: parseFloat(subtotalBeforeGST.toFixed(2)),
-            
-            gstApplied: applyGst, // Added GST flag to response
             gstAmount: parseFloat(gstAmount.toFixed(2)),
-
-            // Final Total
             total: parseFloat(finalTotal.toFixed(2)),
         });
 
     } catch (error) {
-        console.error("Error in rate calculation:", error);
+        console.error("FATAL: An unexpected error occurred in the try block:", error);
         return NextResponse.json({ error: "Internal Server Error" }, { status: 500 });
     }
 }

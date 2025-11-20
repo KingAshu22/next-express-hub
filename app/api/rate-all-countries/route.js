@@ -1,165 +1,179 @@
-import { NextResponse } from "next/server"
-import { connectToDB } from "@/app/_utils/mongodb"
-import Rate from "@/models/Rate"
-import { Countries } from "@/app/constants/country"
+import { NextResponse } from "next/server";
+import { connectToDB } from "@/app/_utils/mongodb";
+import Rate from "@/models/Rate";
+import { Countries } from "@/app/constants/country";
 
 export async function POST(req) {
   try {
-    const { startWeight, endWeight, selectedServices, profitPercent, includeGST } = await req.json()
+    const { startWeight, endWeight, selectedServices, profitPercent, includeGST } = await req.json();
+    const userId = req.headers.get("userId");
+    const userType = req.headers.get("userType");
 
     if (!selectedServices || selectedServices.length !== 1) {
       return NextResponse.json(
-        { error: "Please select exactly one service for all countries calculation" },
-        { status: 400 },
-      )
+        { error: "Please select exactly one service for this calculation." },
+        { status: 400 }
+      );
     }
 
-    const selectedService = selectedServices[0]
+    const selectedService = selectedServices[0];
+    await connectToDB();
 
-    await connectToDB()
-
-    // Generate weights array
-    const weights = []
-    let currentWeight = Number.parseFloat(startWeight)
-    const endWeightFloat = Number.parseFloat(endWeight)
-
-    while (currentWeight <= endWeightFloat) {
-      weights.push(currentWeight.toFixed(1))
-      currentWeight += 1
+    // 1. Build access control query and fetch the rate document
+    let rateQuery = { originalName: selectedService };
+    if (userType === 'franchise' || userType === 'client') {
+      if (!userId) {
+        rateQuery.status = 'live';
+      } else {
+        rateQuery['$or'] = [
+          { status: 'live' },
+          { status: 'unlisted', assignedTo: userId }
+        ];
+      }
+    } else if (userType !== 'admin' && userType !== 'branch') {
+      rateQuery.status = 'live';
     }
 
-    // Fetch rate data for the selected service
-    const rateResult = await Rate.findOne({ service: selectedService })
+    const rateResult = await Rate.findOne(rateQuery);
 
     if (!rateResult) {
-      return NextResponse.json({ error: `No rates found for service: ${selectedService}` }, { status: 404 })
+      return NextResponse.json({ error: `Service "${selectedService}" not found or not available for your account.` }, { status: 404 });
     }
 
-    const { rates, zones, type } = rateResult
+    // 2. Prepare data for calculation
+    const { rates, zones } = rateResult;
+    const dbCharges = rateResult.charges || []; // Main dynamic charges
 
-    // Helper function to calculate rate for a specific country and weight
-    const calculateRateForCountryAndWeight = (country, weight) => {
-      try {
-        const weightFloat = Number.parseFloat(weight)
-
-        // Find zone for the country
-        let selectedZone
-        let extraCharges = {}
-
-        for (const zoneObj of zones) {
-          if (zoneObj.countries && zoneObj.countries.includes(country)) {
-            selectedZone = zoneObj.zone
-            extraCharges = zoneObj.extraCharges || {}
-            break
-          }
-        }
-
-        if (!selectedZone) {
-          return null
-        }
-
-        // Find rate for the weight
-        const roundedWeight = weightFloat.toFixed(2)
-        let weightRate = rates.find((rate) => Number.parseFloat(rate.kg) === Number.parseFloat(roundedWeight))
-
-        if (!weightRate) {
-          const sortedRates = rates
-            .map((rate) => ({ kg: Number.parseFloat(rate.kg), data: rate }))
-            .sort((a, b) => b.kg - a.kg)
-
-          const fallbackRate = sortedRates.find((r) => r.kg <= weightFloat)
-
-          if (fallbackRate) {
-            weightRate = fallbackRate.data
-          } else {
-            return null
-          }
-        }
-
-        const zoneRate = weightRate[selectedZone]
-
-        if (!zoneRate) {
-          return null
-        }
-
-        const rate = Number.parseFloat((zoneRate / weightFloat).toFixed(2))
-        const baseCharge = Number.parseFloat((rate * weightFloat).toFixed(2))
-        let baseCharges = baseCharge
-
-        // COVID charges
-        let covidCharges = 0
-        const covidChargePerKg = 15
-
-        if (["aramex"].includes(type)) {
-          covidCharges = Number.parseFloat((covidChargePerKg * weightFloat).toFixed(2))
-        }
-
-        baseCharges += covidCharges
-
-        // Extra charges
-        let extraChargeTotal = 0
-        for (const chargeValue of Object.values(extraCharges)) {
-          const charge = Number.parseFloat((chargeValue * weightFloat).toFixed(2))
-          extraChargeTotal += charge
-        }
-
-        baseCharges += extraChargeTotal
-
-        // Fuel charges
-        let fuelCharges = 0
-        if (type === "dhl") {
-          fuelCharges = Number.parseFloat(((27.5 / 100) * baseCharges).toFixed(2))
-        } else if (type === "fedex") {
-          fuelCharges = Number.parseFloat(((29 / 100) * baseCharges).toFixed(2))
-        } else if (type === "ups") {
-          fuelCharges = Number.parseFloat(((30.5 / 100) * baseCharges).toFixed(2))
-        } else if (type === "dtdc") {
-          fuelCharges = Number.parseFloat(((36 / 100) * baseCharges).toFixed(2))
-        } else if (["aramex", "orbit"].includes(type)) {
-          fuelCharges = Number.parseFloat(((35.5 / 100) * baseCharges).toFixed(2))
-        }
-
-        baseCharges += fuelCharges
-
-        // Profit
-        const profitCharges = Number.parseFloat(((profitPercent / 100) * baseCharges).toFixed(2))
-        const total = Number.parseFloat((baseCharges + profitCharges).toFixed(2))
-
-        // GST
-        let finalRate
-
-        if (includeGST) {
-          const GST = Number.parseFloat(((18 / 100) * total).toFixed(2))
-          finalRate = Number.parseFloat((total + GST).toFixed(2))
-        } else {
-          finalRate = total
-        }
-
-        // Calculate rate per kg
-        const ratePerKg = Number.parseFloat((finalRate / weightFloat).toFixed(2))
-
-        return ratePerKg
-      } catch (error) {
-        console.error(`Error calculating rate for country ${country}, weight ${weight}:`, error)
-        return null
-      }
+    // 3. Generate weights array
+    const weights = [];
+    let currentWeight = Number.parseFloat(startWeight);
+    const endWeightFloat = Number.parseFloat(endWeight);
+    while (currentWeight <= endWeightFloat + 0.0001) {
+      weights.push(Number(currentWeight.toFixed(2)));
+      currentWeight += (currentWeight < 20) ? 0.5 : 1;
     }
 
-    // Calculate rates for all countries and weights
+    // Pre-process zones for faster lookup inside the loop
+    const countryToZoneMap = new Map();
+    for (const zoneObj of zones) {
+        let zoneExtraCharges = [];
+        if (zoneObj.extraCharges) {
+            if (Array.isArray(zoneObj.extraCharges)) {
+                zoneExtraCharges = zoneObj.extraCharges;
+            } else if (typeof zoneObj.extraCharges === 'object') {
+                zoneExtraCharges = Object.entries(zoneObj.extraCharges).map(([name, value]) => ({
+                    chargeName: name, chargeType: 'perKg', chargeValue: value
+                }));
+            }
+        }
+        if (Array.isArray(zoneObj.countries)) {
+            for (const country of zoneObj.countries) {
+                countryToZoneMap.set(country, { zone: zoneObj.zone, extraCharges: zoneExtraCharges });
+            }
+        }
+    }
+
+    // Pre-sort rates for faster lookup
+    const sortedRates = rates.map(r => ({ kg: parseFloat(r.kg), data: r })).sort((a, b) => a.kg - b.kg);
+
+    // Helper function to find the correct rate slab
+    const findWeightRate = (weight) => {
+        const exactMatch = sortedRates.find(r => r.kg === weight);
+        if (exactMatch) return { data: exactMatch.data, dbWeight: weight };
+        
+        const fallbackRate = [...sortedRates].reverse().find(r => r.kg <= weight);
+        if (fallbackRate) return { data: fallbackRate.data, dbWeight: fallbackRate.kg };
+        
+        return null;
+    };
+
+    // 4. Calculate rates for all countries and weights
     const results = {
       countries: Countries,
       service: selectedService,
-      weightRanges: weights.map((weight) => ({
-        weight: weight,
-        rates: Countries.map((country) => {
-          return calculateRateForCountryAndWeight(country, weight)
-        }),
-      })),
-    }
+      weightRanges: weights.map((weightFloat) => {
+        const row = {
+          weight: weightFloat,
+          rates: Countries.map((country) => {
+            try {
+              const zoneInfo = countryToZoneMap.get(country);
+              if (!zoneInfo) return null;
+              
+              const { zone: selectedZone, extraCharges: zoneExtraCharges } = zoneInfo;
+              
+              const roundedWeight = Math.round(weightFloat * 2) / 2;
+              const rateInfo = findWeightRate(roundedWeight);
+              if (!rateInfo) return null;
 
-    return NextResponse.json(results)
+              const { data: weightRateData, dbWeight: closestDbWeight } = rateInfo;
+              const zoneRateValue = weightRateData[selectedZone];
+              if (zoneRateValue === undefined || zoneRateValue === null) return null;
+              
+              // --- Start Dynamic Calculation ---
+              const perKgRate = zoneRateValue / closestDbWeight;
+              const baseRate = perKgRate * roundedWeight;
+              
+              const isSpecialRate = rateResult.status === 'unlisted';
+              let subtotalAfterProfit = baseRate;
+              if (!isSpecialRate) {
+                  subtotalAfterProfit += (profitPercent / 100) * baseRate;
+              }
+
+              let chargesBreakdown = {};
+              const extraChargesWeight = Math.ceil(weightFloat);
+
+              const processCharges = (chargeList, weightForPerKg) => {
+                  if (!Array.isArray(chargeList)) return;
+                  chargeList.forEach(charge => {
+                      if (!charge || typeof charge.chargeValue !== 'number') return;
+                      let chargeAmount = 0;
+                      switch (charge.chargeType) {
+                          case 'perKg': chargeAmount = charge.chargeValue * weightForPerKg; break;
+                          case 'oneTime': chargeAmount = charge.chargeValue; break;
+                      }
+                      if (charge.chargeType !== 'percentage') {
+                          chargesBreakdown[charge.chargeName] = (chargesBreakdown[charge.chargeName] || 0) + chargeAmount;
+                      }
+                  });
+              };
+              
+              processCharges(dbCharges, extraChargesWeight);
+              processCharges(zoneExtraCharges, extraChargesWeight);
+
+              const fixedChargesTotal = Object.values(chargesBreakdown).reduce((sum, val) => sum + val, 0);
+              let subtotalAfterFixedCharges = subtotalAfterProfit + fixedChargesTotal;
+              
+              const allCharges = [...dbCharges, ...zoneExtraCharges];
+              allCharges.filter(c => c && c.chargeType === 'percentage').forEach(charge => {
+                  if (typeof charge.chargeValue === 'number') {
+                      const chargeAmount = (charge.chargeValue / 100) * subtotalAfterFixedCharges;
+                      chargesBreakdown[charge.chargeName] = (chargesBreakdown[charge.chargeName] || 0) + chargeAmount;
+                  }
+              });
+              
+              const totalCharges = Object.values(chargesBreakdown).reduce((sum, val) => sum + val, 0);
+              const totalBeforeGST = subtotalAfterProfit + totalCharges;
+              
+              let finalRate = totalBeforeGST;
+              if (includeGST) {
+                  finalRate += (18 / 100) * totalBeforeGST;
+              }
+              
+              return parseFloat((finalRate / weightFloat).toFixed(2));
+
+            } catch (error) {
+              console.error(`Error calculating rate for country ${country}, weight ${weightFloat}:`, error);
+              return null;
+            }
+          }),
+        };
+        return row;
+      }),
+    };
+
+    return NextResponse.json(results);
   } catch (error) {
-    console.error("Error in rate-all-countries API:", error)
-    return NextResponse.json({ error: "Internal server error" }, { status: 500 })
+    console.error("Error in rate-all-countries API:", error);
+    return NextResponse.json({ error: "Internal server error" }, { status: 500 });
   }
 }

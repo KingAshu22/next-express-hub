@@ -9,7 +9,7 @@ export async function GET() {
     return NextResponse.json(rates)
   } catch (error) {
     console.error("Error fetching rates:", error)
-    return NextResponse.json({ error: "Internal Server Error" }, { status: 500 })
+    return NextResponse.json({ message: "Failed to fetch rates.", error: error.message }, { status: 500 })
   }
 }
 
@@ -18,16 +18,20 @@ export async function POST(req) {
     await connectToDB()
     const body = await req.json()
 
-    const { type, service, originalName, rates, zones } = body
+    // Destructure all fields, including the new 'charges' array
+    const {
+      type,
+      service,
+      originalName,
+      rates,
+      zones,
+      charges, // New charges array
+      status,
+      assignedTo,
+    } = body
 
-    if (!type || !service || !originalName || !rates || !zones) {
-      return NextResponse.json({ error: "Missing required fields" }, { status: 400 })
-    }
-
-    // Check if rate with same type already exists
-    const existingRate = await Rate.findOne({ type })
-    if (existingRate) {
-      return NextResponse.json({ error: "Rate with this type already exists" }, { status: 409 })
+    if (!type || !service || !originalName || !rates || !zones || !status) {
+      return NextResponse.json({ message: "Missing required fields" }, { status: 400 })
     }
 
     const newRate = new Rate({
@@ -36,8 +40,9 @@ export async function POST(req) {
       originalName,
       rates,
       zones,
-      createdAt: new Date(),
-      updatedAt: new Date(),
+      charges: charges || [], // Use provided charges or default to empty array
+      status,
+      assignedTo,
     })
 
     await newRate.save()
@@ -45,6 +50,9 @@ export async function POST(req) {
     return NextResponse.json(newRate, { status: 201 })
   } catch (error) {
     console.error("Error creating rate:", error)
-    return NextResponse.json({ error: "Internal Server Error" }, { status: 500 })
+    if (error.name === "ValidationError") {
+      return NextResponse.json({ message: "Validation failed", errors: error.errors }, { status: 400 })
+    }
+    return NextResponse.json({ message: "Failed to create rate.", error: error.message }, { status: 500 })
   }
 }

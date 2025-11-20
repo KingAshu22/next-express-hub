@@ -33,13 +33,15 @@ export async function generateManifestPDF(awbs) {
   yPosition += 10
 
   // Table data
-  const tableColumn = ["Tracking No", "Sender", "Receiver", "Country", "Date"]
+  const tableColumn = ["Date", "Tracking No", "Sender", "Receiver", "Country", "No. of Boxes", "Total Weight (kg)"]
   const tableRows = awbs.map((awb) => [
+    awb.date ? new Date(awb.date).toLocaleDateString("en-GB") : "N/A",
     awb.trackingNumber || "N/A",
     awb.sender?.name?.substring(0, 15) || "N/A",
     awb.receiver?.name?.substring(0, 15) || "N/A",
     awb.receiver?.country || "N/A",
-    awb.date ? new Date(awb.date).toLocaleDateString("en-GB") : "N/A",
+    awb.boxes?.length || "N/A",
+    awb.totalWeight || "N/A",
   ])
 
   // Add table

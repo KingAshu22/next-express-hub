@@ -1,189 +1,198 @@
-import { NextResponse } from "next/server"
-import { connectToDB } from "@/app/_utils/mongodb"
-import Rate from "@/models/Rate"
+import { NextResponse } from "next/server";
+import { connectToDB } from "@/app/_utils/mongodb";
+import Rate from "@/models/Rate";
 
 export async function POST(req) {
   try {
-    const { startWeight, endWeight, country, selectedServices, profitPercent, includeGST } = await req.json()
+    const { startWeight, endWeight, country, selectedServices, profitPercent, includeGST } = await req.json();
+    const userId = req.headers.get("userId");
+    const userType = req.headers.get("userType");
 
     if (!country || !selectedServices || selectedServices.length === 0) {
-      return NextResponse.json({ error: "Missing required parameters" }, { status: 400 })
+      return NextResponse.json({ error: "Missing required parameters" }, { status: 400 });
     }
 
-    await connectToDB()
+    await connectToDB();
 
-    // Get country name for display - we'll use the country code as name for now
-    // In a real application, you'd have a proper country mapping
-    let countryName = country
+    // 1. Build the access control query for fetching rates
+    let serviceQuery = { originalName: { $in: selectedServices } };
 
-    // Try to get a more readable country name from the rates data
-    try {
-      const sampleRate = await Rate.findOne({})
-      if (sampleRate && sampleRate.zones) {
-        for (const zone of sampleRate.zones) {
-          if (zone.countries && zone.countries.includes(country)) {
-            // For now, we'll just use the country code
-            // You can enhance this with a proper country mapping
-            countryName = country.toUpperCase()
-            break
-          }
-        }
+    if (userType === 'franchise' || userType === 'client') {
+      if (!userId) {
+        serviceQuery.status = 'live';
+      } else {
+        serviceQuery['$or'] = [
+          { status: 'live' },
+          { status: 'unlisted', assignedTo: userId }
+        ];
       }
-    } catch (error) {
-      console.error("Error getting country name:", error)
+    } else if (userType !== 'admin' && userType !== 'branch') {
+      serviceQuery.status = 'live';
+    }
+    // Admins/branches see all selected services
+
+    // 2. Fetch all relevant service rates in a single query
+    const serviceRateDocs = await Rate.find(serviceQuery);
+
+    // Map docs to an object for easy lookup
+    const serviceRates = serviceRateDocs.reduce((acc, doc) => {
+        acc[doc.originalName] = doc;
+        return acc;
+    }, {});
+
+
+    // 3. Generate the list of weights to calculate
+    const weights = [];
+    let currentWeight = Number.parseFloat(startWeight);
+    const endWeightFloat = Number.parseFloat(endWeight);
+    while (currentWeight <= endWeightFloat + 0.0001) {
+      weights.push(Number(currentWeight.toFixed(2)));
+      currentWeight += (currentWeight < 20) ? 0.5 : 1;
     }
 
-    // Generate weights array
-    const weights = []
-    let currentWeight = Number.parseFloat(startWeight)
-    const endWeightFloat = Number.parseFloat(endWeight)
-
-    while (currentWeight <= endWeightFloat) {
-      weights.push(currentWeight.toFixed(1))
-      currentWeight += 1
-    }
-
-    // Fetch rates for all selected services
-    const serviceRates = {}
-    for (const service of selectedServices) {
-      try {
-        const rateResult = await Rate.findOne({ service })
-        if (rateResult) {
-          serviceRates[service] = rateResult
-        }
-      } catch (error) {
-        console.error(`Error fetching rates for service ${service}:`, error)
-      }
-    }
-
-    // Process rates for each weight and service
+    // 4. Process rates for each weight and service
     const results = {
-      countryName,
+      countryName: country,
       headers: selectedServices,
       rows: [],
-    }
+    };
 
-    for (const weight of weights) {
-      const weightFloat = Number.parseFloat(weight)
+    for (const weightFloat of weights) {
       const row = {
-        weight,
+        weight: weightFloat,
         rates: [],
-      }
+      };
 
-      for (const service of selectedServices) {
-        const rateData = serviceRates[service]
+      for (const originalName of selectedServices) {
+        const rateData = serviceRates[originalName];
 
         if (!rateData) {
-          row.rates.push(null)
-          continue
+          row.rates.push(null); // Service not found or user doesn't have access
+          continue;
         }
 
         try {
-          const { rates, zones, type } = rateData
+          const { rates, zones } = rateData;
+          const dbCharges = rateData.charges || []; // Main dynamic charges
 
           // Find zone for the country
-          let selectedZone
-          let extraCharges = {}
+          let selectedZone;
+          let zoneExtraCharges = []; // Default to an empty array
           for (const zoneObj of zones) {
             if (zoneObj.countries && zoneObj.countries.includes(country)) {
-              selectedZone = zoneObj.zone
-              extraCharges = zoneObj.extraCharges || {}
-              break
+              selectedZone = zoneObj.zone;
+              if (zoneObj.extraCharges) {
+                  if (Array.isArray(zoneObj.extraCharges)) {
+                      zoneExtraCharges = zoneObj.extraCharges;
+                  } else if (typeof zoneObj.extraCharges === 'object') {
+                      zoneExtraCharges = Object.entries(zoneObj.extraCharges).map(([name, value]) => ({
+                          chargeName: name, chargeType: 'perKg', chargeValue: value
+                      }));
+                  }
+              }
+              break;
             }
           }
 
           if (!selectedZone) {
-            row.rates.push(null)
-            continue
+            row.rates.push(null);
+            continue;
           }
 
-          // Find rate for the weight
-          const roundedWeight = weightFloat.toFixed(2)
-          let weightRate = rates.find((rate) => Number.parseFloat(rate.kg) === Number.parseFloat(roundedWeight))
+          // Find rate slab for the weight
+          const roundedWeight = Math.round(weightFloat * 2) / 2;
+          let weightRateData;
+          let closestDbWeight;
 
-          if (!weightRate) {
-            const sortedRates = rates
-              .map((rate) => ({ kg: Number.parseFloat(rate.kg), data: rate }))
-              .sort((a, b) => b.kg - a.kg)
-
-            const fallbackRate = sortedRates.find((r) => r.kg <= weightFloat)
-            if (fallbackRate) {
-              weightRate = fallbackRate.data
-            } else {
-              row.rates.push(null)
-              continue
-            }
-          }
-
-          const zoneRate = weightRate[selectedZone]
-          if (!zoneRate) {
-            row.rates.push(null)
-            continue
-          }
-
-          const rate = Number.parseFloat((zoneRate / weightFloat).toFixed(2))
-          const baseCharge = Number.parseFloat((rate * weightFloat).toFixed(2))
-          let baseCharges = baseCharge
-
-          // COVID charges
-          let covidCharges = 0
-          const covidChargePerKg = 15
-          if (["aramex"].includes(type)) {
-            covidCharges = Number.parseFloat((covidChargePerKg * weightFloat).toFixed(2))
-          }
-          baseCharges += covidCharges
-
-          // Extra charges
-          let extraChargeTotal = 0
-          for (const chargeValue of Object.values(extraCharges)) {
-            const charge = Number.parseFloat((chargeValue * weightFloat).toFixed(2))
-            extraChargeTotal += charge
-          }
-          baseCharges += extraChargeTotal
-
-          // Fuel charges
-          let fuelCharges = 0
-          if (type === "dhl") {
-            fuelCharges = Number.parseFloat(((27.5 / 100) * baseCharges).toFixed(2))
-          } else if (type === "fedex") {
-            fuelCharges = Number.parseFloat(((29 / 100) * baseCharges).toFixed(2))
-          } else if (type === "ups") {
-            fuelCharges = Number.parseFloat(((30.5 / 100) * baseCharges).toFixed(2))
-          } else if (type === "dtdc") {
-            fuelCharges = Number.parseFloat(((36 / 100) * baseCharges).toFixed(2))
-          } else if (["aramex", "orbit"].includes(type)) {
-            fuelCharges = Number.parseFloat(((35.5 / 100) * baseCharges).toFixed(2))
-          }
-          baseCharges += fuelCharges
-
-          // Profit
-          const profitCharges = Number.parseFloat(((profitPercent / 100) * baseCharges).toFixed(2))
-          const total = Number.parseFloat((baseCharges + profitCharges).toFixed(2))
-
-          // GST
-          let finalRate
-          if (includeGST) {
-            const GST = Number.parseFloat(((18 / 100) * total).toFixed(2))
-            finalRate = Number.parseFloat((total + GST).toFixed(2))
+          const sortedRates = rates.map(r => ({ kg: parseFloat(r.kg), data: r })).sort((a, b) => a.kg - b.kg);
+          const exactMatch = sortedRates.find(r => r.kg === roundedWeight);
+          
+          if(exactMatch) {
+              weightRateData = exactMatch.data;
+              closestDbWeight = roundedWeight;
           } else {
-            finalRate = total
+              const fallbackRate = [...sortedRates].reverse().find(r => r.kg <= roundedWeight);
+              if (fallbackRate) {
+                  weightRateData = fallbackRate.data;
+                  closestDbWeight = fallbackRate.kg;
+              } else {
+                  row.rates.push(null);
+                  continue;
+              }
+          }
+          
+          const zoneRateValue = weightRateData[selectedZone];
+          if (zoneRateValue === undefined || zoneRateValue === null) {
+            row.rates.push(null);
+            continue;
           }
 
-          // Calculate rate per kg
-          const ratePerKg = Number.parseFloat((finalRate / weightFloat).toFixed(2))
-          row.rates.push(ratePerKg)
+          // --- START DYNAMIC CALCULATION ---
+          const perKgRate = zoneRateValue / closestDbWeight;
+          const baseRate = perKgRate * roundedWeight;
+          
+          const isSpecialRate = rateData.status === 'unlisted';
+          let subtotalAfterProfit = baseRate;
+          if (!isSpecialRate) {
+              subtotalAfterProfit += (profitPercent / 100) * baseRate;
+          }
+
+          let chargesBreakdown = {};
+          const extraChargesWeight = Math.ceil(weightFloat);
+
+          const processCharges = (chargeList, weightForPerKg) => {
+              if (!Array.isArray(chargeList)) return 0;
+              let total = 0;
+              chargeList.forEach(charge => {
+                  if (!charge || typeof charge.chargeValue !== 'number') return;
+                  let chargeAmount = 0;
+                  switch (charge.chargeType) {
+                      case 'perKg': chargeAmount = charge.chargeValue * weightForPerKg; break;
+                      case 'oneTime': chargeAmount = charge.chargeValue; break;
+                  }
+                  if (charge.chargeType !== 'percentage') {
+                      chargesBreakdown[charge.chargeName] = (chargesBreakdown[charge.chargeName] || 0) + chargeAmount;
+                      total += chargeAmount;
+                  }
+              });
+              return total;
+          };
+
+          const mainFixedCharges = processCharges(dbCharges, extraChargesWeight);
+          const zoneFixedCharges = processCharges(zoneExtraCharges, extraChargesWeight);
+          let subtotalAfterFixedCharges = subtotalAfterProfit + mainFixedCharges + zoneFixedCharges;
+
+          const allCharges = [...dbCharges, ...zoneExtraCharges];
+          allCharges.filter(c => c && c.chargeType === 'percentage').forEach(charge => {
+              if (typeof charge.chargeValue === 'number') {
+                  const chargeAmount = (charge.chargeValue / 100) * subtotalAfterFixedCharges;
+                  chargesBreakdown[charge.chargeName] = (chargesBreakdown[charge.chargeName] || 0) + chargeAmount;
+              }
+          });
+          
+          const totalCharges = Object.values(chargesBreakdown).reduce((sum, val) => sum + val, 0);
+          const totalBeforeGST = subtotalAfterProfit + totalCharges;
+
+          let finalRate = totalBeforeGST;
+          if (includeGST) {
+              finalRate += (18 / 100) * totalBeforeGST;
+          }
+          
+          const ratePerKg = finalRate / weightFloat;
+          row.rates.push(parseFloat(ratePerKg.toFixed(2)));
+
         } catch (error) {
-          console.error(`Error calculating rate for service ${service}, weight ${weight}:`, error)
-          row.rates.push(null)
+          console.error(`Error calculating rate for service ${originalName}, weight ${weightFloat}:`, error);
+          row.rates.push(null);
         }
       }
 
-      results.rows.push(row)
+      results.rows.push(row);
     }
 
-    return NextResponse.json(results)
+    return NextResponse.json(results);
   } catch (error) {
-    console.error("Rate range calculation error:", error)
-    return NextResponse.json({ error: "Internal Server Error" }, { status: 500 })
+    console.error("Rate range calculation error:", error);
+    return NextResponse.json({ error: "Internal Server Error" }, { status: 500 });
   }
 }

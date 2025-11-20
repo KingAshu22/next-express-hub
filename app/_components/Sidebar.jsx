@@ -8,6 +8,7 @@ import {
   Truck,
   Rss,
   IndianRupee,
+  Percent,
 } from "lucide-react";
 
 import {

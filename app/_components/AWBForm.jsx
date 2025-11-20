@@ -31,55 +31,6 @@ import ItemNameAutocomplete from "./ItemNameAutoComplete"
 import { Badge } from "@/components/ui/badge"
 import { Check, ChevronsUpDown } from "lucide-react"
 
-const mockHsnData = [
-  { code: "482030", item: "Document" },
-  { code: "630790", item: "Textile articles" },
-  { code: "950510", item: "Festive articles" },
-  { code: "491110", item: "Commercial brochures" },
-  { code: "392690", item: "Plastic articles" },
-  { code: "621710", item: "Garment accessories" },
-  { code: "950590", item: "Party accessories" },
-  { code: "491199", item: "Printed advertising material" },
-  { code: "392640", item: "Statuettes" },
-  { code: "621780", item: "Textile accessories" },
-  { code: "950591", item: "Halloween articles" },
-  { code: "491191", item: "Printed advertising material" },
-  { code: "392641", item: "Statuettes" },
-  { code: "621781", item: "Textile accessories" },
-  { code: "950592", item: "Christmas articles" },
-  { code: "491192", item: "Printed advertising material" },
-  { code: "392642", item: "Statuettes" },
-  { code: "621782", item: "Textile accessories" },
-  { code: "950593", item: "Easter articles" },
-  { code: "491193", item: "Printed advertising material" },
-  { code: "392643", item: "Statuettes" },
-  { code: "621783", item: "Textile accessories" },
-  { code: "950594", item: "Valentine's Day articles" },
-  { code: "491194", item: "Printed advertising material" },
-  { code: "392644", item: "Statuettes" },
-  { code: "621784", item: "Textile accessories" },
-  { code: "950595", item: "New Year's articles" },
-  { code: "491195", item: "Printed advertising material" },
-  { code: "392645", item: "Statuettes" },
-  { code: "621785", item: "Textile accessories" },
-  { code: "950596", item: "Thanksgiving articles" },
-  { code: "491196", item: "Printed advertising material" },
-  { code: "392646", item: "Statuettes" },
-  { code: "621786", item: "Textile accessories" },
-  { code: "950597", item: "St. Patrick's Day articles" },
-  { code: "491197", item: "Printed advertising material" },
-  { code: "392647", item: "Statuettes" },
-  { code: "621787", item: "Textile accessories" },
-  { code: "950598", item: "Mother's Day articles" },
-  { code: "491198", item: "Printed advertising material" },
-  { code: "392648", item: "Statuettes" },
-  { code: "621788", item: "Textile accessories" },
-  { code: "950599", item: "Father's Day articles" },
-  { code: "491199", item: "Printed advertising material" },
-  { code: "392649", item: "Statuettes" },
-  { code: "621789", item: "Textile accessories" },
-]
-
 export default function AWBForm({ isEdit = false, awb }) {
   const router = useRouter()
 
@@ -914,6 +865,10 @@ const [isClient, setIsClient] = useState(userType === "client");
               profitPercent,
               gst:false
             },
+            headers:{
+              userType: localStorage.getItem("userType"),
+              userId: localStorage.getItem("code"),
+            }
           })
           .then((response) => ({
             type,
@@ -1574,7 +1529,7 @@ const [isClient, setIsClient] = useState(userType === "client");
             <Card className="border-gray-200">
               <CardHeader className="-my-6">
                 <CardTitle className="text-sm text-[#232C65]">
-                  Available Rates<span className="text-xs text-gray-600 mt-1"> (Including GST)</span>
+                  Available Rates<span className="text-xs text-gray-600 mt-1"> (Excluding GST)</span>
                 </CardTitle>
               </CardHeader>
               <CardContent className="pt-0">
@@ -1593,7 +1548,6 @@ const [isClient, setIsClient] = useState(userType === "client");
                       <TableHeader>
                         <TableRow className="h-1">
                           <TableHead className="text-xs">Service</TableHead>
-                          <TableHead className="text-xs">Company</TableHead>
                           <TableHead className="text-xs">Amount</TableHead>
                           <TableHead className="text-xs">Amount/kg</TableHead>
                         </TableRow>
@@ -1624,10 +1578,9 @@ const [isClient, setIsClient] = useState(userType === "client");
                                   </Badge>
                                 </div>
                               </TableCell>
-                              <TableCell className="text-xs p-1 uppercase">{rate.type}</TableCell>
-                              <TableCell className="text-xs p-1 font-semibold">₹{rate.total}</TableCell>
+                              <TableCell className="text-xs p-1 font-semibold">₹{rate.subtotalBeforeGST}</TableCell>
                               <TableCell className="text-xs p-1">
-                                ₹{(rate.total / Number.parseFloat(totalChargeableWeight || 1)).toFixed(2)}
+                                ₹{(rate.subtotalBeforeGST / Number.parseFloat(totalChargeableWeight || 1)).toFixed(2)}
                               </TableCell>
                             </TableRow>
                           ))}

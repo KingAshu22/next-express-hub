@@ -1651,7 +1651,6 @@ const [isClient, setIsClient] = useState(userType === "client");
                     onChange={(e) => setSenderName(e.target.value)}
                     required
                     className="flex-1 h-6 text-xs"
-                    disabled={isClient}
                   />
                   <Button
                     type="button"
@@ -1675,7 +1674,6 @@ const [isClient, setIsClient] = useState(userType === "client");
                   value={senderCompanyName}
                   onChange={(e) => setSenderCompanyName(e.target.value)}
                   className="h-6 text-xs"
-                  disabled={isClient}
                 />
               </div>
 
@@ -1706,7 +1704,6 @@ const [isClient, setIsClient] = useState(userType === "client");
                     onChange={(e) => handlePinCodeChange(e.target.value, setSenderZipCode)}
                     required
                     className="pr-6 h-6 text-xs"
-                    disabled={isClient}
                   />
                   {senderZipCode && senderZipCode.length >= 5 && (
                     <div className="absolute inset-y-0 right-0 flex items-center pr-1 pointer-events-none">
@@ -1777,7 +1774,6 @@ const [isClient, setIsClient] = useState(userType === "client");
                     onChange={(e) => setSenderContact(e.target.value)}
                     required
                     className={cn("h-6 text-xs", senderCountry ? "rounded-l-none" : "")}
-                    disabled={isClient}
                   />
                 </div>
               </div>
@@ -1793,7 +1789,6 @@ const [isClient, setIsClient] = useState(userType === "client");
                   rows={2}
                   required
                   className="text-xs resize-none"
-                  disabled={isClient}
                 />
               </div>
               <div className="space-y-1 col-span-3">
@@ -1808,7 +1803,6 @@ const [isClient, setIsClient] = useState(userType === "client");
                   rows={2}
                   required
                   className="text-xs resize-none"
-                  disabled={isClient}
                 />
               </div>
 
@@ -1841,7 +1835,7 @@ const [isClient, setIsClient] = useState(userType === "client");
               </div>
               <div className="space-y-1">
                 <Label className="text-xs">KYC Type*</Label>
-                <Select value={kycType} onValueChange={setKycType} disabled={isClient} required>
+                <Select value={kycType} onValueChange={setKycType} required>
                   <SelectTrigger className="h-6 text-xs">
                     <SelectValue placeholder="KYC Type" />
                   </SelectTrigger>
@@ -1873,7 +1867,6 @@ const [isClient, setIsClient] = useState(userType === "client");
                   onChange={(e) => setKyc(e.target.value)}
                   required
                   className="h-6 text-xs"
-                  disabled={isClient}
                 />
               </div>
               <div className="space-y-1">
@@ -1888,7 +1881,6 @@ const [isClient, setIsClient] = useState(userType === "client");
                   onChange={(e) => setKycDocument(e.target.value)}
                   required
                   className="h-6 text-xs"
-                  disabled={isClient}
                 />
               </div>
               <div className="space-y-1">
@@ -1902,7 +1894,6 @@ const [isClient, setIsClient] = useState(userType === "client");
                   value={gst}
                   onChange={(e) => setGst(e.target.value)}
                   className="h-6 text-xs"
-                  disabled={isClient}
                 />
               </div>
             </CardContent>
@@ -2034,7 +2025,6 @@ const [isClient, setIsClient] = useState(userType === "client");
                   rows={2}
                   required
                   className="text-xs resize-none"
-                  disabled={isClient}
                 />
               </div>
 

@@ -9,6 +9,7 @@ import {
   Rss,
   IndianRupee,
   Percent,
+  Code,
 } from "lucide-react";
 
 import {
@@ -57,12 +58,14 @@ export function AppSidebar() {
         { title: "Pickup", url: "/pickup", icon: Truck },
         { title: "Rate", url: "/rates", icon: Percent },
         { title: "Estimate", url: "/estimate", icon: IndianRupee },
-        { title: "Blogs", url: "/admin-blogs", icon: Rss }
+        { title: "Blogs", url: "/admin-blogs", icon: Rss },
+        { title: "API", url: "/api", icon: Code }
       );
     }
 
     if (userType === "franchise") {
       items.push({ title: "Clients", url: "/clients", icon: User });
+      items.push({ title: "API", url: "/api", icon: Code });
     }
   }
 

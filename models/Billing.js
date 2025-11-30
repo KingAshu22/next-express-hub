@@ -1,8 +1,9 @@
-import mongoose, { Schema, models, model } from "mongoose";
+import mongoose, { Schema, models, model } from "mongoose"
 
 const BillingSchema = new Schema({
   billNumber: { type: String, required: true, unique: true }, // e.g. 2025-26/0001
   financialYear: { type: String, required: true }, // e.g. 2025-26
+  invoiceType: { type: String, enum: ["gst", "non-gst"], default: "gst" }, // Added invoice type field
   billingInfo: {
     name: String,
     address: String,
@@ -29,6 +30,15 @@ const BillingSchema = new Schema({
   paid: Number,
   balance: Number,
   createdAt: { type: Date, default: Date.now },
-});
+  updatedAt: { type: Date, default: Date.now },
+  lastEditedBy: String,
+  editHistory: [
+    {
+      editedAt: Date,
+      editedBy: String,
+      changes: mongoose.Schema.Types.Mixed,
+    },
+  ],
+})
 
-export default models.Billing || model("Billing", BillingSchema);
+export default models.Billing || model("Billing", BillingSchema)

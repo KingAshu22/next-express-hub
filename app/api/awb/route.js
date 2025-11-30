@@ -19,6 +19,12 @@ export async function GET(req) {
     const clientCode = searchParams.get("clientCode") || ""
     const startDate = searchParams.get("startDate") || ""
     const endDate = searchParams.get("endDate") || ""
+    
+    // New parameter to fetch all fields (for billing page)
+    const fetchAll = searchParams.get("fetchAll") === "true"
+    
+    // New parameter to filter by billed status
+    const billedStatus = searchParams.get("billedStatus") || "" // "billed", "unbilled", or "" for all
 
     const query = {}
 
@@ -33,6 +39,8 @@ export async function GET(req) {
         { "sender.name": searchRegex },
         { "receiver.name": searchRegex },
         { invoiceNumber: searchRegex },
+        { cNoteNumber: searchRegex },
+        { awbNumber: searchRegex },
       ]
     }
 
@@ -56,13 +64,31 @@ export async function GET(req) {
       }
     }
 
+    // Filter by billed status
+    if (billedStatus === "billed") {
+      query.isBilled = true
+    } else if (billedStatus === "unbilled") {
+      query.$or = query.$or || []
+      // Handle case where isBilled doesn't exist or is false
+      query.isBilled = { $ne: true }
+    }
+
     const isPaginated = page !== null && pageSize !== null
 
-    let baseQuery = Awb.find(query)
-      .sort({ date: -1 })
-      .select(
-        "date invoiceNumber trackingNumber refCode receiver.country receiver.name sender.name forwardingNumber forwardingLink parcelStatus cNoteNumber",
+    let baseQuery = Awb.find(query).sort({ date: -1 })
+
+    // Select fields based on fetchAll parameter
+    if (fetchAll) {
+      // Return all fields needed for billing
+      baseQuery = baseQuery.select(
+        "date invoiceNumber trackingNumber refCode receiver sender boxes rateInfo parcelStatus cNoteNumber cNoteVendorName awbNumber forwardingNumber forwardingLink isBilled parcelType via shippingCurrency"
       )
+    } else {
+      // Return limited fields for listing pages
+      baseQuery = baseQuery.select(
+        "date invoiceNumber trackingNumber refCode receiver.country receiver.name sender.name forwardingNumber forwardingLink parcelStatus cNoteNumber isBilled"
+      )
+    }
 
     if (isPaginated) {
       const skip = (page - 1) * pageSize
@@ -98,20 +124,20 @@ export async function GET(req) {
 
 export async function POST(req) {
   try {
-    console.log("Inside /api/awb");
-    await connectToDB();
-    const data = await req.json();
+    console.log("Inside /api/awb")
+    await connectToDB()
+    const data = await req.json()
 
-    console.log(data);
+    console.log(data)
 
-    const awb = new Awb(data);
-    await awb.save();
+    const awb = new Awb(data)
+    await awb.save()
 
     // Update or create customer1 (sender)
     await Customer.findOneAndUpdate(
       {
         name: data.sender.name,
-        owner: data.staffId
+        owner: data.staffId,
       },
       {
         $set: {
@@ -131,13 +157,13 @@ export async function POST(req) {
         },
       },
       { upsert: true, new: true }
-    );
+    )
 
     // Update or create customer2 (receiver)
     await Customer.findOneAndUpdate(
       {
         name: data.receiver.name,
-        owner: data.staffId
+        owner: data.staffId,
       },
       {
         $set: {
@@ -157,17 +183,11 @@ export async function POST(req) {
         },
       },
       { upsert: true, new: true }
-    );
+    )
 
-    return NextResponse.json(
-      { message: "Parcel added successfully!", awb },
-      { status: 200 }
-    );
+    return NextResponse.json({ message: "Parcel added successfully!", awb }, { status: 200 })
   } catch (error) {
-    console.error("Error in POST /api/awb:", error.message);
-    return NextResponse.json(
-      { error: "Internal Server Error" },
-      { status: 500 }
-    );
+    console.error("Error in POST /api/awb:", error.message)
+    return NextResponse.json({ error: "Internal Server Error" }, { status: 500 })
   }
 }

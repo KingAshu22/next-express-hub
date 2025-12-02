@@ -977,7 +977,8 @@ const [isClient, setIsClient] = useState(userType === "client");
           : {
               parcelStatus: [
                 {
-                  status: "Shipment AWB Prepared - BOM HUB",
+                  status: `Shipment AWB Prepared - ${senderCity} HUB`,
+                  location: senderCity,
                   timestamp: new Date(),
                   comment: "",
                 },

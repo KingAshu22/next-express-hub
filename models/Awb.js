@@ -25,6 +25,7 @@ const AwbSchema = new Schema({
   parcelStatus: [
     {
       status: String,
+      location: String,
       timestamp: Date,
       comment: String,
     }

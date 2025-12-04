@@ -12,7 +12,7 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog"
-import { LayoutDashboard, Pencil, Trash, Plane, Copy } from "lucide-react"
+import { LayoutDashboard, Pencil, Trash, Plane, Copy, IndianRupee } from "lucide-react"
 import { useEffect, useState } from "react"
 import axios from "axios"
 import { useRouter } from "next/navigation"
@@ -147,6 +147,24 @@ const handleCloneAwb = async (awb, router) => {
   }
 }
 
+const calculateBoxWeights = (boxes) => {
+  if (!boxes || !Array.isArray(boxes) || boxes.length === 0) {
+    return { actual: 0, volume: 0, chargeable: 0 }
+  }
+
+  return boxes.reduce((acc, box) => {
+    const act = parseFloat(box.actualWeight) || 0
+    const dim = parseFloat(box.dimensionalWeight) || 0
+    const chg = parseFloat(box.chargeableWeight) || Math.max(act, dim)
+
+    return {
+      actual: acc.actual + act,
+      volume: acc.volume + dim,
+      chargeable: acc.chargeable + chg
+    }
+  }, { actual: 0, volume: 0, chargeable: 0 })
+}
+
 export const adminColumns = [
   {
     accessorKey: "date",
@@ -184,7 +202,7 @@ export const adminColumns = [
     cell: ({ row }) => {
       const refCode = row.original.refCode
       // Use the new, efficient ShowName component.
-      return refCode ? <ShowName id={refCode} /> : <span>N/A</span>
+      return refCode ? <ShowName id={refCode} /> : <span>Admin</span>
     },
   },
   {
@@ -212,6 +230,23 @@ export const adminColumns = [
     },
   },
   {
+    accessorKey: "boxes", // Use dot notation for nested data
+    header: "Chg.Wt",
+    cell: ({ row }) => {
+      const boxes = row.original.boxes
+      const weights = calculateBoxWeights(boxes)
+      return <span>{weights.chargeable}KG</span>
+    },
+  },
+  {
+    accessorKey: "financials", // Use dot notation for nested data
+    header: "Amount",
+    cell: ({ row }) => {
+      const amount = row.original?.financials?.sales?.grandTotal || 0
+      return <span>{Math.round(amount).toLocaleString("en-IN")}</span>
+    },
+  },
+  {
     id: "actions",
     header: "Actions",
     cell: ({ row }) => {
@@ -220,6 +255,14 @@ export const adminColumns = [
 
       return (
         <div className="flex items-center gap-2">
+          <Button
+            title="Shipping & Label"
+            size="icon"
+            className="h-8 w-12 bg-purple-600"
+            onClick={() => router.push(`/track/${trackingNumber}`)}
+          >
+            Track
+          </Button>
           <Button
             title="Shipping & Label"
             size="icon"
@@ -251,6 +294,14 @@ export const adminColumns = [
             onClick={() => router.push(`/awb/update-track/${trackingNumber}`)}
           >
             <LayoutDashboard className="w-4 h-4" />
+          </Button>
+          <Button
+            title="Sales Purchase Entry"
+            size="icon"
+            className="h-8 w-8 bg-green-600"
+            onClick={() => router.push(`/awb/sales/${trackingNumber}`)}
+          >
+            <IndianRupee className="w-4 h-4" />
           </Button>
           <AlertDialog>
             <AlertDialogTrigger asChild>

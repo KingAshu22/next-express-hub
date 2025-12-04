@@ -13,7 +13,7 @@ const inter = Inter({ subsets: ["latin"] });
 export default function RootLayout({ children }) {
   const pathname = usePathname(); // Get the current pathname
   const isAWBPage =
-    (pathname.includes("/awb/") && !pathname.includes("/awb/create"))  && !pathname.includes("/awb/update-track/") ||
+    (pathname.includes("/awb/") && !pathname.includes("/awb/create"))  && !pathname.includes("/awb/update-track/") && !pathname.includes("/awb/sales") ||
     pathname.includes("/signin") ||
     pathname == "/" ||
     pathname.includes("/blogs") ||

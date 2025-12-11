@@ -49,10 +49,21 @@ export default function AWBTrackingPage({ params }) {
   const [otherEIService, setOtherEIService] = useState("")
   const [selectedEIProductCode, setSelectedEIProductCode] = useState("NONDOX")
 
+  // MYS state
+  const [selectedMYSService, setSelectedMYSService] = useState("")
+  const [otherMYSService, setOtherMYSService] = useState("")
+  const [selectedMYSProductCode, setSelectedMYSProductCode] = useState("NONDOX")
+
   // Service options
   const courierJourneyServices = ["UK SELF", "AUS SELF", "DXB SELF", "SELF", "other"]
   const expressImpexServices = ["DPD CLASSIC", "DPD UK", "other"]
   const expressImpexProductCodes = [
+    { code: "NONDOX", label: "Non-Document (Parcels)" },
+    { code: "DOX", label: "Documents" },
+  ]
+
+  const mysServices = ["DPD_ECO_MYS", "DPD_MYS", "DPD SCOTLAND", "EX_AMS_DPD_MYS", "MYS_LHR_DPD_EUROPE", "MYS_LHR EUROPE UPS", "LHR_UPS ECO", "NIR_DPD", "SELF-SELF", "MYS_SELF", "SELF_DUTYPAID", "other"]
+  const mysProductCodes = [
     { code: "NONDOX", label: "Non-Document (Parcels)" },
     { code: "DOX", label: "Documents" },
   ]
@@ -161,6 +172,46 @@ export default function AWBTrackingPage({ params }) {
     }
   }
 
+  // MYS integration handler
+  const handleSendToMYS = async () => {
+    const serviceName =
+      selectedMYSService === "other" ? otherMYSService.trim() : selectedMYSService
+
+    if (!serviceName) {
+      setError("Please select a service before proceeding.")
+      return
+    }
+
+    try {
+      setIntegrating(true)
+      setError(null)
+      const response = await fetch("/api/mys/send-awb", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          awbId: awbData._id,
+          trackingNumber,
+          service: serviceName,
+          productCode: selectedMYSProductCode,
+        }),
+      })
+
+      const result = await response.json()
+
+      if (!response.ok || !result.success) {
+        setError(result.error || "Failed to send to MYS")
+        return
+      }
+
+      setAwbData(result.updatedAwb)
+      setError(null)
+    } catch (err) {
+      setError(err.message || "An unexpected error occurred")
+    } finally {
+      setIntegrating(false)
+    }
+  }
+
   // Validation helpers
   const isCJServiceValid =
     (selectedCJService && selectedCJService !== "other") ||
@@ -169,6 +220,10 @@ export default function AWBTrackingPage({ params }) {
   const isEIServiceValid =
     (selectedEIService && selectedEIService !== "other") ||
     (selectedEIService === "other" && otherEIService.trim() !== "")
+
+  const isMYSServiceValid =
+    (selectedMYSService && selectedMYSService !== "other") ||
+    (selectedMYSService === "other" && otherMYSService.trim() !== "")
 
   // Loading state
   if (loading) {
@@ -456,6 +511,25 @@ export default function AWBTrackingPage({ params }) {
                       <p className="text-xs opacity-70">DPD Services</p>
                     </div>
                   </button>
+
+                  <button
+                    onClick={() => setSelectedVendor("mys")}
+                    className={`flex items-center gap-3 px-5 py-3 rounded-xl border-2 transition-all ${
+                      selectedVendor === "mys"
+                        ? "border-emerald-500 bg-emerald-50 text-emerald-700 shadow-md"
+                        : "border-gray-200 bg-white text-gray-700 hover:border-gray-300 hover:bg-gray-50"
+                    }`}
+                  >
+                    <div className={`p-2 rounded-lg ${
+                      selectedVendor === "mys" ? "bg-emerald-100" : "bg-gray-100"
+                    }`}>
+                      <Package className="h-5 w-5" />
+                    </div>
+                    <div className="text-left">
+                      <p className="font-semibold">MYS</p>
+                      <p className="text-xs opacity-70">DPD Services</p>
+                    </div>
+                  </button>
                 </div>
               </div>
 
@@ -593,6 +667,106 @@ export default function AWBTrackingPage({ params }) {
                         ) : (
                           <>
                             Send to Express Impex
+                            <ArrowRight className="ml-2 h-4 w-4" />
+                          </>
+                        )}
+                      </Button>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              <div>
+                      <Button
+                        onClick={handleSendToExpressImpex}
+                        disabled={integrating || !isEIServiceValid}
+                        className="w-full bg-emerald-600 hover:bg-emerald-700 text-white py-2.5 rounded-lg font-medium transition-all disabled:bg-gray-300 disabled:cursor-not-allowed shadow-md hover:shadow-lg"
+                      >
+                        {integrating ? (
+                          <>
+                            <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                            Processing...
+                          </>
+                        ) : (
+                          <>
+                            Send to Express Impex
+                            <ArrowRight className="ml-2 h-4 w-4" />
+                          </>
+                        )}
+                      </Button>
+                    </div>
+
+              {/* MYS Options */}
+              {selectedVendor === "mys" && (
+                <div className="bg-emerald-50 rounded-xl p-5 border border-emerald-100">
+                  <div className="grid grid-cols-1 md:grid-cols-4 gap-4 items-end">
+                    <div>
+                      <label className="block text-sm font-medium text-emerald-900 mb-2">
+                        Product Type
+                      </label>
+                      <select
+                        value={selectedMYSProductCode}
+                        onChange={(e) => setSelectedMYSProductCode(e.target.value)}
+                        className="w-full px-4 py-2.5 rounded-lg border border-emerald-200 bg-white text-gray-900 focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 transition-all"
+                      >
+                        {mysProductCodes.map((option) => (
+                          <option key={option.code} value={option.code}>
+                            {option.label}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+
+                    <div>
+                      <label className="block text-sm font-medium text-emerald-900 mb-2">
+                        Select Service
+                      </label>
+                      <select
+                        value={selectedMYSService}
+                        onChange={(e) => {
+                          setSelectedMYSService(e.target.value)
+                          if (e.target.value !== "other") setOtherMYSService("")
+                        }}
+                        className="w-full px-4 py-2.5 rounded-lg border border-emerald-200 bg-white text-gray-900 focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 transition-all"
+                      >
+                        <option value="">Choose service...</option>
+                        {mysServices.map((option) => (
+                          <option key={option} value={option}>
+                            {option === "other" ? "Other (Custom)" : option}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+
+                    {selectedMYSService === "other" && (
+                      <div>
+                        <label className="block text-sm font-medium text-emerald-900 mb-2">
+                          Custom Service Code
+                        </label>
+                        <input
+                          type="text"
+                          value={otherMYSService}
+                          onChange={(e) => setOtherMYSService(e.target.value)}
+                          placeholder="Enter service code"
+                          className="w-full px-4 py-2.5 rounded-lg border border-emerald-200 bg-white text-gray-900 focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 transition-all"
+                        />
+                      </div>
+                    )}
+
+                    <div>
+                      <Button
+                        onClick={handleSendToMYS}
+                        disabled={integrating || !isMYSServiceValid}
+                        className="w-full bg-emerald-600 hover:bg-emerald-700 text-white py-2.5 rounded-lg font-medium transition-all disabled:bg-gray-300 disabled:cursor-not-allowed shadow-md hover:shadow-lg"
+                      >
+                        {integrating ? (
+                          <>
+                            <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                            Processing...
+                          </>
+                        ) : (
+                          <>
+                            Send to MYS
                             <ArrowRight className="ml-2 h-4 w-4" />
                           </>
                         )}

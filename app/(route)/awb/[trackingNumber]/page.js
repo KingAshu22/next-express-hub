@@ -247,7 +247,7 @@ function AddressBox({ data }) {
   return (
     <div className="border border-gray-200 rounded p-4 py-1">
       <p className="font-semibold text-[#E31E24]">{data?.name}</p>
-      <p>{data?.address}</p>
+      <p>{data?.address}, {data?.address2}</p>
       <p>{data?.zip}</p>
       <p>{data?.country}</p>
       <p>Contact: {data?.contact}</p>

@@ -1230,7 +1230,7 @@ export default function AWBForm({ isEdit = false, awb }) {
                 <FormInput label="Email" id="senderEmail"><Input type="email" value={senderEmail} onChange={(e) => setSenderEmail(e.target.value)} /></FormInput>
                 <div className="sm:col-span-2">
                   <FormInput label="Address Line 1" id="senderAddress" required>
-                    <Textarea rows={2} maxLength={20} value={senderAddress} onChange={(e) => setSenderAddress(e.target.value)} disabled={isClient} />
+                    <Textarea rows={2} maxLength={30} value={senderAddress} onChange={(e) => setSenderAddress(e.target.value)} disabled={isClient} />
                     <div className="text-xs text-muted-foreground text-right">{senderAddress.length}/20</div>
                   </FormInput>
                 </div>
@@ -1274,7 +1274,7 @@ export default function AWBForm({ isEdit = false, awb }) {
                 <FormInput label="Email" id="receiverEmail"><Input type="email" value={receiverEmail} onChange={(e) => setReceiverEmail(e.target.value)} /></FormInput>
                 <div className="sm:col-span-2">
                   <FormInput label="Address Line 1" id="receiverAddress" required>
-                    <Textarea rows={2} maxLength={20} value={receiverAddress} onChange={(e) => setReceiverAddress(e.target.value)} />
+                    <Textarea rows={2} maxLength={30} value={receiverAddress} onChange={(e) => setReceiverAddress(e.target.value)} />
                     <div className="text-xs text-muted-foreground text-right">{receiverAddress.length}/20</div>
                   </FormInput>
                 </div>

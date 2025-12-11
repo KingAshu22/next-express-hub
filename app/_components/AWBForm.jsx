@@ -1,16 +1,29 @@
 "use client"
 import { useState, useEffect, useMemo, useCallback } from "react"
 import { format } from "date-fns"
-import { CalendarIcon, Plus, Minus, Search, TruckIcon, CheckCircle, ChevronDown } from "lucide-react"
+import {
+  CalendarIcon,
+  Plus,
+  Minus,
+  Search,
+  TruckIcon,
+  CheckCircle,
+  ChevronDown,
+  FileText,
+  Package,
+  Users,
+  Check,
+  ChevronsUpDown,
+} from "lucide-react"
 import { cn } from "@/lib/utils"
 import { Button } from "@/components/ui/button"
 import { Calendar } from "@/components/ui/calendar"
-import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
+import { Popover, PopoverContent, PopoverTrigger, PopoverAnchor } from "@/components/ui/popover"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Textarea } from "@/components/ui/textarea"
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { Countries, countryCodeMap } from "@/app/constants/country"
 import axios from "axios"
@@ -29,31 +42,44 @@ import toast from "react-hot-toast"
 import { Checkbox } from "@/components/ui/checkbox"
 import ItemNameAutocomplete from "./ItemNameAutoComplete"
 import { Badge } from "@/components/ui/badge"
-import { Check, ChevronsUpDown } from "lucide-react"
+import { Switch } from "@/components/ui/switch"
+
+const mockHsnData = [
+  { code: "482030", item: "Document" },
+  { code: "630790", item: "Textile articles" },
+  // ... rest of mock data
+]
+
+// --- Helper Components ---
+
+const FormSection = ({ title, description, icon, children, className }) => (
+  <Card className={cn("overflow-hidden", className)}>
+    <CardHeader>
+      <div className="flex items-start gap-4">
+        {icon && <div className="bg-primary/10 text-primary p-2 rounded-lg">{icon}</div>}
+        <div>
+          <CardTitle className="text-lg text-primary">{title}</CardTitle>
+          {description && <CardDescription className="mt-1">{description}</CardDescription>}
+        </div>
+      </div>
+    </CardHeader>
+    <CardContent>{children}</CardContent>
+  </Card>
+)
+
+const FormInput = ({ id, label, children, required }) => (
+  <div className="space-y-2">
+    <Label htmlFor={id} className="font-medium">
+      {label} {required && <span className="text-destructive">*</span>}
+    </Label>
+    {children}
+  </div>
+)
+
+// --- Main Form Component ---
 
 export default function AWBForm({ isEdit = false, awb }) {
   const router = useRouter()
-
-  // Clean up contact numbers from AWB data if in edit mode
-  useEffect(() => {
-    if (isEdit && awb) {
-      // Remove country code from sender contact if present
-      if (awb.sender?.contact) {
-        const senderCountryCode = getCallingCode(awb.sender.country)
-        if (senderCountryCode && awb.sender.contact.startsWith(senderCountryCode)) {
-          setSenderContact(awb.sender.contact.substring(senderCountryCode.length).trim())
-        }
-      }
-
-      // Remove country code from receiver contact if present
-      if (awb.receiver?.contact) {
-        const receiverCountryCode = getCallingCode(awb.receiver.country)
-        if (receiverCountryCode && awb.receiver.contact.startsWith(receiverCountryCode)) {
-          setReceiverContact(awb.receiver.contact.substring(receiverCountryCode.length).trim())
-        }
-      }
-    }
-  }, [isEdit, awb])
 
   // State
   const [success, setSuccess] = useState(false)
@@ -75,9 +101,10 @@ export default function AWBForm({ isEdit = false, awb }) {
   const [rates, setRates] = useState(null)
   const [selectedRate, setSelectedRate] = useState(null)
   const [selectedCourier, setSelectedCourier] = useState(null)
+  const [includeGST, setIncludeGST] = useState(false) // Default: Excl GST
 
   // Form state
-  const [date, setDate] = useState(awb?.date || Date.now())
+  const [date, setDate] = useState(awb?.date ? new Date(awb.date) : new Date())
   const [parcelType, setParcelType] = useState(awb?.parcelType || "International")
   const [staffId, setStaffId] = useState(awb?.staffId || "")
   const [invoiceNumber, setInvoiceNumber] = useState(awb?.invoiceNumber || "")
@@ -131,35 +158,38 @@ export default function AWBForm({ isEdit = false, awb }) {
 
   // Box details
   const [boxes, setBoxes] = useState(awb?.boxes || [])
-  const [ourBoxes, setOurBoxes] = useState(awb?.ourBoxes || [])
-  const [vendorBoxes, setVendorBoxes] = useState(awb?.vendorBoxes || [])
-
-  const [availableTypes, setAvailableTypes] = useState([]);
-
-  const userType = typeof window !== "undefined" ? localStorage.getItem("userType") : "";
-const [isClient, setIsClient] = useState(userType === "client");
+  const [availableTypes, setAvailableTypes] = useState([])
+  const userType = typeof window !== "undefined" ? localStorage.getItem("userType") : ""
+  const [isClient, setIsClient] = useState(userType === "client")
 
   // Derived state
   const [totalChargeableWeight, setTotalChargeableWeight] = useState("")
-  const [profitPercent, setProfitPercent] = useState(50)
+  const [error, setError] = useState(null)
 
-  // Calculate total weights
+  // Get calling code
+  const getCallingCode = (countryName) => countryCodeMap[countryName]?.callingCode || ""
+
+  // Clean contact on edit
+  useEffect(() => {
+    if (isEdit && awb) {
+      const cleanContact = (contact, country) => {
+        if (!contact || !country) return contact
+        const callingCode = getCallingCode(country)
+        if (callingCode && contact.startsWith(callingCode)) {
+          return contact.substring(callingCode.length).trim()
+        }
+        return contact
+      }
+      setSenderContact(cleanContact(awb.sender?.contact, awb.sender?.country))
+      setReceiverContact(cleanContact(awb.receiver?.contact, awb.receiver?.country))
+    }
+  }, [isEdit, awb])
+
+  // Weights
   const totalWeights = useMemo(() => {
-    const totalActual = boxes.reduce((acc, box) => {
-      const actualWeight = Number.parseFloat(box.actualWeight) || 0
-      return acc + actualWeight
-    }, 0)
-
-    const totalDimensional = boxes.reduce((acc, box) => {
-      const dimensionalWeight = Number.parseFloat(box.dimensionalWeight) || 0
-      return acc + dimensionalWeight
-    }, 0)
-
-    const totalChargeable = boxes.reduce((acc, box) => {
-      const chargeableWeight = Number.parseFloat(box.chargeableWeight) || 0
-      return acc + chargeableWeight
-    }, 0)
-
+    const totalActual = boxes.reduce((acc, box) => acc + (Number.parseFloat(box.actualWeight) || 0), 0)
+    const totalDimensional = boxes.reduce((acc, box) => acc + (Number.parseFloat(box.dimensionalWeight) || 0), 0)
+    const totalChargeable = boxes.reduce((acc, box) => acc + (Number.parseFloat(box.chargeableWeight) || 0), 0)
     return {
       actual: totalActual.toFixed(2),
       dimensional: totalDimensional.toFixed(3),
@@ -167,44 +197,38 @@ const [isClient, setIsClient] = useState(userType === "client");
     }
   }, [boxes])
 
-  // Check if all required fields are filled for rate fetching
   const canFetchRates = useMemo(() => {
     return boxes.length > 0 && totalChargeableWeight && Number(totalChargeableWeight) > 0 && receiverCountry
   }, [boxes, totalChargeableWeight, receiverCountry])
 
-  // Generate boxes based on user input
+  // Filtered customers for search (Fixed ReferenceError)
+  const filteredCustomers = useMemo(() => {
+    if (!searchTerm) return customers
+    return customers.filter((customer) => customer.name.toLowerCase().includes(searchTerm.toLowerCase()))
+  }, [customers, searchTerm])
+
+  // Box Logic
   const generateBoxes = () => {
     const count = Number.parseInt(boxCount, 10)
     if (isNaN(count) || count <= 0) {
       toast.error("Please enter a valid number of boxes")
       return
     }
-
-    const newBoxes = []
-    for (let i = 0; i < count; i++) {
-      newBoxes.push({
-        length: "",
-        breadth: "",
-        height: "",
-        actualWeight: "",
-        dimensionalWeight: "",
-        chargeableWeight: "",
-        items: [{ name: "", quantity: "", price: "", hsnCode: "" }],
-      })
-    }
+    const newBoxes = Array.from({ length: count }, () => ({
+      length: "",
+      breadth: "",
+      height: "",
+      actualWeight: "",
+      dimensionalWeight: "",
+      chargeableWeight: "",
+      items: [{ name: "", quantity: "", price: "", hsnCode: "" }],
+    }))
     setBoxes(newBoxes)
   }
 
-  // Filtered customers for search
-  const filteredCustomers = useMemo(() => {
-    if (!searchTerm) return customers
-    return customers.filter((customer) => customer.name.toLowerCase().includes(searchTerm.toLowerCase()))
-  }, [customers, searchTerm])
-
-  const [error, setError] = useState(null)
-
+  // Ref Code Fetching
   useEffect(() => {
-    fetchServices();
+    fetchServices()
     const fetchRefOptions = async () => {
       const userType = localStorage.getItem("userType") || ""
       const code = localStorage.getItem("code") || ""
@@ -217,139 +241,69 @@ const [isClient, setIsClient] = useState(userType === "client");
 
       try {
         if (userType === "admin" || userType === "branch") {
-          // Fetch all franchises and clients
           const [franchiseRes, clientRes] = await Promise.all([axios.get("/api/franchises"), axios.get("/api/clients")])
-
           const franchises = (Array.isArray(franchiseRes.data) ? franchiseRes.data : [franchiseRes.data]).map((f) => ({
-            code: f.code,
-            name: f.name,
-            type: "franchise",
+            code: f.code, name: f.name, type: "franchise",
           }))
-
           const clients = (Array.isArray(clientRes.data) ? clientRes.data : [clientRes.data]).map((c) => ({
-            code: c.code,
-            name: c.name,
-            type: "client",
+            code: c.code, name: c.name, type: "client",
           }))
-
           const allOptions = [...franchises, ...clients]
           setRefOptions(allOptions)
-
           if (userType === "branch" && code) {
             const matchingOption = allOptions.find((option) => option.code === code)
-            if (matchingOption) {
-              setSelectedRefOption(matchingOption)
-            }
+            if (matchingOption) setSelectedRefOption(matchingOption)
           }
         } else if (userType === "franchise") {
-          // Fetch only clients of this franchise
-          const clientRes = await axios.get("/api/clients", {
-            headers: {
-              userType,
-              userId: code,
-            },
-          })
+          const clientRes = await axios.get("/api/clients", { headers: { userType, userId: code } })
           const clients = (Array.isArray(clientRes.data) ? clientRes.data : [clientRes.data]).map((c) => ({
-            code: c.code,
-            name: c.name,
-            type: "client",
+            code: c.code, name: c.name, type: "client",
           }))
-
           setRefOptions(clients)
-        } else if (userType === "client") {
-          try {
-            const [franchiseRes, clientRes] = await Promise.all([
-              axios.get("/api/franchises"),
-              axios.get("/api/clients"),
-            ])
-
-            const franchises = (Array.isArray(franchiseRes.data) ? franchiseRes.data : [franchiseRes.data]).map(
-              (f) => ({
-                code: f.code,
-                name: f.name,
-                type: "franchise",
-              }),
-            )
-
-            const clients = (Array.isArray(clientRes.data) ? clientRes.data : [clientRes.data]).map((c) => ({
-              code: c.code,
-              name: c.name,
-              type: "client",
-            }))
-
-            const allOptions = [...franchises, ...clients]
-            setRefOptions(allOptions)
-
-            // Find and select the matching option for client
-            const matchingOption = allOptions.find((option) => option.code === code)
-            if (matchingOption) {
-              setSelectedRefOption(matchingOption)
-            }
-          } catch (error) {
-            console.error("Error fetching options for client:", error)
-          }
         }
       } catch (error) {
         console.error("Error fetching ref options:", error)
       }
     }
-
     fetchRefOptions()
   }, [])
 
+  // Auto-fill client sender info
   useEffect(() => {
-  const userType = localStorage.getItem("userType");
-  const code = localStorage.getItem("code");
-
-  if (userType === "client" && code) {
-    const fetchClientData = async () => {
-      try {
-        const res = await axios.get(`/api/clients/${code}`);
-        const client = Array.isArray(res.data) ? res.data[0] : res.data;
-
-        if (client) {
-          setSenderName(client.name || "");
-          setSenderCompanyName(client.companyName || "");
-          setSenderZipCode(client.zip || "");
-          setSenderCountry(client.country || "India");
-          setSenderContact(client.contact?.toString() || "");
-          setSenderAddress(client.address || "");
-          setSenderAddress2(client.address2 || "")
-        setSenderCity(client.city || "")
-        setSenderState(client.state || "")
-          setKycType(client.kyc?.type || "Aadhaar No");
-          setKyc(client.kyc?.kyc || "");
-          setKycDocument(client.kyc?.document || "");
-          setGst(client.gstNo || "");
+    const userType = localStorage.getItem("userType")
+    const code = localStorage.getItem("code")
+    if (userType === "client" && code) {
+      const fetchClientData = async () => {
+        try {
+          const res = await axios.get(`/api/clients/${code}`)
+          const client = Array.isArray(res.data) ? res.data[0] : res.data
+          if (client) {
+            setSenderName(client.name || "")
+            setSenderCompanyName(client.companyName || "")
+            setSenderZipCode(client.zip || "")
+            setSenderCountry(client.country || "India")
+            setSenderContact(client.contact?.toString() || "")
+            setSenderAddress(client.address || "")
+            setSenderAddress2(client.address2 || "")
+            setSenderCity(client.city || "")
+            setSenderState(client.state || "")
+            setKycType(client.kyc?.type || "Aadhaar No")
+            setKyc(client.kyc?.kyc || "")
+            setKycDocument(client.kyc?.document || "")
+            setGst(client.gstNo || "")
+          }
+        } catch (err) {
+          console.error(err)
         }
-      } catch (err) {
-        console.error("Error fetching client data:", err);
-        toast.error("Failed to fetch client details");
       }
-    };
-
-    fetchClientData();
-  }
-}, []);
-
-  useEffect(() => {
-  if (isEdit) {
-    const storedCode = awb?.refCode || "";
-
-    if (storedCode && refOptions.length > 0) {
-      const matchingOption = refOptions.find((opt) => opt.code === storedCode);
-
-      if (matchingOption) {
-        setRefSearchTerm(matchingOption.name); // show name in input
-      }
+      fetchClientData()
     }
-  }
-}, [isEdit, refOptions]);
+  }, [])
 
   const filteredRefOptions = refOptions.filter(
     (option) =>
       option.name.toLowerCase().includes(refSearchTerm.toLowerCase()) ||
-      option.code.toLowerCase().includes(refSearchTerm.toLowerCase()),
+      option.code.toLowerCase().includes(refSearchTerm.toLowerCase())
   )
 
   const handleRefOptionSelect = (option) => {
@@ -359,92 +313,26 @@ const [isClient, setIsClient] = useState(userType === "client");
     setIsRefDropdownOpen(false)
   }
 
-  useEffect(() => {
-    const fetchProfitPercentForUser = async () => {
-      if (!receiverCountry) return
-
-      setLoading(true)
-      setError("")
-
-      try {
-        const ut = localStorage.getItem("userType") || ""
-        const code = localStorage.getItem("code") || ""
-        const normCountry = receiverCountry.trim().toLowerCase()
-
-        if (ut === "admin" || ut === "branch") {
-          // Admin enters profit manually - do nothing here
-          setLoading(false)
-          return
-        }
-
-        /** ───── Franchise user ───── */
-        if (ut === "franchise") {
-          const resp = await axios.get(`/api/franchises/${code}`)
-          const franchise = Array.isArray(resp.data) ? resp.data[0] : resp.data
-          const fRates = franchise?.rates || []
-
-          const fMatch = fRates.find((r) => r.country.trim().toLowerCase() === normCountry)
-          const fRest = fRates.find((r) => r.country.trim().toLowerCase() === "rest of world")
-
-          const percent = Number(fMatch?.percent ?? fRest?.percent ?? 0)
-          setProfitPercent(percent)
-          setLoading(false)
-          return
-        }
-
-        /** ───── Client user ───── */
-        if (ut === "client") {
-          // 1. Client doc
-          const clientRes = await axios.get(`/api/clients/${code}`)
-          const client = Array.isArray(clientRes.data) ? clientRes.data[0] : clientRes.data
-
-          const clientRates = client?.rates || []
-          const cMatch = clientRates.find((r) => r.country.trim().toLowerCase() === normCountry)
-          const cRest = clientRates.find((r) => r.country.trim().toLowerCase() === "rest of world")
-
-          const clientPercent = Number(cMatch?.profitPercent ?? cRest?.profitPercent ?? 0)
-
-          // 2. Franchise doc from client's owner
-          let franchisePercent = 0
-          if (client?.owner && client?.owner !== "admin") {
-            const fRes = await axios.get(`/api/franchises/${client.owner}`)
-            const franchise = Array.isArray(fRes.data) ? fRes.data[0] : fRes.data
-            const fRates = franchise?.rates || []
-
-            const fMatch = fRates.find((r) => r.country.trim().toLowerCase() === normCountry)
-            const fRest = fRates.find((r) => r.country.trim().toLowerCase() === "rest of world")
-
-            // Franchise rates use `percent` field
-            franchisePercent = Number(fMatch?.percent ?? fRest?.percent ?? 0)
-          }
-
-          const total = clientPercent + franchisePercent
-
-          console.log("Client Profit Percent:", clientPercent)
-          console.log("Franchise Profit Percent:", franchisePercent)
-          console.log("Total Profit Percent:", total)
-
-          setProfitPercent(total)
-          setLoading(false)
-          return
-        }
-      } catch (err) {
-        console.error("Error fetching profit percent for AWB:", err)
-        setError("Failed to fetch profit percent data")
-        setLoading(false)
-      }
+  // Invoice Number
+  const getInvoiceNumber = async () => {
+    try {
+      const response = await axios.get("/api/get-last-awb")
+      const lastInvoiceNumber = response.data.invoiceNumber
+      const incrementedNumber = (Number.parseInt(lastInvoiceNumber) + 1).toString()
+      setInvoiceNumber(incrementedNumber)
+      setTrackingNumber(response.data.trackingNumber)
+    } catch (error) {
+      console.error(error)
     }
+  }
 
-    fetchProfitPercentForUser()
-  }, [receiverCountry])
-
-  // Fetch customers on component mount
+  // Init
   useEffect(() => {
     fetchCustomers()
-    !isEdit && getInvoiceNumber()
+    if (!isEdit) getInvoiceNumber()
   }, [isEdit])
 
-  // Auto-fill sender details when sender name changes
+  // Sender/Receiver Auto-fill from Customers
   useEffect(() => {
     if (senderName && !isEdit) {
       const customer = customers.find((c) => c.name === senderName)
@@ -464,9 +352,8 @@ const [isClient, setIsClient] = useState(userType === "client");
         setGst(customer.gst || "")
       }
     }
-  }, [senderName, customers])
+  }, [senderName, customers, isEdit])
 
-  // Auto-fill receiver details when receiver name changes
   useEffect(() => {
     if (receiverName && !isEdit) {
       const customer = customers.find((c) => c.name === receiverName)
@@ -482,201 +369,129 @@ const [isClient, setIsClient] = useState(userType === "client");
         setReceiverContact(customer.contact ? customer.contact.replace(/^\+\d+\s+/, "") : "")
       }
     }
-  }, [receiverName, customers])
+  }, [receiverName, customers, isEdit])
 
-  // Fetch postal location data
+  // Postal Data Logic
+  const getCountryCode = (countryName) => countryCodeMap[countryName]?.code || ""
+
   const fetchPostalData = async (postalCode, countryCode) => {
     try {
+      const postalApiKey = process.env.NEXT_PUBLIC_POSTAL_API_KEY
+      if (!postalApiKey) return null
       const response = await axios.get(`https://api.worldpostallocations.com/pincode`, {
-        params: {
-          apikey: process.env.NEXT_PUBLIC_POSTAL_API_KEY,
-          postalcode: postalCode,
-          countrycode: countryCode,
-        },
+        params: { apikey: postalApiKey, postalcode: postalCode, countrycode: countryCode },
       })
-
-      console.log("Postal data response:", response.data)
-
-      if (response.data && response.data.status === true && response.data.result && response.data.result.length > 0) {
-        return response.data.result[0] // Return the first result
+      if (response.data?.status === true && response.data?.result?.length > 0) {
+        return response.data.result[0]
       }
       return null
     } catch (error) {
-      console.error("Error fetching postal data:", error)
       return null
     }
   }
 
-  // Auto-fill sender address when zip code changes
+  // Auto-fill address from zip
   useEffect(() => {
     const updateSenderAddress = async () => {
       if (senderZipCode && senderZipCode.length >= 4 && senderCountry) {
         const countryCode = getCountryCode(senderCountry)
         if (!countryCode) return
-
         const postalData = await fetchPostalData(senderZipCode, countryCode)
         if (postalData) {
           const { postalLocation, province, district, state } = postalData
           const formattedAddress = [postalLocation, province, district, state].filter(Boolean).join(", ")
-
-          // Only update if address is empty or user confirms
-          if (!senderAddress) {
-            setSenderAddress(formattedAddress)
-          }
+          if (!senderAddress2) setSenderAddress2(formattedAddress)
         }
       }
     }
-
     updateSenderAddress()
-  }, [senderZipCode, senderCountry])
+  }, [senderZipCode, senderCountry, senderAddress2])
 
-  // Auto-fill receiver address when zip code changes
   useEffect(() => {
     const updateReceiverAddress = async () => {
       if (receiverZipCode && receiverZipCode.length >= 4 && receiverCountry) {
         const countryCode = getCountryCode(receiverCountry)
         if (!countryCode) return
-
         const postalData = await fetchPostalData(receiverZipCode, countryCode)
         if (postalData) {
           const { postalLocation, province, district, state } = postalData
           const formattedAddress = [postalLocation, province, district, state].filter(Boolean).join(", ")
-
-          // Only update if address is empty
-          if (!receiverAddress) {
-            setReceiverAddress(formattedAddress)
-          }
+          if (!receiverAddress2) setReceiverAddress2(formattedAddress)
         }
       }
     }
-
     updateReceiverAddress()
-  }, [receiverZipCode, receiverCountry])
+  }, [receiverZipCode, receiverCountry, receiverAddress2])
 
-  // Calculate total chargeable weight when boxes change
+  // Update totals
   useEffect(() => {
-    const totalWeight = boxes.reduce((acc, box) => {
-      const chargeableWeight = Number.parseFloat(box.chargeableWeight) || 0
-      return acc + chargeableWeight
-    }, 0)
-
+    const totalWeight = boxes.reduce((acc, box) => acc + (Number.parseFloat(box.chargeableWeight) || 0), 0)
     setTotalChargeableWeight(totalWeight.toFixed(2).toString())
-
-    const totalShippingValue = boxes.reduce((acc, box) => {
-      return (
+    const totalShippingValue = boxes.reduce(
+      (acc, box) =>
         acc +
         box.items.reduce((itemAcc, item) => {
           const itemValue = Number.parseFloat(item.price) || 0
           const itemQuantity = Number.parseInt(item.quantity, 10) || 0
           return itemAcc + itemValue * itemQuantity
-        }, 0)
-      )
-    }, 0)
-
+        }, 0),
+      0
+    )
     setTotalShippingValue(Number.parseFloat(totalShippingValue))
   }, [boxes])
 
-  // Reset selected rate when weight changes
+  // Reset rate if inputs change
   useEffect(() => {
     setSelectedRate(null)
     setSelectedCourier(null)
     setRates(null)
   }, [totalChargeableWeight, receiverCountry])
 
-  // Initialize selected rate and courier from AWB data when in edit mode
   useEffect(() => {
     if (isEdit && awb?.rateInfo) {
-      setSelectedRate(awb.rateInfo)
+      setSelectedRate({
+        // Minimal structure to satisfy submit logic if editing
+        originalName: awb.rateInfo.service,
+        service: awb.rateInfo.courier,
+        sales: awb.financials?.sales,
+        purchase: awb.financials?.purchase,
+        netProfit: awb.financials?.netProfit,
+        type: awb.rateInfo.courier // Ensure type is set for UI logic
+      })
       setSelectedCourier(awb.rateInfo.courier)
     }
   }, [isEdit, awb])
 
-  // Auto-check shipping invoice checkbox if items exist
   useEffect(() => {
     if (boxes.length > 0) {
-      // Check if any box has items with name, quantity, and price
       const hasItems = boxes.some(
-        (box) => box.items && box.items.some((item) => item.name && item.quantity && item.price),
+        (box) => box.items && box.items.some((item) => item.name && item.quantity && item.price)
       )
-
-      if (hasItems) {
-        setShowItemDetails(true)
-      }
+      if (hasItems) setShowItemDetails(true)
     }
   }, [boxes])
 
-  // Fetch customers from API
   const fetchCustomers = async () => {
     try {
       const userType = localStorage.getItem("userType")
       const userId = localStorage.getItem("id")
       setLoading(true)
-      const response = await axios.get("/api/customer", {
-        headers: {
-          userType,
-          userId,
-        },
-      })
+      const response = await axios.get("/api/customer", { headers: { userType, userId } })
       setCustomers(response.data)
     } catch (error) {
-      console.error("Error fetching customers:", error)
+      console.error(error)
     } finally {
       setLoading(false)
     }
   }
 
-  // Get country code from country name
-  const getCountryCode = (countryName) => {
-    return countryCodeMap[countryName]?.code || ""
-  }
-
-  // Get calling code from country name
-  const getCallingCode = (countryName) => {
-    return countryCodeMap[countryName]?.callingCode || ""
-  }
-
-  // Format contact number with country code
-  const formatContactWithCountryCode = (contact, countryCode) => {
-    if (!contact || !countryCode) return contact
-
-    // Remove any existing country code if present
-    let cleanContact = contact
-    if (cleanContact.startsWith(countryCode)) {
-      cleanContact = cleanContact.substring(countryCode.length).trim()
-    }
-
-    // Remove any non-digit characters
-    cleanContact = cleanContact.replace(/[^\d]/g, "")
-
-    // Add the country code
-    return `${countryCode} ${cleanContact}`
-  }
-
-  // Get invoice number from API
-  const getInvoiceNumber = async () => {
-    try {
-      const response = await axios.get("/api/get-last-awb")
-      const lastInvoiceNumber = response.data.invoiceNumber
-      const incrementedNumber = (Number.parseInt(lastInvoiceNumber) + 1).toString()
-
-      setInvoiceNumber(incrementedNumber)
-      setTrackingNumber(response.data.trackingNumber)
-    } catch (error) {
-      console.error("Error fetching parcel:", error)
-    }
-  }
-
-  // Box management functions
+  // Box/Item Handlers
   const addBox = useCallback(() => {
     setBoxes((prevBoxes) => [
       ...prevBoxes,
       {
-        length: "",
-        breadth: "",
-        height: "",
-        actualWeight: "",
-        dimensionalWeight: "",
-        chargeableWeight: "",
+        length: "", breadth: "", height: "", actualWeight: "",
+        dimensionalWeight: "", chargeableWeight: "",
         items: [{ name: "", quantity: "", price: "", hsnCode: "" }],
       },
     ])
@@ -686,55 +501,38 @@ const [isClient, setIsClient] = useState(userType === "client");
     setBoxes((prevBoxes) => prevBoxes.filter((_, index) => index !== boxIndex))
   }, [])
 
-  const handleBoxChange = useCallback(
-    (index, field, value) => {
-      setBoxes((prevBoxes) => {
-        const updatedBoxes = [...prevBoxes]
-        let newValue = value
-
-        // Check for Document type and actualWeight > 2
-        if (field === "actualWeight" && shipmentType === "Document") {
-          const numericWeight = Number.parseFloat(value)
-          if (numericWeight > 3) {
-            toast.error("For Document shipment, actual weight cannot exceed 3 kg.")
-            newValue = "" // reset actualWeight
-          }
+  const handleBoxChange = useCallback((index, field, value) => {
+    setBoxes((prevBoxes) => {
+      const updatedBoxes = [...prevBoxes]
+      let newValue = value
+      if (field === "actualWeight" && shipmentType === "Document") {
+        if (Number.parseFloat(value) > 3) {
+          toast.error("For Document shipment, actual weight cannot exceed 3 kg.")
+          newValue = ""
         }
-
-        updatedBoxes[index] = { ...updatedBoxes[index], [field]: newValue }
-
-        // Recalculate weights if dimension or actual weight changes
-        if (["length", "breadth", "height", "actualWeight"].includes(field)) {
-          const box = updatedBoxes[index]
-          const length = Number(box.length) || 0
-          const breadth = Number(box.breadth) || 0
-          const height = Number(box.height) || 0
-          const actualWeight = Number(box.actualWeight) || 0
-
-          const dimensionalWeight = ((length * breadth * height) / 5000).toFixed(3)
-          const chargeableWeightRaw = Math.max(actualWeight, dimensionalWeight)
-
-          let chargeableWeight
-
-          if (chargeableWeightRaw < 20) {
-            // Round to nearest 0.5 kg
-            chargeableWeight = Math.ceil(chargeableWeightRaw * 2) / 2
-          } else {
-            // Round to nearest 1 kg
-            chargeableWeight = Math.ceil(chargeableWeightRaw)
-          }
-
-          updatedBoxes[index].dimensionalWeight = dimensionalWeight
-          updatedBoxes[index].chargeableWeight = chargeableWeight
+      }
+      updatedBoxes[index] = { ...updatedBoxes[index], [field]: newValue }
+      if (["length", "breadth", "height", "actualWeight"].includes(field)) {
+        const box = updatedBoxes[index]
+        const length = Number(box.length) || 0
+        const breadth = Number(box.breadth) || 0
+        const height = Number(box.height) || 0
+        const actualWeight = Number(box.actualWeight) || 0
+        const dimensionalWeight = ((length * breadth * height) / 5000).toFixed(3)
+        const chargeableWeightRaw = Math.max(actualWeight, dimensionalWeight)
+        let chargeableWeight
+        if (chargeableWeightRaw < 20) {
+          chargeableWeight = Math.ceil(chargeableWeightRaw * 2) / 2
+        } else {
+          chargeableWeight = Math.ceil(chargeableWeightRaw)
         }
+        updatedBoxes[index].dimensionalWeight = dimensionalWeight
+        updatedBoxes[index].chargeableWeight = chargeableWeight
+      }
+      return updatedBoxes
+    })
+  }, [shipmentType])
 
-        return updatedBoxes
-      })
-    },
-    [shipmentType],
-  )
-
-  // Item management functions
   const addItem = useCallback((boxIndex) => {
     setBoxes((prevBoxes) => {
       const updatedBoxes = [...prevBoxes]
@@ -757,31 +555,20 @@ const [isClient, setIsClient] = useState(userType === "client");
     })
   }, [])
 
-  useEffect(() => {
-    if (shipmentType === "Document" && boxes.length > 0 && boxes[0]?.items?.length > 0) {
-      const item = boxes[0].items[0]
-      if (item.name !== "Document" || item.price !== 10 || item.hsnCode !== "482030") {
-        handleItemChange(0, 0, "name", "Document")
-        handleItemChange(0, 0, "price", 10)
-        handleItemChange(0, 0, "hsnCode", "482030")
-      }
-    }
-  }, [shipmentType, boxes])
-
   const handleItemChange = useCallback((boxIndex, itemIndex, field, value) => {
     setBoxes((prevBoxes) => {
       const updatedBoxes = [...prevBoxes]
       updatedBoxes[boxIndex] = {
         ...updatedBoxes[boxIndex],
         items: updatedBoxes[boxIndex].items.map((item, idx) =>
-          idx === itemIndex ? { ...item, [field]: value } : item,
+          idx === itemIndex ? { ...item, [field]: value } : item
         ),
       }
       return updatedBoxes
     })
   }, [])
 
-  // HSN search functions
+  // HSN
   const openHsnSearch = (boxIndex, itemIndex) => {
     setCurrentItemIndex({ boxIndex, itemIndex })
     setShowHsnSearchDialog(true)
@@ -789,31 +576,19 @@ const [isClient, setIsClient] = useState(userType === "client");
 
   const handleSelectHsn = (hsnItem) => {
     const { boxIndex, itemIndex } = currentItemIndex
-
     setBoxes((prevBoxes) => {
       const updatedBoxes = [...prevBoxes]
       const currentItem = updatedBoxes[boxIndex].items[itemIndex]
-
-      // If the item name is empty, fill it with the HSN item name
       if (!currentItem.name) {
-        updatedBoxes[boxIndex].items[itemIndex] = {
-          ...currentItem,
-          name: hsnItem.item,
-          hsnCode: hsnItem.code,
-        }
+        updatedBoxes[boxIndex].items[itemIndex] = { ...currentItem, name: hsnItem.item, hsnCode: hsnItem.code }
       } else {
-        // Otherwise just update the HSN code
-        updatedBoxes[boxIndex].items[itemIndex] = {
-          ...currentItem,
-          hsnCode: hsnItem.code,
-        }
+        updatedBoxes[boxIndex].items[itemIndex] = { ...currentItem, hsnCode: hsnItem.code }
       }
-
       return updatedBoxes
     })
   }
 
-  // Search functions
+  // Customer Search
   const openSearch = (type) => {
     setSearchType(type)
     setSearchTerm("")
@@ -821,62 +596,173 @@ const [isClient, setIsClient] = useState(userType === "client");
   }
 
   const handleSelectCustomer = (customer) => {
-    if (searchType === "sender") {
-      setSenderName(customer.name)
-    } else if (searchType === "receiver") {
-      setReceiverName(customer.name)
-    }
+    if (searchType === "sender") setSenderName(customer.name)
+    else if (searchType === "receiver") setReceiverName(customer.name)
     setShowSearchDialog(false)
   }
 
   const fetchServices = async () => {
     try {
       const response = await fetch("/api/services", {
-        headers: {
-          userType: localStorage.getItem("userType"),
-          userId: localStorage.getItem("code"),
-        },
-      });
-      const data = await response.json();
-      console.log("Fetched services:", data);
-      setAvailableTypes(data);
+        headers: { userType: localStorage.getItem("userType"), userId: localStorage.getItem("code") },
+      })
+      const data = await response.json()
+      setAvailableTypes(data)
     } catch (error) {
-      console.error("Error fetching services:", error);
+      console.error(error)
     }
-  };
+  }
 
-  // Rate fetching function
+  const applyGST = (data, includeGST) => {
+    if (!includeGST) {
+      return {
+        cgstPercent: 0,
+        cgstAmount: 0,
+        sgstPercent: 0,
+        sgstAmount: 0,
+        igstPercent: 0,
+        igstAmount: 0,
+        gstAmount: 0,
+        subTotal: data.subtotalBeforeGST,
+        grandTotal: data.subtotalBeforeGST, // No GST added
+      }
+    }
+
+    // IF includeGST = true → keep original GST logic
+    return {
+      cgstPercent: 9,
+      cgstAmount: (data.gstAmount || 0) / 2,
+      sgstPercent: 9,
+      sgstAmount: (data.gstAmount || 0) / 2,
+      igstPercent: 0,
+      igstAmount: 0,
+      gstAmount: data.gstAmount || 0,
+      subTotal: data.subtotalBeforeGST,
+      grandTotal: data.total,
+    }
+  }
+
+  // --- MAIN RATE FETCHING ---
   const fetchRates = async () => {
     if (!canFetchRates) {
       toast.error("Please fill in all required fields to fetch rates")
       return
     }
-
     setFetchingRates(true)
-
     try {
-      const ratePromises = availableTypes.map((type) =>
+      const ratePromises = availableTypes.map((serviceObj) =>
         axios
           .get("/api/rate", {
             params: {
-              type,
+              type: serviceObj.originalName,
               weight: totalChargeableWeight,
               country: receiverCountry,
-              profitPercent,
-              gst:false
+              zipCode: receiverZipCode,
+              rateCategory: "sales",
             },
-            headers:{
+            headers: {
               userType: localStorage.getItem("userType"),
               userId: localStorage.getItem("code"),
+            },
+          })
+          .then(async (response) => {
+            const salesData = response.data
+
+            const salesGST = applyGST(salesData, includeGST)
+
+            const salesFinancials = {
+              companyName: salesData.vendorName,
+              serviceType: salesData.service,
+              weight: {
+                actual: salesData.inputWeight,
+                volume: 0,
+                chargeable: salesData.calculatedWeight,
+              },
+              rates: {
+                ratePerKg: salesData.baseRate / salesData.calculatedWeight,
+                baseTotal: salesData.baseRate,
+              },
+              charges: {
+                otherCharges: Object.entries(salesData.chargesBreakdown || {}).map(([name, amount]) => ({ name, amount })),
+                awbCharge: 0,
+                fuelSurcharge: salesData.chargesBreakdown?.["Fuel Surcharge"] || 0,
+                fuelAmount: salesData.chargesBreakdown?.["Fuel Surcharge"] || 0,
+                ...salesGST, // ⬅ MERGE GST LOGIC HERE
+              },
+              subTotal: salesGST.subTotal,
+              grandTotal: salesGST.grandTotal,
+            }
+
+
+            let purchaseFinancials = null
+
+            // Fetch purchase rate if available (using the sales rate's purchaseRateId)
+            if (salesData.ratePurchaseId) {
+              try {
+                // First, get the purchase rate details to extract service info
+                const purchaseRateDetailsResponse = await axios.get(`/api/rates/${salesData.ratePurchaseId}`)
+                const purchaseRateDetails = purchaseRateDetailsResponse.data
+
+                const purchaseRateResponse = await axios.get("/api/rate", {
+                  params: {
+                    type: purchaseRateDetails.originalName || purchaseRateDetails.service,
+                    weight: totalChargeableWeight,
+                    country: receiverCountry,
+                    zipCode: receiverZipCode,
+                    rateCategory: "purchase",
+                  },
+                  headers: {
+                    userType: localStorage.getItem("userType"),
+                    userId: localStorage.getItem("code"),
+                  },
+                })
+
+                const purchaseData = purchaseRateResponse.data
+
+                const purchaseGST = applyGST(purchaseData, includeGST)
+
+                purchaseFinancials = {
+                  companyName: purchaseData.vendorName,
+                  serviceType: purchaseData.service,
+                  weight: {
+                    actual: purchaseData.inputWeight,
+                    volume: 0,
+                    chargeable: purchaseData.calculatedWeight,
+                  },
+                  rates: {
+                    ratePerKg: purchaseData.baseRate / purchaseData.calculatedWeight,
+                    baseTotal: purchaseData.baseRate,
+                  },
+                  charges: {
+                    otherCharges: Object.entries(purchaseData.chargesBreakdown || {}).map(([name, amount]) => ({ name, amount })),
+                    awbCharge: 0,
+                    fuelSurcharge: purchaseData.chargesBreakdown?.["Fuel Surcharge"] || 0,
+                    fuelAmount: purchaseData.chargesBreakdown?.["Fuel Surcharge"] || 0,
+                    ...purchaseGST,
+                  },
+                  subTotal: purchaseGST.subTotal,
+                  grandTotal: purchaseGST.grandTotal,
+                }
+              } catch (error) {
+                console.error("[v0] Error fetching purchase rate:", error.message)
+                // Continue without purchase data if it fails
+              }
+            }
+
+            const netProfit = purchaseFinancials ? salesFinancials.grandTotal - purchaseFinancials.grandTotal : 0
+
+            return {
+              ...salesData,
+              success: true,
+              type: serviceObj.originalName,
+              sales: salesFinancials,
+              purchase: purchaseFinancials,
+              netProfit: netProfit,
             }
           })
-          .then((response) => ({
-            type,
-            ...response.data,
-            success: true,
-          }))
           .catch((error) => ({
-            type,
+            originalName: serviceObj.originalName,
+            type: serviceObj.originalName,
             error: error.response?.data?.error || "Failed to fetch rate",
             success: false,
           })),
@@ -884,7 +770,6 @@ const [isClient, setIsClient] = useState(userType === "client");
 
       const results = await Promise.all(ratePromises)
       setRates(results)
-      console.log("Fetched rates:", results)
     } catch (error) {
       console.error("Error fetching rates:", error)
       toast.error("Failed to fetch rates. Please try again.")
@@ -893,14 +778,15 @@ const [isClient, setIsClient] = useState(userType === "client");
     }
   }
 
-  // Handle rate selection
-  const handleSelectRate = (rate, type) => {
+  const handleSelectRate = (rate) => {
     setSelectedRate(rate)
-    setSelectedCourier(type)
-    toast.success(`Selected ${type.toUpperCase()} rate: ₹${rate.totalWithGST}`)
+    // Map originalName to courier for compatibility
+    setSelectedCourier(rate.type)
+    const price = includeGST ? rate.sales.grandTotal : rate.sales.subTotal;
+    toast.success(`Selected ${rate.type} rate: ₹${price}`)
   }
 
-  // Form submission
+  // --- SUBMIT ---
   const handleSubmit = async (e) => {
     e.preventDefault()
     setLoading(true)
@@ -909,11 +795,9 @@ const [isClient, setIsClient] = useState(userType === "client");
       const userType = localStorage.getItem("userType")
       const userId = localStorage.getItem("id")
 
-      // Format contact numbers with country codes
       const senderCountryCode = getCallingCode(senderCountry)
       const receiverCountryCode = getCallingCode(receiverCountry)
 
-      // Make sure we're not duplicating country codes
       let formattedSenderContact = senderContact
       if (senderCountryCode && !formattedSenderContact.startsWith(senderCountryCode)) {
         formattedSenderContact = `${senderCountryCode} ${senderContact.replace(/[^\d]/g, "")}`
@@ -950,11 +834,7 @@ const [isClient, setIsClient] = useState(userType === "client");
           country: senderCountry,
           zip: senderZipCode,
           contact: formattedSenderContact,
-          kyc: {
-            type: kycType,
-            kyc,
-            document: kycDocument,
-          },
+          kyc: { type: kycType, kyc, document: kycDocument },
           owner: localStorage.getItem("id"),
           gst,
         },
@@ -975,30 +855,32 @@ const [isClient, setIsClient] = useState(userType === "client");
         ...(isEdit
           ? {}
           : {
-              parcelStatus: [
-                {
-                  status: `Shipment AWB Prepared - ${senderCity} HUB`,
-                  location: senderCity,
-                  timestamp: new Date(),
-                  comment: "",
-                },
-              ],
-              ourBoxes: boxes,
-              vendorBoxes: boxes,
-            }),
-        // Add selected rate information if available
+            parcelStatus: [{ status: "Shipment AWB Prepared", timestamp: new Date(), comment: "" }],
+            ourBoxes: boxes,
+            vendorBoxes: boxes,
+          }),
+        // Map the selected Rate into the AWB structure
         ...(selectedRate && {
           rateInfo: {
             courier: selectedCourier,
-            zone: selectedRate.zone,
-            weight: selectedRate.closestDbWeight,
-            rate: selectedRate.rate,
-            baseCharge: selectedRate.baseRate + selectedRate.profitCharges,
-            fuelSurcharge: selectedRate.fuelCharges,
-            otherCharges: selectedRate.extraChargeTotal,
-            GST: selectedRate.GST,
-            totalWithGST: selectedRate.total,
+            service: selectedRate.originalName,
+            zone: selectedRate.sales?.zone || "",
+            weight: totalChargeableWeight,
+            // Display Sales values in rateInfo for quick view
+            rate: (selectedRate.sales?.rates?.ratePerKg || 0).toString(),
+            baseCharge: (selectedRate.sales?.rates?.baseTotal || 0).toString(),
+            fuelSurcharge: (selectedRate.sales?.charges?.fuelAmount || 0).toString(),
+            otherCharges: (selectedRate.sales?.charges?.otherCharges || []).reduce((sum, c) => sum + c.amount, 0).toFixed(2),
+            GST: (selectedRate.sales?.charges?.gstAmount || 0).toString(),
+            totalWithGST: (selectedRate.sales?.grandTotal || 0).toString(),
           },
+          financials: {
+            sales: selectedRate.sales,
+            purchase: selectedRate.purchase,
+            netProfit: selectedRate.netProfit,
+            internalCosts: [],
+            payments: []
+          }
         }),
       }
 
@@ -1009,1326 +891,521 @@ const [isClient, setIsClient] = useState(userType === "client");
       if (response.status === 200) {
         setSuccess(true)
       } else {
-        toast.error(`Failed to ${isEdit ? "update" : "save"} the parcel. Please try again.`)
+        toast.error(`Failed to ${isEdit ? "update" : "save"} the parcel.`)
       }
     } catch (error) {
-      console.error(`Error ${isEdit ? "updating" : "saving"} parcel:`, error)
-      toast.error(`An error occurred while ${isEdit ? "updating" : "saving"} the parcel.`)
+      console.error(error)
+      toast.error(`An error occurred.`)
     } finally {
       setLoading(false)
     }
   }
 
-  // Get courier logo and color
   const getCourierInfo = (type) => {
-    const courierInfo = {
-      dhl: {
-        name: "SunEx-D",
-        color: "bg-yellow-400",
-        textColor: "text-yellow-800",
-      },
-      fedex: {
-        name: "SunEx-F",
-        color: "bg-purple-600",
-        textColor: "text-purple-50",
-      },
-      ups: {
-        name: "SunEx-U",
-        color: "bg-amber-700",
-        textColor: "text-amber-50",
-      },
-      dtdc: {
-        name: "SunEx-W",
-        color: "bg-red-600",
-        textColor: "text-red-50",
-      },
-      aramex: {
-        name: "SunEx-A",
-        color: "bg-red-500",
-        textColor: "text-red-50",
-      },
-      orbit: {
-        name: "SunEx-O",
-        color: "bg-blue-600",
-        textColor: "text-blue-50",
-      },
-    }
-
-    return courierInfo[type] || { name: type.toUpperCase(), color: "bg-gray-500", textColor: "text-gray-50" }
+    return { name: type, color: "bg-blue-600", textColor: "text-blue-50" }
   }
 
-  // Enhanced HSN auto-fill function with bidirectional support
+  // HSN Auto-fill
   const handleHsnCodeChange = async (boxIndex, itemIndex, hsnCode) => {
-    // Update the HSN code first
     setBoxes((prevBoxes) => {
       const updatedBoxes = [...prevBoxes]
-      updatedBoxes[boxIndex].items[itemIndex] = {
-        ...updatedBoxes[boxIndex].items[itemIndex],
-        hsnCode: hsnCode,
-      }
+      updatedBoxes[boxIndex].items[itemIndex] = { ...updatedBoxes[boxIndex].items[itemIndex], hsnCode: hsnCode }
       return updatedBoxes
     })
-
-    // If HSN code is provided and item name is empty, try to fetch item name
     if (hsnCode && hsnCode.length >= 4) {
       try {
-        // First check mock data
         const mockItem = mockHsnData.find((item) => item.code === hsnCode)
         if (mockItem) {
           setBoxes((prevBoxes) => {
             const updatedBoxes = [...prevBoxes]
             if (!updatedBoxes[boxIndex].items[itemIndex].name) {
-              updatedBoxes[boxIndex].items[itemIndex] = {
-                ...updatedBoxes[boxIndex].items[itemIndex],
-                name: mockItem.item,
-              }
+              updatedBoxes[boxIndex].items[itemIndex] = { ...updatedBoxes[boxIndex].items[itemIndex], name: mockItem.item }
             }
             return updatedBoxes
           })
           return
         }
-
-        // If not found in mock data, try API
         const response = await axios.get(`/api/hsn?code=${encodeURIComponent(hsnCode)}`)
         if (response.data && response.data.length > 0) {
           const hsnItem = response.data[0]
           setBoxes((prevBoxes) => {
             const updatedBoxes = [...prevBoxes]
             if (!updatedBoxes[boxIndex].items[itemIndex].name) {
-              updatedBoxes[boxIndex].items[itemIndex] = {
-                ...updatedBoxes[boxIndex].items[itemIndex],
-                name: hsnItem.item,
-              }
+              updatedBoxes[boxIndex].items[itemIndex] = { ...updatedBoxes[boxIndex].items[itemIndex], name: hsnItem.item }
             }
             return updatedBoxes
           })
         }
       } catch (error) {
         console.error("Error fetching item by HSN code:", error)
-        // Silently fail - user can still manually enter item name
       }
     }
   }
 
-  // Pin code validation - remove spaces
-  const handlePinCodeChange = (value, setter) => {
-    const cleanValue = value.replace(/\s/g, "")
-    setter(cleanValue)
-  }
+  const CountryCombobox = ({ value, onSelect, open, onOpenChange }) => (
+    <Popover open={open} onOpenChange={onOpenChange}>
+      <PopoverTrigger asChild>
+        <Button variant="outline" role="combobox" aria-expanded={open} className="w-full justify-between font-normal">
+          {value || "Select country..."}
+          <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+        </Button>
+      </PopoverTrigger>
+      <PopoverContent className="w-[--radix-popover-trigger-width] p-0">
+        <Command>
+          <CommandInput placeholder="Search country..." />
+          <CommandList>
+            <CommandEmpty>No country found.</CommandEmpty>
+            <CommandGroup>
+              {Countries.map((country) => (
+                <CommandItem key={country} value={country} onSelect={() => { onSelect(country); onOpenChange(false) }}>
+                  <Check className={cn("mr-2 h-4 w-4", value === country ? "opacity-100" : "opacity-0")} />
+                  {country}
+                </CommandItem>
+              ))}
+            </CommandGroup>
+          </CommandList>
+        </Command>
+      </PopoverContent>
+    </Popover>
+  )
 
   return (
-    <div className="container mx-auto text-xs">
-      <h1 className="text-lg font-bold text-center text-[#232C65] -mt-4">{isEdit ? "Edit Booking" : "New Booking"}</h1>
+    <div className="bg-slate-50/50 min-h-screen">
+      <div className="container mx-auto max-w-7xl p-4 sm:p-6 lg:p-8">
+        <header className="mb-8 text-center">
+          <h1 className="text-3xl font-bold tracking-tight text-primary sm:text-4xl">
+            {isEdit ? "Edit Booking" : "Create New Booking"}
+          </h1>
+          <p className="mt-2 text-lg text-muted-foreground">
+            Fill in the details below to {isEdit ? "update the" : "create a new"} airway bill.
+          </p>
+        </header>
 
-      <form onSubmit={handleSubmit} className="space-y-1">
-        {/* Basic Details */}
-        <Card className="border-gray-200 -mt-1">
-          <CardHeader className="-mt-4">
-            <CardTitle className="text-sm text-[#232C65]">Basic Details</CardTitle>
-          </CardHeader>
-          <CardContent className="grid grid-cols-8 gap-1 -my-6">
-            <div className="space-y-1">
-              <Label htmlFor="invoiceNumber" className="text-xs">
-                Sr No:
-              </Label>
-              <Input
-                id="invoiceNumber"
-                type="text"
-                placeholder="Invoice No."
-                value={invoiceNumber}
-                readOnly
-                className="h-6 text-xs"
-                disabled={true}
-              />
-            </div>
-            <div className="space-y-1">
-              <Label htmlFor="trackingNumber" className="text-xs">
-                AWB No:
-              </Label>
-              <Input
-                id="trackingNumber"
-                type="number"
-                placeholder="AWB No."
-                value={trackingNumber}
-                onChange={(e) => setTrackingNumber(e.target.value)}
-                className="h-6 text-xs"
-                disabled={true}
-              />
-            </div>
-            <div className="space-y-1">
-              <Label className="text-xs">Date</Label>
-              <Popover>
-                <PopoverTrigger asChild>
-                  <Button
-                    variant={"outline"}
-                    className={cn(
-                      "w-full justify-start text-left font-normal h-6 text-xs",
-                      !date && "text-muted-foreground",
-                    )}
-                  >
-                    <CalendarIcon className="mr-1 h-3 w-3" />
-                    {date ? format(new Date(date), "dd/MM/yy") : <span>Date</span>}
-                  </Button>
-                </PopoverTrigger>
-                <PopoverContent className="w-auto p-0">
-                  <Calendar
-                    mode="single"
-                    selected={new Date(date)}
-                    onSelect={(newDate) => setDate(newDate || Date.now())}
-                    initialFocus
-                  />
-                </PopoverContent>
-              </Popover>
-            </div>
-            <div className="space-y-1">
-              <Label className="text-xs">Parcel Type</Label>
-              <Select value={parcelType} onValueChange={setParcelType}>
-                <SelectTrigger className="h-6 text-xs">
-                  <SelectValue placeholder="Type" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="International">International</SelectItem>
-                  <SelectItem value="Domestic">Domestic</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-            <div className="space-y-1">
-              <Label className="text-xs">Via</Label>
-              <Select value={via} onValueChange={setVia}>
-                <SelectTrigger className="h-6 text-xs">
-                  <SelectValue placeholder="Via" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="Air Shipment">Air Shipment</SelectItem>
-                  <SelectItem value="Cargo">Cargo</SelectItem>
-                  <SelectItem value="Roadways">Roadways</SelectItem>
-                  <SelectItem value="Railways">Railways</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-            <div className="space-y-1">
-              <Label className="text-xs">Shipment Type</Label>
-              <Select value={shipmentType} onValueChange={setShipmentType}>
-                <SelectTrigger className="h-6 text-xs">
-                  <SelectValue placeholder="Type" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="Document">Document</SelectItem>
-                  <SelectItem value="Non Document">Non Document</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-            <div className="space-y-1">
-              <Label htmlFor="receiverCountry" className="text-xs">
-                Country*
-              </Label>
-              <Popover open={receiverCountryOpen} onOpenChange={setReceiverCountryOpen}>
-                <PopoverTrigger asChild>
-                  <Button
-                    variant="outline"
-                    role="combobox"
-                    aria-expanded={receiverCountryOpen}
-                    className="w-full justify-between h-8 text-xs bg-transparent"
-                  >
-                    {receiverCountry || "Select country..."}
-                    <ChevronsUpDown className="ml-2 h-3 w-3 shrink-0 opacity-50" />
-                  </Button>
-                </PopoverTrigger>
-                <PopoverContent className="w-full p-0">
-                  <Command>
-                    <CommandInput placeholder="Search country..." className="text-xs" />
-                    <CommandList>
-                      <CommandEmpty className="text-xs">No country found.</CommandEmpty>
-                      <CommandGroup>
-                        {Countries.map((country) => (
-                          <CommandItem
-                            key={country}
-                            value={country}
-                            onSelect={(currentValue) => {
-                              setReceiverCountry(currentValue === receiverCountry ? "" : currentValue)
-                              setReceiverCountryOpen(false)
-                            }}
-                            className="text-xs"
-                          >
-                            <Check
-                              className={cn("mr-2 h-3 w-3", receiverCountry === country ? "opacity-100" : "opacity-0")}
-                            />
-                            {country}
-                          </CommandItem>
-                        ))}
-                      </CommandGroup>
-                    </CommandList>
-                  </Command>
-                </PopoverContent>
-              </Popover>
-            </div>
-              <div className="relative">
-                <Label htmlFor="refCode" className="text-xs">
-                  Reference Code
-                </Label>
-                {localStorage.getItem("userType") === "admin" ||
-                localStorage.getItem("userType") === "branch" ||
-                localStorage.getItem("userType") === "franchise" ? (
-                  <div className="relative">
-                    <Input
-                      id="refCode"
-                      type="text"
-                      placeholder={localStorage.getItem("name") || "Franchise/Client Name"}
-                      value={refSearchTerm}
-                      onChange={(e) => {
-                        setRefSearchTerm(e.target.value)
-                        setIsRefDropdownOpen(true)
-                      }}
-                      onFocus={() => setIsRefDropdownOpen(true)}
-                      className="h-6 text-xs pr-8"
-                      autoComplete="off"
-                      required
-                    />
-                    <ChevronDown
-                      className="absolute right-2 top-1/2 transform -translate-y-1/2 h-3 w-3 text-gray-400 cursor-pointer"
-                      onClick={() => setIsRefDropdownOpen(!isRefDropdownOpen)}
-                    />
+        <form onSubmit={handleSubmit} className="space-y-8">
+          <FormSection title="Basic Details" description="Provide the core information for this shipment." icon={<FileText className="h-6 w-6" />}>
+            <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-4">
+              <FormInput label="Sr No:" id="invoiceNumber">
+                <Input id="invoiceNumber" value={invoiceNumber} readOnly disabled />
+              </FormInput>
+              <FormInput label="AWB No:" id="trackingNumber">
+                <Input id="trackingNumber" value={trackingNumber} onChange={(e) => { setTrackingNumber(e.target.value) }} />
+              </FormInput>
+              <FormInput label="Date" id="date">
+                <Popover>
+                  <PopoverTrigger asChild>
+                    <Button variant={"outline"} className={cn("w-full justify-start text-left font-normal", !date && "text-muted-foreground")}>
+                      <CalendarIcon className="mr-2 h-4 w-4" />
+                      {date ? format(date, "PPP") : <span>Pick a date</span>}
+                    </Button>
+                  </PopoverTrigger>
+                  <PopoverContent className="w-auto p-0"><Calendar mode="single" selected={date} onSelect={setDate} initialFocus /></PopoverContent>
+                </Popover>
+              </FormInput>
+              <FormInput label="Destination Country" required>
+                <CountryCombobox value={receiverCountry} onSelect={setReceiverCountry} open={receiverCountryOpen} onOpenChange={setReceiverCountryOpen} />
+              </FormInput>
+              <FormInput label="Parcel Type">
+                <Select value={parcelType} onValueChange={setParcelType}>
+                  <SelectTrigger><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="International">International</SelectItem>
+                    <SelectItem value="Domestic">Domestic</SelectItem>
+                  </SelectContent>
+                </Select>
+              </FormInput>
+              <FormInput label="Via">
+                <Select value={via} onValueChange={setVia}>
+                  <SelectTrigger><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="Air Shipment">Air Shipment</SelectItem>
+                    <SelectItem value="Cargo">Cargo</SelectItem>
+                    <SelectItem value="Roadways">Roadways</SelectItem>
+                    <SelectItem value="Railways">Railways</SelectItem>
+                  </SelectContent>
+                </Select>
+              </FormInput>
+              <FormInput label="Shipment Type">
+                <Select value={shipmentType} onValueChange={setShipmentType}>
+                  <SelectTrigger><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="Document">Document</SelectItem>
+                    <SelectItem value="Non Document">Non Document</SelectItem>
+                  </SelectContent>
+                </Select>
+              </FormInput>
 
-                    {isRefDropdownOpen && (
-                      <div className="absolute z-50 w-full mt-1 bg-white border border-gray-300 rounded-md shadow-lg max-h-40 overflow-y-auto">
-                        {filteredRefOptions.length > 0 ? (
-                          filteredRefOptions.map((option) => (
-                            <div
-                              key={`${option.type}-${option.code}`}
-                              className="px-3 py-2 hover:bg-gray-100 cursor-pointer text-xs flex justify-between items-center"
-                              onClick={() => handleRefOptionSelect(option)}
-                            >
-                              <span className="text-[10px]">{option.name}</span>
-                              <span className="text-gray-500 text-[10px]">
-                                {option.type === "franchise" ? "F" : "C"}-{option.code}
-                              </span>
-                            </div>
-                          ))
-                        ) : (
-                          <div className="px-3 py-2 text-gray-500 text-xs">No options found</div>
-                        )}
-                      </div>
-                    )}
-                  </div>
-                ) : (
-                  <Input
-                    id="refCode"
-                    type="number"
-                    placeholder="Reference Code"
-                    required
-                    value={refCode}
-                    onChange={(e) => setRefCode(e.target.value)}
-                    autoComplete="off"
-                    className="h-6 text-xs"
-                    disabled={isClient}
-                  />
-                )}
+              <div className="lg:col-span-1">
+                <FormInput label="Reference Code" id="refCode">
+                  {userType === "admin" || userType === "branch" || userType === "franchise" ? (
+                    <Popover open={isRefDropdownOpen} onOpenChange={setIsRefDropdownOpen}>
+                      <PopoverAnchor>
+                        <Input id="refCode" placeholder="Search Franchise/Client..." value={refSearchTerm} onChange={(e) => { setRefSearchTerm(e.target.value); setIsRefDropdownOpen(true); }} onFocus={() => setIsRefDropdownOpen(true)} autoComplete="off" />
+                      </PopoverAnchor>
+                      <PopoverContent className="p-0 w-[--radix-popover-trigger-width]" onOpenAutoFocus={(e) => e.preventDefault()}>
+                        <Command>
+                          <CommandList>
+                            <CommandEmpty>No options found</CommandEmpty>
+                            <CommandGroup>
+                              {filteredRefOptions.map((option) => (
+                                <CommandItem key={`${option.type}-${option.code}`} onSelect={() => handleRefOptionSelect(option)} className="flex justify-between cursor-pointer">
+                                  <span>{option.name}</span>
+                                  <span className="text-xs text-muted-foreground">{option.type.charAt(0).toUpperCase()}-{option.code}</span>
+                                </CommandItem>
+                              ))}
+                            </CommandGroup>
+                          </CommandList>
+                        </Command>
+                      </PopoverContent>
+                    </Popover>
+                  ) : (
+                    <Input id="refCode" placeholder="Reference Code" value={refCode} onChange={(e) => setRefCode(e.target.value)} autoComplete="off" disabled={isClient} />
+                  )}
+                </FormInput>
               </div>
-            {isEdit && (
-              <>
-                <div className="space-y-1">
-                  <Label htmlFor="forwardingNo" className="text-xs">
-                    Forwarding No:
-                  </Label>
-                  <Input
-                    id="forwardingNo"
-                    type="text"
-                    placeholder="Forwarding No."
-                    value={forwardingNumber}
-                    onChange={(e) => setForwardingNumber(e.target.value)}
-                    className="h-6 text-xs"
-                  />
-                </div>
-                <div className="space-y-1">
-                  <Label htmlFor="forwardingLink" className="text-xs">
-                    Forwarding Link:
-                  </Label>
-                  <Input
-                    id="forwardingLink"
-                    type="text"
-                    placeholder="Forwarding Link."
-                    value={forwardingLink}
-                    onChange={(e) => setForwardingLink(e.target.value)}
-                    className="h-6 text-xs"
-                  />
-                </div>
-                <div className="space-y-1">
-                  <Label htmlFor="cNoteNumber" className="text-xs">
-                    C Note No:
-                  </Label>
-                  <Input
-                    id="cNoteNumber"
-                    type="text"
-                    placeholder="C Note No."
-                    value={cNoteNumber}
-                    onChange={(e) => setCNoteNumber(e.target.value)}
-                    className="h-6 text-xs"
-                  />
-                </div>
-                <div className="space-y-1">
-                  <Label htmlFor="cNoteVendorName" className="text-xs">
-                    C Note Vendor Name:
-                  </Label>
-                  <Input
-                    id="cNoteVendorName"
-                    type="text"
-                    placeholder="C Note Vendor Name"
-                    value={cNoteVendorName}
-                    onChange={(e) => setCNoteVendorName(e.target.value)}
-                    className="h-6 text-xs"
-                  />
-                </div>
-                <div className="space-y-1">
-                  <Label htmlFor="awbNumber" className="text-xs">
-                    Tracking No:
-                  </Label>
-                  <Input
-                    id="awbNumber"
-                    type="text"
-                    placeholder="Tracking No."
-                    value={awbNumber}
-                    onChange={(e) => setAwbNumber(e.target.value)}
-                    className="h-6 text-xs"
-                  />
-                </div>
-              </>
-            )}
-          </CardContent>
-        </Card>
 
-        {/* Box Details and Rates Section */}
-        <div className="grid grid-cols-6 gap-2">
-          {/* Box Details - 80% width (4 columns) */}
-          <div className="col-span-4">
-            <Card className="border-gray-200">
-              <CardHeader className="-mt-6">
-                <CardTitle className="text-sm text-[#232C65]">Box Details</CardTitle>
-              </CardHeader>
-              <CardContent className="-my-6">
-                {/* Box Count Input with Total Weights */}
-                <div className="grid grid-cols-5 gap-2 items-end">
-                  <div className="space-y-1">
-                    <Label htmlFor="boxCount" className="text-xs">
-                      How many boxes?
-                    </Label>
-                    <Input
-                      id="boxCount"
-                      type="number"
-                      placeholder="Number of boxes"
-                      value={boxCount}
-                      onChange={(e) => setBoxCount(e.target.value)}
-                      className="h-6 text-xs"
-                    />
-                  </div>
-                  <Button type="button" onClick={generateBoxes} className="h-6 text-xs px-2">
-                    Generate
-                  </Button>
-                  <div className="space-y-1">
-                    <Label className="text-xs">Total Actual Weight</Label>
-                    <div className="h-6 px-2 py-1 bg-blue-50 border rounded text-xs font-medium text-blue-700">
-                      {totalWeights.actual} kg
-                    </div>
-                  </div>
-                  <div className="space-y-1">
-                    <Label className="text-xs">Total Dimensional Weight</Label>
-                    <div className="h-6 px-2 py-1 bg-green-50 border rounded text-xs font-medium text-green-700">
-                      {totalWeights.dimensional} kg
-                    </div>
-                  </div>
-                  <div className="space-y-1">
-                    <Label className="text-xs">Total Chargeable Weight</Label>
-                    <div className="h-6 px-2 py-1 bg-orange-50 border rounded text-xs font-medium text-orange-700">
-                      {totalWeights.chargeable} kg
-                    </div>
-                  </div>
+              {isEdit && (
+                <>
+                  <FormInput label="Forwarding No:" id="forwardingNo"><Input id="forwardingNo" value={forwardingNumber} onChange={(e) => setForwardingNumber(e.target.value)} /></FormInput>
+                  <FormInput label="Forwarding Link:" id="forwardingLink"><Input id="forwardingLink" value={forwardingLink} onChange={(e) => setForwardingLink(e.target.value)} /></FormInput>
+                </>
+              )}
+            </div>
+          </FormSection>
+
+          <div className="grid grid-cols-1 gap-8 lg:grid-cols-5">
+            <div className="lg:col-span-3">
+              <FormSection title="Box & Weight Details" description="Enter box dimensions to calculate weight and fetch shipping rates." icon={<Package className="h-6 w-6" />}>
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 items-end border-b pb-6 mb-6">
+                  <FormInput label="How many boxes?" id="boxCount">
+                    <Input id="boxCount" type="number" placeholder="e.g., 3" value={boxCount} onChange={(e) => setBoxCount(e.target.value)} />
+                  </FormInput>
+                  <Button type="button" onClick={generateBoxes} className="w-full sm:w-auto sm:self-end">Generate Boxes</Button>
                 </div>
 
-                {/* Box Details Table */}
                 {boxes.length > 0 && (
-                  <div className="space-y-2 pb-1">
-                    <div className="border rounded-md">
+                  <div className="space-y-4">
+                    <div className="w-full overflow-x-auto">
                       <Table>
                         <TableHeader>
-                          <TableRow className="h-7">
-                            <TableHead className="text-xs p-1 whitespace-nowrap">Box No</TableHead>
-                            <TableHead className="text-xs p-1">Actual Weight (kg)</TableHead>
-                            <TableHead className="text-xs p-1">Length (cm)</TableHead>
-                            <TableHead className="text-xs p-1">Breadth (cm)</TableHead>
-                            <TableHead className="text-xs p-1">Height (cm)</TableHead>
-                            <TableHead className="text-xs p-1">Dimensional Weight</TableHead>
-                            <TableHead className="text-xs p-1">Chargeable Weight</TableHead>
+                          <TableRow>
+                            <TableHead>Box</TableHead>
+                            <TableHead>Actual Wt. (kg)</TableHead>
+                            <TableHead>L (cm)</TableHead>
+                            <TableHead>B (cm)</TableHead>
+                            <TableHead>H (cm)</TableHead>
+                            <TableHead>Dim. Wt.</TableHead>
+                            <TableHead>Chargeable Wt.</TableHead>
                           </TableRow>
                         </TableHeader>
                         <TableBody>
                           {boxes.map((box, index) => (
-                            <TableRow key={index} className="h-7">
-                              <TableCell className="text-xs p-1 font-medium">{index + 1}</TableCell>
-                              <TableCell className="p-1">
-                                <Input
-                                  type="number"
-                                  value={box.actualWeight}
-                                  onChange={(e) => handleBoxChange(index, "actualWeight", e.target.value)}
-                                  className="h-5 text-xs"
-                                  placeholder="Weight"
-                                />
-                              </TableCell>
-                              <TableCell className="p-1">
-                                <Input
-                                  type="number"
-                                  value={box.length}
-                                  onChange={(e) => handleBoxChange(index, "length", e.target.value)}
-                                  className="h-5 text-xs"
-                                  placeholder="Length"
-                                />
-                              </TableCell>
-                              <TableCell className="p-1">
-                                <Input
-                                  type="number"
-                                  value={box.breadth}
-                                  onChange={(e) => handleBoxChange(index, "breadth", e.target.value)}
-                                  className="h-5 text-xs"
-                                  placeholder="Breadth"
-                                />
-                              </TableCell>
-                              <TableCell className="p-1">
-                                <Input
-                                  type="number"
-                                  value={box.height}
-                                  onChange={(e) => handleBoxChange(index, "height", e.target.value)}
-                                  className="h-5 text-xs"
-                                  placeholder="Height"
-                                />
-                              </TableCell>
-                              <TableCell className="text-xs p-1">{box.dimensionalWeight || "0.000"}</TableCell>
-                              <TableCell className="text-xs p-1 font-medium">{box.chargeableWeight || "0"}</TableCell>
+                            <TableRow key={index}>
+                              <TableCell className="font-medium">{index + 1}</TableCell>
+                              <TableCell><Input type="number" value={box.actualWeight} onChange={(e) => handleBoxChange(index, "actualWeight", e.target.value)} className="min-w-[80px]" /></TableCell>
+                              <TableCell><Input type="number" value={box.length} onChange={(e) => handleBoxChange(index, "length", e.target.value)} className="min-w-[80px]" /></TableCell>
+                              <TableCell><Input type="number" value={box.breadth} onChange={(e) => handleBoxChange(index, "breadth", e.target.value)} className="min-w-[80px]" /></TableCell>
+                              <TableCell><Input type="number" value={box.height} onChange={(e) => handleBoxChange(index, "height", e.target.value)} className="min-w-[80px]" /></TableCell>
+                              <TableCell>{box.dimensionalWeight || "0.00"}</TableCell>
+                              <TableCell className="font-semibold">{box.chargeableWeight || "0.0"}</TableCell>
                             </TableRow>
                           ))}
                         </TableBody>
                       </Table>
                     </div>
-
-                    {/* Get Rate Button below table */}
-                    {canFetchRates && (
-                      <Button
-                        type="button"
-                        onClick={fetchRates}
-                        className="w-full bg-[#232C65] hover:bg-[#1a2150] h-6 text-xs"
-                        disabled={fetchingRates}
-                      >
-                        <TruckIcon className="h-3 w-3 mr-1" />
-                        {fetchingRates ? "Fetching..." : "Get Rate"}
-                      </Button>
-                    )}
+                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 pt-4 border-t">
+                      <div><Label>Total Actual</Label><div className="font-bold text-lg">{totalWeights.actual} kg</div></div>
+                      <div><Label>Total Dimensional</Label><div className="font-bold text-lg">{totalWeights.dimensional} kg</div></div>
+                      <div><Label>Total Chargeable</Label><div className="font-bold text-lg text-primary">{totalWeights.chargeable} kg</div></div>
+                    </div>
                   </div>
                 )}
-              </CardContent>
-            </Card>
-          </div>
+              </FormSection>
+            </div>
 
-          {/* Available Rates - 20% width (2 columns) */}
-          <div className="col-span-2">
-            <Card className="border-gray-200">
-              <CardHeader className="-my-6">
-                <CardTitle className="text-sm text-[#232C65]">
-                  Available Rates<span className="text-xs text-gray-600 mt-1"> (Excluding GST)</span>
-                </CardTitle>
-              </CardHeader>
-              <CardContent className="pt-0">
-                {fetchingRates ? (
-                  <div className="space-y-2">
-                    {[1, 2, 3].map((i) => (
-                      <div key={i} className="p-2 border rounded-lg animate-pulse">
-                        <div className="h-3 bg-gray-200 rounded mb-1"></div>
-                        <div className="h-2 bg-gray-200 rounded"></div>
+            <div className="lg:col-span-2">
+              <FormSection title="Shipping Rates" description="Fetch and select the best courier rate for your shipment." icon={<TruckIcon className="h-6 w-6" />}>
+                <div className="space-y-4">
+                  <div className="flex justify-between items-center mb-2 px-1">
+                    <Label htmlFor="gst-toggle" className="text-sm font-medium">Show Price Including GST</Label>
+                    <Switch id="gst-toggle" checked={includeGST} onCheckedChange={setIncludeGST} />
+                  </div>
+                  <Button type="button" onClick={fetchRates} className="w-full" disabled={fetchingRates || !canFetchRates}>
+                    <TruckIcon className="mr-2 h-4 w-4" />
+                    {fetchingRates ? "Fetching Rates..." : "Get Available Rates"}
+                  </Button>
+                  <div className="space-y-3">
+                    {fetchingRates && Array.from({ length: 3 }).map((_, i) => (
+                      <div key={i} className="p-3 border rounded-lg animate-pulse bg-slate-100">
+                        <div className="h-4 bg-slate-300 rounded mb-2 w-3/4"></div>
+                        <div className="h-3 bg-slate-300 rounded w-1/2"></div>
                       </div>
                     ))}
-                  </div>
-                ) : rates && rates.length > 0 ? (
-                  <div className="border rounded-md">
-                    <Table>
-                      <TableHeader>
-                        <TableRow className="h-1">
-                          <TableHead className="text-xs">Service</TableHead>
-                          <TableHead className="text-xs">Amount</TableHead>
-                          <TableHead className="text-xs">Amount/kg</TableHead>
-                        </TableRow>
-                      </TableHeader>
-                      <TableBody>
-                        {rates
-                          .filter((rate) => rate.success)
-                          .map((rate) => (
-                            <TableRow
-                              key={rate.type}
-                              className={cn(
-                                "h-6 cursor-pointer transition-all hover:bg-gray-50",
-                                selectedCourier === rate.type ? "bg-green-50" : "",
+                    {rates && !fetchingRates && rates.filter((r) => r.success).map((rate, index) => {
+                      const info = getCourierInfo(rate.type)
+                      const salesRate = rate.sales;
+                      const price = includeGST ? salesRate.grandTotal : salesRate.subTotal;
+                      const pricePerKg = (price / Number.parseFloat(totalChargeableWeight || 1)).toFixed(2);
+
+                      return (
+                        <Card
+                          key={rate.type || index}
+                          onClick={() => handleSelectRate(rate)}
+                          className={cn(
+                            "cursor-pointer transition-all hover:border-primary",
+                            selectedCourier === rate.type && "border-primary ring-2 ring-primary ring-offset-2"
+                          )}
+                        >
+                          <CardContent className="p-4 flex items-center justify-between">
+                            <div className="flex items-center gap-3">
+                              {selectedCourier === rate.type ? (
+                                <CheckCircle className="h-5 w-5 text-green-600" />
+                              ) : (
+                                <div className="h-5 w-5 rounded-full border-2"></div>
                               )}
-                              onClick={() => handleSelectRate(rate, rate.type)}
-                            >
-                              <TableCell className="text-xs p-1">
-                                <div className="flex items-center gap-1">
-                                  {selectedCourier === rate.type && <CheckCircle className="h-3 w-3 text-green-600" />}
-                                  <Badge
-                                    className={cn(
-                                      "text-xs",
-                                      getCourierInfo(rate.type).color,
-                                      getCourierInfo(rate.type).textColor,
-                                    )}
-                                  >
-                                    {getCourierInfo(rate.type).name}
-                                  </Badge>
+                              <div>
+                                <div className="flex items-center gap-2">
+                                  <Badge className={cn(info.color, info.textColor)}>{info.name}</Badge>
+                                  <span className="font-semibold">{rate.type}</span>
                                 </div>
-                              </TableCell>
-                              <TableCell className="text-xs p-1 font-semibold">₹{rate.subtotalBeforeGST}</TableCell>
-                              <TableCell className="text-xs p-1">
-                                ₹{(rate.subtotalBeforeGST / Number.parseFloat(totalChargeableWeight || 1)).toFixed(2)}
-                              </TableCell>
-                            </TableRow>
-                          ))}
-                      </TableBody>
-                    </Table>
-                  </div>
-                ) : selectedRate && selectedCourier ? (
-                  <div className="border rounded-md">
-                    <Table>
-                      <TableHeader>
-                        <TableRow className="h-6">
-                          <TableHead className="text-xs p-1">Service</TableHead>
-                          <TableHead className="text-xs p-1">Amount</TableHead>
-                          <TableHead className="text-xs p-1">Amount/kg</TableHead>
-                        </TableRow>
-                      </TableHeader>
-                      <TableBody>
-                        <TableRow className="h-6 bg-green-50">
-                          <TableCell className="text-xs p-1">
-                            <div className="flex items-center gap-1">
-                              <CheckCircle className="h-3 w-3 text-green-600" />
+                                <div className="text-xs text-muted-foreground mt-1">{rate.service}</div>
+                              </div>
+                            </div>
+                            <div className="text-right">
+                              <div className="font-bold text-lg">₹{price}</div>
+                              <div className="text-xs text-muted-foreground">
+                                ₹{pricePerKg}/kg {includeGST ? "(Inc. GST)" : "(Excl. GST)"}
+                              </div>
+                            </div>
+                          </CardContent>
+                        </Card>
+                      )
+                    })}
+                    {selectedRate && !rates && (
+                      <Card className="border-primary ring-2 ring-primary ring-offset-2">
+                        <CardContent className="p-4 flex items-center justify-between">
+                          <div className="flex flex-col gap-1">
+                            <div className="flex items-center gap-3">
+                              <CheckCircle className="h-5 w-5 text-green-600" />
                               <Badge
                                 className={cn(
-                                  "text-xs",
                                   getCourierInfo(selectedCourier).color,
-                                  getCourierInfo(selectedCourier).textColor,
+                                  getCourierInfo(selectedCourier).textColor
                                 )}
                               >
                                 {getCourierInfo(selectedCourier).name}
                               </Badge>
                             </div>
-                          </TableCell>
-                          <TableCell className="text-xs p-1 font-semibold">₹{selectedRate.totalWithGST}</TableCell>
-                          <TableCell className="text-xs p-1">
-                            ₹{(selectedRate.totalWithGST / Number.parseFloat(totalChargeableWeight || 1)).toFixed(2)}
-                          </TableCell>
-                        </TableRow>
-                      </TableBody>
-                    </Table>
+                            <span className="text-xs text-muted-foreground ml-8">{selectedRate.service}</span>
+                          </div>
+                          <div className="text-right">
+                            <div className="font-bold text-lg">
+                              ₹{includeGST ? selectedRate.sales?.grandTotal : selectedRate.sales?.subTotal}
+                            </div>
+                            <div className="text-xs text-muted-foreground">
+                              ₹{((includeGST ? selectedRate.sales?.grandTotal : selectedRate.sales?.subTotal) / Number.parseFloat(totalChargeableWeight || 1)).toFixed(2)}
+                              /kg {includeGST ? "(Inc. GST)" : "(Excl. GST)"}
+                            </div>
+                          </div>
+                        </CardContent>
+                      </Card>
+                    )}
                   </div>
-                ) : (
-                  <div className="text-center py-4">
-                    <p className="text-xs text-muted-foreground">Click on Get Rate to see available services</p>
-                  </div>
-                )}
-              </CardContent>
-            </Card>
+                </div>
+              </FormSection>
+            </div>
           </div>
-        </div>
 
-        {/* Sender and Receiver Details - 50-50 width */}
-        <div className="grid grid-cols-2 gap-2">
-          {/* Sender Details */}
-          <Card className="border-gray-200">
-            <CardHeader className="-my-6">
-              <CardTitle className="text-sm text-[#232C65]">Sender Details</CardTitle>
-            </CardHeader>
-            <CardContent className="grid grid-cols-3 gap-1 -my-4">
-              <div className="space-y-1">
-                <Label htmlFor="senderName" className="text-xs">
-                  Sender Name*
-                </Label>
-                <div className="flex gap-1">
-                  <Input
-                    id="senderName"
-                    placeholder="Sender Name"
-                    value={senderName}
-                    onChange={(e) => setSenderName(e.target.value)}
-                    required
-                    className="flex-1 h-6 text-xs"
-                  />
-                  <Button
-                    type="button"
-                    variant="outline"
-                    size="sm"
-                    onClick={() => openSearch("sender")}
-                    className="h-6 w-6 p-0"
-                  >
-                    <Search className="h-3 w-3" />
-                  </Button>
-                </div>
-              </div>
-
-              <div className="space-y-1">
-                <Label htmlFor="senderCompanyName" className="text-xs">
-                  Company Name
-                </Label>
-                <Input
-                  id="senderCompanyName"
-                  placeholder="Company Name"
-                  value={senderCompanyName}
-                  onChange={(e) => setSenderCompanyName(e.target.value)}
-                  className="h-6 text-xs"
-                />
-              </div>
-
-              <div className="space-y-1">
-                <Label htmlFor="senderEmail" className="text-xs">
-                  Email
-                </Label>
-                <Input
-                  id="senderEmail"
-                  type="email"
-                  placeholder="Email Address"
-                  value={senderEmail}
-                  onChange={(e) => setSenderEmail(e.target.value)}
-                  className="h-6 text-xs"
-                />
-              </div>
-
-              <div className="space-y-1">
-                <Label htmlFor="senderZipCode" className="text-xs">
-                  Zip Code*
-                </Label>
-                <div className="relative">
-                  <Input
-                    id="senderZipCode"
-                    type="text"
-                    placeholder="Zip Code"
-                    value={senderZipCode}
-                    onChange={(e) => handlePinCodeChange(e.target.value, setSenderZipCode)}
-                    required
-                    className="pr-6 h-6 text-xs"
-                  />
-                  {senderZipCode && senderZipCode.length >= 5 && (
-                    <div className="absolute inset-y-0 right-0 flex items-center pr-1 pointer-events-none">
-                      <span className="text-xs text-green-600">✓</span>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+            <FormSection title="Sender Details" icon={<Users className="h-6 w-6" />}>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div className="sm:col-span-2">
+                  <FormInput label="Sender Name" id="senderName" required>
+                    <div className="flex gap-2">
+                      <Input id="senderName" placeholder="John Doe" value={senderName} onChange={(e) => setSenderName(e.target.value)} disabled={isClient} />
+                      <Button type="button" variant="outline" size="icon" onClick={() => openSearch("sender")}><Search className="h-4 w-4" /></Button>
                     </div>
-                  )}
+                  </FormInput>
+                </div>
+                <FormInput label="Company Name" id="senderCompanyName"><Input value={senderCompanyName} onChange={(e) => setSenderCompanyName(e.target.value)} disabled={isClient} /></FormInput>
+                <FormInput label="Email" id="senderEmail"><Input type="email" value={senderEmail} onChange={(e) => setSenderEmail(e.target.value)} /></FormInput>
+                <div className="sm:col-span-2">
+                  <FormInput label="Address Line 1" id="senderAddress" required>
+                    <Textarea rows={2} maxLength={20} value={senderAddress} onChange={(e) => setSenderAddress(e.target.value)} disabled={isClient} />
+                    <div className="text-xs text-muted-foreground text-right">{senderAddress.length}/20</div>
+                  </FormInput>
+                </div>
+                <div className="sm:col-span-2">
+                  <FormInput label="Address Line 2" id="senderAddress2"><Textarea rows={2} value={senderAddress2} onChange={(e) => setSenderAddress2(e.target.value)} disabled={isClient} /></FormInput>
+                </div>
+                <FormInput label="City" id="senderCity"><Input value={senderCity} onChange={(e) => setSenderCity(e.target.value)} /></FormInput>
+                <FormInput label="State" id="senderState"><Input value={senderState} onChange={(e) => setSenderState(e.target.value)} /></FormInput>
+                <FormInput label="Zip Code" id="senderZipCode" required><Input value={senderZipCode} onChange={(e) => setSenderZipCode(e.target.value.replace(/\s/g, ""))} disabled={isClient} /></FormInput>
+                <FormInput label="Country" id="senderCountry" required><CountryCombobox value={senderCountry} onSelect={setSenderCountry} open={senderCountryOpen} onOpenChange={setSenderCountryOpen} /></FormInput>
+                <FormInput label="Contact" id="senderContact" required>
+                  <div className="flex">
+                    <span className="inline-flex items-center px-3 rounded-l-md border border-r-0 bg-slate-50 text-sm text-muted-foreground">{getCallingCode(senderCountry) || "+"}</span>
+                    <Input type="text" className="rounded-l-none" value={senderContact} onChange={(e) => setSenderContact(e.target.value)} disabled={isClient} />
+                  </div>
+                </FormInput>
+                <FormInput label="GST" id="gst"><Input value={gst} onChange={(e) => setGst(e.target.value)} disabled={isClient} /></FormInput>
+                <div className="sm:col-span-2 grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <FormInput label="KYC Type" required>
+                    <Select value={kycType} onValueChange={setKycType} disabled={isClient}>
+                      <SelectTrigger><SelectValue /></SelectTrigger>
+                      <SelectContent>{["Aadhaar No -", "Pan No -", "Passport No -", "Driving License No -", "Voter ID Card No -", "GST No -"].map((t) => <SelectItem key={t} value={t}>{t}</SelectItem>)}</SelectContent>
+                    </Select>
+                  </FormInput>
+                  <FormInput label="KYC Number" id="kyc" required><Input value={kyc} onChange={(e) => setKyc(e.target.value)} disabled={isClient} /></FormInput>
                 </div>
               </div>
-              <div className="space-y-1">
-                <Label htmlFor="senderCountry" className="text-xs">
-                  Country*
-                </Label>
-                <Popover open={senderCountryOpen} onOpenChange={setSenderCountryOpen}>
-                  <PopoverTrigger asChild>
-                    <Button
-                      variant="outline"
-                      role="combobox"
-                      aria-expanded={senderCountryOpen}
-                      className="w-full justify-between h-6 text-xs bg-transparent"
-                    >
-                      {senderCountry || "Select country..."}
-                      <ChevronsUpDown className="ml-2 h-3 w-3 shrink-0 opacity-50" />
-                    </Button>
-                  </PopoverTrigger>
-                  <PopoverContent className="w-full p-0">
-                    <Command>
-                      <CommandInput placeholder="Search country..." className="text-xs" />
-                      <CommandList>
-                        <CommandEmpty className="text-xs">No country found.</CommandEmpty>
-                        <CommandGroup>
-                          {Countries.map((country) => (
-                            <CommandItem
-                              key={country}
-                              value={country}
-                              onSelect={(currentValue) => {
-                                setSenderCountry(currentValue === senderCountry ? "" : currentValue)
-                                setSenderCountryOpen(false)
-                              }}
-                              className="text-xs"
-                            >
-                              <Check
-                                className={cn("mr-2 h-3 w-3", senderCountry === country ? "opacity-100" : "opacity-0")}
-                              />
-                              {country}
-                            </CommandItem>
-                          ))}
-                        </CommandGroup>
-                      </CommandList>
-                    </Command>
-                  </PopoverContent>
-                </Popover>
-              </div>
-              <div className="space-y-1">
-                <Label htmlFor="senderContact" className="text-xs">
-                  Contact*
-                </Label>
-                <div className="flex">
-                  {senderCountry && (
-                    <div className="flex items-center px-1 border border-r-0 rounded-l-md bg-gray-50 text-xs text-gray-600">
-                      {getCallingCode(senderCountry)}
+            </FormSection>
+
+            <FormSection title="Receiver Details" icon={<Users className="h-6 w-6" />}>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div className="sm:col-span-2">
+                  <FormInput label="Receiver Name" id="receiverName" required>
+                    <div className="flex gap-2">
+                      <Input id="receiverName" placeholder="Jane Smith" value={receiverName} onChange={(e) => setReceiverName(e.target.value)} />
+                      <Button type="button" variant="outline" size="icon" onClick={() => openSearch("receiver")}><Search className="h-4 w-4" /></Button>
                     </div>
-                  )}
-                  <Input
-                    id="senderContact"
-                    type="text"
-                    placeholder="Contact Number"
-                    value={senderContact}
-                    onChange={(e) => setSenderContact(e.target.value)}
-                    required
-                    className={cn("h-6 text-xs", senderCountry ? "rounded-l-none" : "")}
-                  />
+                  </FormInput>
                 </div>
-              </div>
-              <div className="space-y-1 col-span-3">
-                <Label htmlFor="senderAddress" className="text-xs">
-                  Address Line 1*
-                </Label>
-                <Textarea
-                  id="senderAddress"
-                  placeholder="Sender Address"
-                  value={senderAddress}
-                  onChange={(e) => setSenderAddress(e.target.value)}
-                  rows={2}
-                  required
-                  className="text-xs resize-none"
-                />
-              </div>
-              <div className="space-y-1 col-span-3">
-                <Label htmlFor="senderAddress2" className="text-xs">
-                  Address Line 2
-                </Label>
-                <Textarea
-                  id="senderAddress2"
-                  placeholder="Sender Address 2"
-                  value={senderAddress2}
-                  onChange={(e) => setSenderAddress2(e.target.value)}
-                  rows={2}
-                  required
-                  className="text-xs resize-none"
-                />
-              </div>
-
-              <div className="space-y-1">
-                <Label htmlFor="senderCity" className="text-xs">
-                  City
-                </Label>
-                <Input
-                  id="senderCity"
-                  type="text"
-                  placeholder="Sender City"
-                  value={senderCity}
-                  onChange={(e) => setSenderCity(e.target.value)}
-                  className="h-6 text-xs"
-                />
-              </div>
-
-              <div className="space-y-1">
-                <Label htmlFor="senderState" className="text-xs">
-                  Sender State
-                </Label>
-                <Input
-                  id="senderState"
-                  type="text"
-                  placeholder="Sender State"
-                  value={senderState}
-                  onChange={(e) => setSenderState(e.target.value)}
-                  className="h-6 text-xs"
-                />
-              </div>
-              <div className="space-y-1">
-                <Label className="text-xs">KYC Type*</Label>
-                <Select value={kycType} onValueChange={setKycType} required>
-                  <SelectTrigger className="h-6 text-xs">
-                    <SelectValue placeholder="KYC Type" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {[
-                      "Aadhaar No -",
-                      "Pan No -",
-                      "Passport No -",
-                      "Driving License No -",
-                      "Voter ID Card No -",
-                      "GST No -",
-                    ].map((type) => (
-                      <SelectItem key={type} value={type}>
-                        {type}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-              <div className="space-y-1">
-                <Label htmlFor="kyc" className="text-xs">
-                  KYC*
-                </Label>
-                <Input
-                  id="kyc"
-                  type="text"
-                  placeholder="KYC"
-                  value={kyc}
-                  onChange={(e) => setKyc(e.target.value)}
-                  required
-                  className="h-6 text-xs"
-                />
-              </div>
-              <div className="space-y-1">
-                <Label htmlFor="kycDocument" className="text-xs">
-                  KYC Document*
-                </Label>
-                <Input
-                  id="kycDocument"
-                  type="text"
-                  placeholder="KYC Document"
-                  value={kycDocument}
-                  onChange={(e) => setKycDocument(e.target.value)}
-                  required
-                  className="h-6 text-xs"
-                />
-              </div>
-              <div className="space-y-1">
-                <Label htmlFor="gst" className="text-xs">
-                  GST
-                </Label>
-                <Input
-                  id="gst"
-                  type="text"
-                  placeholder="GST No"
-                  value={gst}
-                  onChange={(e) => setGst(e.target.value)}
-                  className="h-6 text-xs"
-                />
-              </div>
-            </CardContent>
-          </Card>
-
-          {/* Receiver Details */}
-          <Card className="border-gray-200">
-            <CardHeader className="-my-6">
-              <CardTitle className="text-sm text-[#232C65]">Receiver Details</CardTitle>
-            </CardHeader>
-            <CardContent className="grid grid-cols-3 gap-1 -my-4">
-              <div className="space-y-1">
-                <Label htmlFor="receiverName" className="text-xs">
-                  Receiver Name*
-                </Label>
-                <div className="flex gap-1">
-                  <Input
-                    id="receiverName"
-                    placeholder="Receiver Name"
-                    value={receiverName}
-                    onChange={(e) => setReceiverName(e.target.value)}
-                    required
-                    className="flex-1 h-6 text-xs"
-                  />
-                  <Button
-                    type="button"
-                    variant="outline"
-                    size="sm"
-                    onClick={() => openSearch("receiver")}
-                    className="h-6 w-6 p-0"
-                  >
-                    <Search className="h-3 w-3" />
-                  </Button>
+                <FormInput label="Company Name" id="receiverCompanyName"><Input value={receiverCompanyName} onChange={(e) => setReceiverCompanyName(e.target.value)} /></FormInput>
+                <FormInput label="Email" id="receiverEmail"><Input type="email" value={receiverEmail} onChange={(e) => setReceiverEmail(e.target.value)} /></FormInput>
+                <div className="sm:col-span-2">
+                  <FormInput label="Address Line 1" id="receiverAddress" required>
+                    <Textarea rows={2} maxLength={20} value={receiverAddress} onChange={(e) => setReceiverAddress(e.target.value)} />
+                    <div className="text-xs text-muted-foreground text-right">{receiverAddress.length}/20</div>
+                  </FormInput>
                 </div>
-              </div>
-
-              <div className="space-y-1">
-                <Label htmlFor="receiverCompanyName" className="text-xs">
-                  Company Name
-                </Label>
-                <Input
-                  id="receiverCompanyName"
-                  placeholder="Company Name"
-                  value={receiverCompanyName}
-                  onChange={(e) => setReceiverCompanyName(e.target.value)}
-                  className="h-6 text-xs"
-                />
-              </div>
-
-              <div className="space-y-1">
-                <Label htmlFor="receiverEmail" className="text-xs">
-                  Email
-                </Label>
-                <Input
-                  id="receiverEmail"
-                  type="email"
-                  placeholder="Email Address"
-                  value={receiverEmail}
-                  onChange={(e) => setReceiverEmail(e.target.value)}
-                  className="h-6 text-xs"
-                />
-              </div>
-
-              <div className="space-y-1">
-                <Label htmlFor="receiverZipCode" className="text-xs">
-                  Zip Code*
-                </Label>
-                <div className="relative">
-                  <Input
-                    id="receiverZipCode"
-                    type="text"
-                    placeholder="Zip Code"
-                    value={receiverZipCode}
-                    onChange={(e) => handlePinCodeChange(e.target.value, setReceiverZipCode)}
-                    required
-                    className="pr-6 h-6 text-xs"
-                  />
-                  {receiverZipCode && receiverZipCode.length >= 5 && (
-                    <div className="absolute inset-y-0 right-0 flex items-center pr-1 pointer-events-none">
-                      <span className="text-xs text-green-600">✓</span>
-                    </div>
-                  )}
+                <div className="sm:col-span-2">
+                  <FormInput label="Address Line 2" id="receiverAddress2"><Textarea rows={2} value={receiverAddress2} onChange={(e) => setReceiverAddress2(e.target.value)} /></FormInput>
                 </div>
+                <FormInput label="City" id="receiverCity"><Input value={receiverCity} onChange={(e) => setReceiverCity(e.target.value)} /></FormInput>
+                <FormInput label="State" id="receiverState"><Input value={receiverState} onChange={(e) => setReceiverState(e.target.value)} /></FormInput>
+                <FormInput label="Zip Code" id="receiverZipCode" required><Input value={receiverZipCode} onChange={(e) => setReceiverZipCode(e.target.value.replace(/\s/g, ""))} /></FormInput>
+                <FormInput label="Contact" id="receiverContact" required>
+                  <div className="flex">
+                    <span className="inline-flex items-center px-3 rounded-l-md border border-r-0 bg-slate-50 text-sm text-muted-foreground">{getCallingCode(receiverCountry) || "+"}</span>
+                    <Input type="text" className="rounded-l-none" value={receiverContact} onChange={(e) => setReceiverContact(e.target.value)} />
+                  </div>
+                </FormInput>
               </div>
-              <div className="space-y-1">
-                <Label htmlFor="receiverContact" className="text-xs">
-                  Contact*
-                </Label>
-                <div className="flex">
-                  {receiverCountry && (
-                    <div className="flex items-center px-1 border border-r-0 rounded-l-md bg-gray-50 text-xs text-gray-600">
-                      {getCallingCode(receiverCountry)}
-                    </div>
-                  )}
-                  <Input
-                    id="receiverContact"
-                    type="text"
-                    placeholder="Contact Number"
-                    value={receiverContact}
-                    onChange={(e) => setReceiverContact(e.target.value)}
-                    required
-                    className={cn("h-6 text-xs", receiverCountry ? "rounded-l-none" : "")}
-                  />
+            </FormSection>
+          </div>
+
+          {boxes.length > 0 && (
+            <FormSection title="Shipping Invoice" description="Detail the items within each box for customs purposes." icon={<FileText className="h-6 w-6" />}>
+              <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between space-y-4 sm:space-y-0 sm:space-x-4 mb-6 pb-6 border-b">
+                <div className="flex items-center space-x-2">
+                  <Checkbox id="createShippingInvoice" checked={showItemDetails} onCheckedChange={setShowItemDetails} />
+                  <Label htmlFor="createShippingInvoice" className="font-medium text-sm">Create Shipping Invoice?</Label>
                 </div>
-              </div>
-              <div className="space-y-1 col-span-3">
-                <Label htmlFor="receiverAddress" className="text-xs">
-                  Address Line 1*
-                </Label>
-                <Textarea
-                  id="receiverAddress"
-                  placeholder="Receiver Address"
-                  value={receiverAddress}
-                  onChange={(e) => setReceiverAddress(e.target.value)}
-                  rows={2}
-                  required
-                  className="text-xs resize-none"
-                />
-              </div>
-              <div className="space-y-1 col-span-3">
-                <Label htmlFor="receiverAddress2" className="text-xs">
-                  Address Line 2
-                </Label>
-                <Textarea
-                  id="receiverAddress2"
-                  placeholder="Receiver Address 2"
-                  value={receiverAddress2}
-                  onChange={(e) => setReceiverAddress2(e.target.value)}
-                  rows={2}
-                  required
-                  className="text-xs resize-none"
-                />
-              </div>
-
-              <div className="space-y-1">
-                <Label htmlFor="receiverCity" className="text-xs">
-                  City
-                </Label>
-                <Input
-                  id="receiverCity"
-                  type="text"
-                  placeholder="Receiver City"
-                  value={receiverCity}
-                  onChange={(e) => setReceiverCity(e.target.value)}
-                  className="h-6 text-xs"
-                />
-              </div>
-
-              <div className="space-y-1">
-                <Label htmlFor="receiverState" className="text-xs">
-                  State
-                </Label>
-                <Input
-                  id="receiverState"
-                  type="text"
-                  placeholder="Receiver State"
-                  value={receiverState}
-                  onChange={(e) => setReceiverState(e.target.value)}
-                  className="h-6 text-xs"
-                />
-              </div>
-            </CardContent>
-          </Card>
-        </div>
-
-        {/* Shipping Invoice */}
-        {boxes.length > 0 && (
-          <Card className="border-gray-200">
-            <CardHeader className="-my-6">
-              <CardTitle className="text-sm text-[#232C65]">Shipping Invoice</CardTitle>
-            </CardHeader>
-            <CardContent className="-my-4">
-              <div className="flex items-center space-x-2 mb-2">
-                <Checkbox id="createShippingInvoice" checked={showItemDetails} onCheckedChange={setShowItemDetails} />
-                <Label htmlFor="createShippingInvoice" className="font-medium text-xs">
-                  Create Shipping Invoice?
-                </Label>
-                <div className="space-y-1">
-                  <Label className="text-xs">Currency</Label>
-                  <Select value={shippingCurrency} onValueChange={setShippingCurrency}>
-                    <SelectTrigger className="h-6 text-xs">
-                      <SelectValue placeholder="Currency" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="₹">₹</SelectItem>
-                      <SelectItem value="$">$</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-                <div className="text-xs font-medium bg-[#4DA8DA] text-white rounded-lg p-1">
-                  Total Shipping Value: {shippingCurrency}{" "}
-                  {totalShippingValue.toLocaleString("en-IN", { maximumFractionDigits: 2 })}
+                <div className="flex items-center gap-4">
+                  <FormInput label="Currency">
+                    <Select value={shippingCurrency} onValueChange={setShippingCurrency}>
+                      <SelectTrigger className="w-[80px]"><SelectValue /></SelectTrigger>
+                      <SelectContent><SelectItem value="₹">₹</SelectItem><SelectItem value="$">$</SelectItem></SelectContent>
+                    </Select>
+                  </FormInput>
+                  <div className="text-right"><Label>Total Value</Label><div className="font-bold text-lg">{shippingCurrency} {totalShippingValue.toLocaleString("en-IN", { maximumFractionDigits: 2 })}</div></div>
                 </div>
               </div>
 
               {showItemDetails && (
-                <div className="space-y-2 -my-2">
+                <div className="space-y-6">
                   {boxes.map((box, boxIndex) => (
-                    <div key={`items-${boxIndex}`} className="border border-gray-100">
-                      <CardHeader className="-my-6">
-                        <CardTitle className="text-sm text-[#232C65]">Box {boxIndex + 1} Items</CardTitle>
-                      </CardHeader>
-                      <CardContent className="-my-4">
-                        {/* Items */}
-                        <div className="space-y-1">
-                          {box.items.map((item, itemIndex) => (
-                            <div key={itemIndex} className="border-b-2 -my-4">
-                              <CardHeader className="flex flex-row items-center justify-between -my-6"></CardHeader>
-                              <CardContent className="-my-4">
-                                <div className="grid grid-cols-12 gap-1">
-                                  {/* Quantity */}
-                                  <div className="col-span-2">
-                                    {itemIndex == 0 && (
-                                      <Label htmlFor={`itemNo-${boxIndex}-${itemIndex}`} className="text-xs">
-                                        Item No.
-                                      </Label>
-                                    )}
-                                    <Input
-                                      id={`itemNo-${boxIndex}-${itemIndex}`}
-                                      type="number"
-                                      placeholder="itemNo"
-                                      value={itemIndex + 1}
-                                      onChange={(e) =>
-                                        handleItemChange(boxIndex, itemIndex, "quantity", e.target.value)
-                                      }
-                                      required={showItemDetails}
-                                      className="h-6 text-xs"
-                                    />
-                                  </div>
-                                  {/* Item Name - Take more space */}
-                                  <div className="col-span-3">
-                                    {itemIndex == 0 && (
-                                      <Label htmlFor={`itemName-${boxIndex}-${itemIndex}`} className="text-xs">
-                                        Name*
-                                      </Label>
-                                    )}
-                                    <ItemNameAutocomplete
-                                      id={`itemName-${boxIndex}-${itemIndex}`}
-                                      value={item.name || ""}
-                                      onChange={(value) => handleItemChange(boxIndex, itemIndex, "name", value)}
-                                      onHsnSelect={(hsnItem) => {
-                                        handleItemChange(boxIndex, itemIndex, "hsnCode", hsnItem.code)
-                                      }}
-                                      required={showItemDetails}
-                                      className="h-6 text-xs"
-                                    />
-                                  </div>
-
-                                  {/* Quantity */}
-                                  <div className="col-span-2">
-                                    {itemIndex == 0 && (
-                                      <Label htmlFor={`itemQuantity-${boxIndex}-${itemIndex}`} className="text-xs">
-                                        Qty*
-                                      </Label>
-                                    )}
-                                    <Input
-                                      id={`itemQuantity-${boxIndex}-${itemIndex}`}
-                                      type="number"
-                                      placeholder="Qty"
-                                      value={item.quantity || ""}
-                                      onChange={(e) =>
-                                        handleItemChange(boxIndex, itemIndex, "quantity", e.target.value)
-                                      }
-                                      required={showItemDetails}
-                                      className="h-6 text-xs"
-                                    />
-                                  </div>
-
-                                  {/* Price */}
-                                  <div className="col-span-2">
-                                    {itemIndex == 0 && (
-                                      <Label htmlFor={`itemPrice-${boxIndex}-${itemIndex}`} className="text-xs">
-                                        Price*
-                                      </Label>
-                                    )}
-                                    <Input
-                                      id={`itemPrice-${boxIndex}-${itemIndex}`}
-                                      type="number"
-                                      placeholder="Price"
-                                      value={item.price || ""}
-                                      onChange={(e) => handleItemChange(boxIndex, itemIndex, "price", e.target.value)}
-                                      required={showItemDetails}
-                                      className="h-6 text-xs"
-                                    />
-                                  </div>
-
-                                  {/* HSN Code */}
-                                  <div className="col-span-2">
-                                    {itemIndex == 0 && (
-                                      <Label htmlFor={`hsnCode-${boxIndex}-${itemIndex}`} className="text-xs">
-                                        HSN
-                                      </Label>
-                                    )}
-                                    <div className="flex gap-1">
-                                      <Input
-                                        id={`hsnCode-${boxIndex}-${itemIndex}`}
-                                        type="text"
-                                        placeholder="HSN"
-                                        value={item.hsnCode || ""}
-                                        onChange={(e) => handleHsnCodeChange(boxIndex, itemIndex, e.target.value)}
-                                        className="flex-1 h-6 text-xs"
-                                      />
-                                      <Button
-                                        type="button"
-                                        variant="outline"
-                                        size="sm"
-                                        onClick={() => openHsnSearch(boxIndex, itemIndex)}
-                                        className="h-6 w-6 p-0"
-                                      >
-                                        <Search className="h-3 w-3" />
-                                      </Button>
-                                    </div>
-                                  </div>
-                                  {itemIndex > 0 && (
-                                    <Button
-                                      type="button"
-                                      variant="destructive"
-                                      size="sm"
-                                      onClick={() => removeItem(boxIndex, itemIndex)}
-                                      className="h-5 text-xs px-1 mt-1 r-0"
-                                    >
-                                      <Minus className="h-3 w-3 col-span-2" />
-                                      Remove
-                                    </Button>
-                                  )}
-                                </div>
-                              </CardContent>
+                    <div key={`box-items-${boxIndex}`} className="p-4 border rounded-lg bg-white">
+                      <h4 className="font-semibold mb-4">Box {boxIndex + 1} Items</h4>
+                      <div className="space-y-4">
+                        {box.items.map((item, itemIndex) => (
+                          <div key={itemIndex} className="grid grid-cols-1 md:grid-cols-12 gap-x-4 gap-y-2 items-end border-b pb-3">
+                            <div className="md:col-span-3">
+                              <FormInput label="Item Name" required>
+                                <ItemNameAutocomplete
+                                  id={`itemName-${boxIndex}-${itemIndex}`}
+                                  value={item.name || ""}
+                                  onChange={(value) => handleItemChange(boxIndex, itemIndex, "name", value)}
+                                  onHsnSelect={(hsnItem) => {
+                                    handleItemChange(boxIndex, itemIndex, "hsnCode", hsnItem.code);
+                                    if (!item.name) handleItemChange(boxIndex, itemIndex, "name", hsnItem.item);
+                                  }}
+                                  required={showItemDetails}
+                                />
+                              </FormInput>
                             </div>
-                          ))}
-                          <Button
-                            type="button"
-                            variant="outline"
-                            size="sm"
-                            onClick={() => addItem(boxIndex)}
-                            className="h-5 text-xs px-1"
-                          >
-                            <Plus className="h-3 w-3 mr-1" />
-                            Add Item
-                          </Button>
-                        </div>
-                      </CardContent>
+                            <div className="md:col-span-2"><FormInput label="Quantity" required><Input type="number" value={item.quantity} onChange={(e) => handleItemChange(boxIndex, itemIndex, "quantity", e.target.value)} /></FormInput></div>
+                            <div className="md:col-span-2"><FormInput label="Price" required><Input type="number" value={item.price} onChange={(e) => handleItemChange(boxIndex, itemIndex, "price", e.target.value)} /></FormInput></div>
+                            <div className="md:col-span-3">
+                              <FormInput label="HSN Code">
+                                <div className="flex gap-2">
+                                  <Input value={item.hsnCode} onChange={(e) => handleHsnCodeChange(boxIndex, itemIndex, e.target.value)} />
+                                  <Button type="button" variant="outline" size="icon" onClick={() => openHsnSearch(boxIndex, itemIndex)}><Search className="h-4 w-4" /></Button>
+                                </div>
+                              </FormInput>
+                            </div>
+                            <div className="md:col-span-2 flex justify-end">
+                              {box.items.length > 1 && (<Button type="button" variant="ghost" size="sm" className="text-destructive hover:bg-destructive/10" onClick={() => removeItem(boxIndex, itemIndex)}><Minus className="h-4 w-4 mr-1" />Remove</Button>)}
+                            </div>
+                          </div>
+                        ))}
+                        <Button type="button" variant="outline" size="sm" onClick={() => addItem(boxIndex)}><Plus className="h-4 w-4 mr-2" />Add Item to Box {boxIndex + 1}</Button>
+                      </div>
                     </div>
                   ))}
                 </div>
               )}
-            </CardContent>
-          </Card>
-        )}
-        <div className="flex justify-end">
-          <Button type="submit" className="bg-[#E31E24] hover:bg-[#C71D23] text-white h-6 text-xs px-3">
-            {loading ? "Processing..." : isEdit ? "Update" : "Submit"}
-          </Button>
-        </div>
-      </form>
+            </FormSection>
+          )}
 
-      {/* Success Modal */}
-      <Dialog open={success} onOpenChange={setSuccess}>
-        <DialogContent className="sm:max-w-md">
-          <DialogHeader>
-            <DialogTitle className="text-sm">{`AWB ${isEdit ? "Updated" : "Created"} Successfully`}</DialogTitle>
-            <DialogDescription className="text-xs">
-              {`The AWB has been ${isEdit ? "updated" : "created"} successfully. Click the button below to view AWB or go back to AWB Table.`}
-            </DialogDescription>
-          </DialogHeader>
-          <DialogFooter className="flex justify-center gap-2 sm:justify-center">
-            <Button
-              className="bg-indigo-600 hover:bg-indigo-700 text-white h-6 text-xs px-2"
-              onClick={() => router.push(`/shipping-and-label/${trackingNumber}`)}
-            >
-              Print
+          <div className="flex justify-end pt-8">
+            <Button size="lg" type="submit" className="bg-[#E31E24] hover:bg-[#C71D23] text-white" disabled={loading}>
+              {loading ? "Processing..." : isEdit ? "Update Booking" : "Create Booking"}
             </Button>
-            <Button
-              className="bg-green-600 hover:bg-green-800 text-white h-6 text-xs px-2"
-              onClick={() => router.push(`/awb`)}
-            >
-              Back to AWB Table
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+          </div>
+        </form>
 
-      {/* Search Dialog */}
-      <Dialog open={showSearchDialog} onOpenChange={setShowSearchDialog}>
-        <DialogContent className="sm:max-w-md">
-          <DialogHeader>
-            <DialogTitle className="text-sm">Search {searchType === "sender" ? "Sender" : "Receiver"}</DialogTitle>
-            <DialogDescription className="text-xs">Search for existing customers or enter a new name</DialogDescription>
-          </DialogHeader>
-          <Command className="rounded-lg border shadow-md">
-            <CommandInput
-              placeholder={`Search ${searchType === "sender" ? "sender" : "receiver"} name...`}
-              value={searchTerm}
-              onValueChange={setSearchTerm}
-              className="text-xs"
-            />
-            <CommandList>
-              <CommandEmpty className="text-xs">No customers found. You can add a new one.</CommandEmpty>
-              <CommandGroup heading="Customers">
-                {filteredCustomers.map((customer) => (
-                  <CommandItem
-                    key={customer.name}
-                    onSelect={() => handleSelectCustomer(customer)}
-                    className="cursor-pointer text-xs"
-                  >
-                    {customer.name}
-                  </CommandItem>
-                ))}
-              </CommandGroup>
-            </CommandList>
-          </Command>
-          <DialogFooter className="flex justify-between">
-            <Button variant="outline" onClick={() => setShowSearchDialog(false)} className="h-6 text-xs px-2">
-              Cancel
-            </Button>
-            <Button
-              onClick={() => {
-                if (searchType === "sender") {
-                  setSenderName(searchTerm)
-                } else if (searchType === "receiver") {
-                  setReceiverName(searchTerm)
-                }
-                setShowSearchDialog(false)
-              }}
-              disabled={!searchTerm}
-              className="h-6 text-xs px-2"
-            >
-              Use New Name
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+        <Dialog open={success} onOpenChange={setSuccess}>
+          <DialogContent className="sm:max-w-md">
+            <DialogHeader>
+              <DialogTitle>{`AWB ${isEdit ? "Updated" : "Created"} Successfully`}</DialogTitle>
+              <DialogDescription>{`The AWB has been ${isEdit ? "updated" : "created"} successfully. Click the button below to view AWB or go back to AWB Table.`}</DialogDescription>
+            </DialogHeader>
+            <DialogFooter className="flex justify-center gap-2 sm:justify-center">
+              <Button className="bg-indigo-600 hover:bg-indigo-700" onClick={() => router.push(`/shipping-and-label/${trackingNumber}`)}>Print</Button>
+              <Button className="bg-green-600 hover:bg-green-800" onClick={() => router.push(`/awb`)}>Back to AWB Table</Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
 
-      {/* HSN Search Dialog */}
-      <HsnSearchDialog open={showHsnSearchDialog} onOpenChange={setShowHsnSearchDialog} onSelect={handleSelectHsn} />
+        <Dialog open={showSearchDialog} onOpenChange={setShowSearchDialog}>
+          <DialogContent className="sm:max-w-md">
+            <DialogHeader>
+              <DialogTitle>Search {searchType === "sender" ? "Sender" : "Receiver"}</DialogTitle>
+              <DialogDescription>Search for existing customers or enter a new name</DialogDescription>
+            </DialogHeader>
+            <Command className="rounded-lg border shadow-md">
+              <CommandInput placeholder={`Search ${searchType === "sender" ? "sender" : "receiver"} name...`} value={searchTerm} onValueChange={setSearchTerm} />
+              <CommandList>
+                <CommandEmpty>No customers found. You can add a new one.</CommandEmpty>
+                <CommandGroup heading="Customers">
+                  {filteredCustomers.map((customer) => (
+                    <CommandItem key={customer._id || customer.name} onSelect={() => handleSelectCustomer(customer)} className="cursor-pointer">
+                      {customer.name}
+                    </CommandItem>
+                  ))}
+                </CommandGroup>
+              </CommandList>
+            </Command>
+            <DialogFooter className="flex justify-between">
+              <Button variant="outline" onClick={() => setShowSearchDialog(false)}>Cancel</Button>
+              <Button onClick={() => { if (searchType === "sender") setSenderName(searchTerm); else if (searchType === "receiver") setReceiverName(searchTerm); setShowSearchDialog(false); }} disabled={!searchTerm}>Use New Name</Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+
+        <HsnSearchDialog open={showHsnSearchDialog} onOpenChange={setShowHsnSearchDialog} onSelect={handleSelectHsn} />
+      </div>
     </div>
   )
 }

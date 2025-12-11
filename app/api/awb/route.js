@@ -81,12 +81,12 @@ export async function GET(req) {
     if (fetchAll) {
       // Return all fields needed for billing
       baseQuery = baseQuery.select(
-        "date invoiceNumber trackingNumber refCode receiver sender boxes rateInfo parcelStatus cNoteNumber cNoteVendorName awbNumber forwardingNumber forwardingLink isBilled parcelType via shippingCurrency"
+        "date invoiceNumber trackingNumber refCode receiver sender boxes rateInfo parcelStatus cNoteNumber cNoteVendorName awbNumber forwardingNumber forwardingLink isBilled parcelType via shippingCurrency financials notes payments"
       )
     } else {
       // Return limited fields for listing pages
       baseQuery = baseQuery.select(
-        "date invoiceNumber trackingNumber refCode receiver.country receiver.name sender.name forwardingNumber forwardingLink parcelStatus cNoteNumber isBilled boxes.chargeableWeight financials.sales.grandTotal"
+        "date invoiceNumber trackingNumber refCode receiver.country receiver.name sender.name forwardingNumber forwardingLink parcelStatus cNoteNumber isBilled boxes.chargeableWeight financials.sales.grandTotal financials"
       )
     }
 

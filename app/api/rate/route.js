@@ -1,19 +1,20 @@
 import { NextResponse } from "next/server";
 import { connectToDB } from "@/app/_utils/mongodb";
-import Rate from "@/models/Rate"; // Your mongoose model
+import Rate from "@/models/Rate";
 
 export async function GET(req) {
     const { searchParams } = new URL(req.url);
     const type = searchParams.get("type");
     const country = searchParams.get("country");
+    const zipCode = searchParams.get("zipCode"); // For single-country-zip mode
     const profitPercent = parseFloat(searchParams.get("profitPercent")) || 0;
     const inputWeight = parseFloat(searchParams.get("weight"));
+    const rateCategory = searchParams.get("rateCategory") || "sales"; // 'purchase' or 'sales'
     const userId = req.headers.get("userId");
     const userType = req.headers.get("userType");
 
-    // --- DEBUG STEP 0: Log initial request parameters ---
     console.log("\n--- [START] /api/rate Request ---");
-    console.log(`Params: type=${type}, country=${country}, weight=${inputWeight}`);
+    console.log(`Params: type=${type}, country=${country}, zipCode=${zipCode}, weight=${inputWeight}, rateCategory=${rateCategory}`);
     console.log(`User Context: userType=${userType}, userId=${userId}`);
 
     if (!type || !inputWeight || !country) {
@@ -27,62 +28,133 @@ export async function GET(req) {
     await connectToDB();
 
     try {
-        // --- DEBUG STEP 1: Building and logging the initial database query ---
-        let rateQuery = { originalName: type };
-        if (userType === 'franchise' || userType === 'client') {
+        // Build query for finding the rate
+        let rateQuery = { 
+            originalName: type,
+            rateCategory: rateCategory 
+        };
+
+        // Add visibility filters based on user type
+        if (userType === 'admin' || userType === 'branch') {
+            // Admins can see all rates
+            console.log("DEBUG: Admin/Branch user - no visibility filter applied");
+        } else if (userType === 'franchise' || userType === 'client') {
+            // Non-admin users can only see sales rates
+            if (rateCategory === 'purchase') {
+                return NextResponse.json({ error: "Purchase rates are not available for your account." }, { status: 403 });
+            }
+            
             if (!userId) {
                 rateQuery.status = 'live';
             } else {
-                rateQuery['$or'] = [{ status: 'live' }, { status: 'unlisted', assignedTo: userId }];
+                rateQuery.$or = [
+                    { status: 'live' },
+                    { status: 'unlisted', assignedTo: userId }
+                ];
             }
-        } else if (userType !== 'admin' && userType !== 'branch') {
+        } else {
+            // Public users - only live sales rates
+            if (rateCategory === 'purchase') {
+                return NextResponse.json({ error: "Purchase rates are not available." }, { status: 403 });
+            }
             rateQuery.status = 'live';
         }
-        // If user is 'admin' or 'branch', no extra filters are added.
-        console.log("DEBUG [Checkpoint 1]: Executing query to find rate sheet:", JSON.stringify(rateQuery));
+
+        console.log("DEBUG [Checkpoint 1]: Executing query:", JSON.stringify(rateQuery));
         
         const rateResult = await Rate.findOne(rateQuery);
 
         if (!rateResult) {
-            console.error(`DEBUG [FAIL] Checkpoint 1: Rate sheet for query ${JSON.stringify(rateQuery)} not found.`);
+            console.error(`DEBUG [FAIL] Checkpoint 1: Rate sheet not found for query.`);
             return NextResponse.json({ error: `Service "${type}" not found or is not available for your account.` }, { status: 404 });
         }
-        console.log(`DEBUG [SUCCESS] Checkpoint 1: Found rate sheet: ${rateResult.originalName} (ID: ${rateResult._id})`);
+        console.log(`DEBUG [SUCCESS] Checkpoint 1: Found rate sheet: ${rateResult.originalName} (ID: ${rateResult._id}, Category: ${rateResult.rateCategory})`);
 
-        const { rates, zones } = rateResult;
+        const { rates, zones, postalZones, rateMode, targetCountry } = rateResult;
         const dbCharges = rateResult.charges || [];
         
-        // --- DEBUG STEP 2: Finding the zone for the country ---
+        // Determine zone based on rate mode
         let selectedZone;
         let zoneExtraCharges = [];
-        console.log(`DEBUG [Checkpoint 2]: Searching for country "${country}" in zones...`);
 
-        for (const zoneObj of zones) {
-            // Log each zone being checked
-            // console.log(`  - Checking zone "${zoneObj.zone}" with countries: [${zoneObj.countries?.join(', ')}]`);
-            if (zoneObj.countries && zoneObj.countries.includes(country)) {
-                selectedZone = zoneObj.zone;
-                console.log(`DEBUG [SUCCESS] Checkpoint 2: Found country in zone "${selectedZone}".`);
-                if (zoneObj.extraCharges) {
-                    if (Array.isArray(zoneObj.extraCharges)) {
-                        zoneExtraCharges = zoneObj.extraCharges;
-                    } else if (typeof zoneObj.extraCharges === 'object') {
-                        zoneExtraCharges = Object.entries(zoneObj.extraCharges).map(([name, value]) => ({
-                            chargeName: name, chargeType: 'perKg', chargeValue: value
-                        }));
+        if (rateMode === 'single-country-zip') {
+            // ZIP-based zone lookup
+            console.log(`DEBUG [Checkpoint 2]: Single-country-zip mode for ${targetCountry}`);
+            
+            if (country.toLowerCase() !== targetCountry?.toLowerCase()) {
+                return NextResponse.json({ error: `This rate is only for ${targetCountry}.` }, { status: 404 });
+            }
+
+            if (!zipCode) {
+                return NextResponse.json({ error: "ZIP code is required for this rate." }, { status: 400 });
+            }
+
+            // Find zone by ZIP code
+            for (const pz of postalZones || []) {
+                let matches = false;
+                
+                if (pz.zipCode) {
+                    // Individual ZIP code match
+                    matches = pz.zipCode === zipCode;
+                } else if (pz.zipFrom && pz.zipTo) {
+                    // ZIP range match
+                    const zipNum = parseInt(zipCode.replace(/\D/g, ''), 10);
+                    const fromNum = parseInt(pz.zipFrom.replace(/\D/g, ''), 10);
+                    const toNum = parseInt(pz.zipTo.replace(/\D/g, ''), 10);
+                    
+                    if (!isNaN(zipNum) && !isNaN(fromNum) && !isNaN(toNum)) {
+                        matches = zipNum >= fromNum && zipNum <= toNum;
+                    } else {
+                        // String comparison for non-numeric ZIPs
+                        matches = zipCode >= pz.zipFrom && zipCode <= pz.zipTo;
                     }
                 }
-                break;
+
+                if (matches) {
+                    selectedZone = pz.zone;
+                    zoneExtraCharges = pz.extraCharges ? 
+                        (Array.isArray(pz.extraCharges) ? pz.extraCharges : 
+                            Object.entries(pz.extraCharges).map(([name, value]) => ({
+                                chargeName: name, chargeType: 'perKg', chargeValue: value
+                            }))
+                        ) : [];
+                    console.log(`DEBUG [SUCCESS]: Found ZIP ${zipCode} in zone ${selectedZone}`);
+                    break;
+                }
+            }
+
+            if (!selectedZone) {
+                return NextResponse.json({ error: `Zone not found for ZIP code '${zipCode}'.` }, { status: 404 });
+            }
+        } else {
+            // Multi-country zone lookup
+            console.log(`DEBUG [Checkpoint 2]: Searching for country "${country}" in zones...`);
+
+            for (const zoneObj of zones || []) {
+                if (zoneObj.countries && zoneObj.countries.some(c => c.toLowerCase() === country.toLowerCase())) {
+                    selectedZone = zoneObj.zone;
+                    console.log(`DEBUG [SUCCESS] Checkpoint 2: Found country in zone "${selectedZone}".`);
+                    if (zoneObj.extraCharges) {
+                        if (Array.isArray(zoneObj.extraCharges)) {
+                            zoneExtraCharges = zoneObj.extraCharges;
+                        } else if (typeof zoneObj.extraCharges === 'object') {
+                            zoneExtraCharges = Object.entries(zoneObj.extraCharges).map(([name, value]) => ({
+                                chargeName: name, chargeType: 'perKg', chargeValue: value
+                            }));
+                        }
+                    }
+                    break;
+                }
+            }
+
+            if (!selectedZone) {
+                console.error(`DEBUG [FAIL] Checkpoint 2: Country "${country}" was not found in any zone.`);
+                return NextResponse.json({ error: `Zone not found for country '${country}' in service '${type}'.` }, { status: 404 });
             }
         }
 
-        if (!selectedZone) {
-            console.error(`DEBUG [FAIL] Checkpoint 2: Country "${country}" was not found in any zone for service "${type}".`);
-            return NextResponse.json({ error: `Zone not found for country '${country}' in service '${type}'.` }, { status: 404 });
-        }
-
-        // --- DEBUG STEP 3: Finding the weight slab ---
-        console.log(`DEBUG [Checkpoint 3]: Finding rate for calculatedWeight=${calculatedWeight} (from inputWeight=${inputWeight})...`);
+        // Find weight slab
+        console.log(`DEBUG [Checkpoint 3]: Finding rate for calculatedWeight=${calculatedWeight}...`);
         const sortedRates = rates.map(rate => ({ kg: parseFloat(rate.kg), data: rate })).sort((a, b) => a.kg - b.kg);
         let weightRateData;
         let closestDbWeight;
@@ -100,31 +172,32 @@ export async function GET(req) {
                 closestDbWeight = fallbackRate.kg;
                 console.log(`DEBUG [SUCCESS] Checkpoint 3: Found fallback weight slab: ${closestDbWeight}kg.`);
             } else {
-                console.error(`DEBUG [FAIL] Checkpoint 3: No suitable rate slab found for weight ${calculatedWeight}. Smallest slab is likely > ${calculatedWeight}.`);
+                console.error(`DEBUG [FAIL] Checkpoint 3: No suitable rate slab found.`);
                 return NextResponse.json({ error: `No suitable rate found for weight ${inputWeight}kg.` }, { status: 404 });
             }
         }
 
-        // --- DEBUG STEP 4: Finding the rate value within the slab ---
+        // Get zone rate value
         console.log(`DEBUG [Checkpoint 4]: Looking for rate of zone "${selectedZone}" in the selected weight slab.`);
         const zoneRateValue = weightRateData[selectedZone];
         if (zoneRateValue === undefined || zoneRateValue === null) {
-            console.error(`DEBUG [FAIL] Checkpoint 4: The key for zone "${selectedZone}" does not exist or is null in the rate data for weight ${closestDbWeight}kg.`);
-            console.error("Available keys in rate data:", Object.keys(weightRateData));
+            console.error(`DEBUG [FAIL] Checkpoint 4: Zone "${selectedZone}" not found in rate data.`);
             return NextResponse.json({ error: `Rate for zone '${selectedZone}' is not defined for this weight.` }, { status: 404 });
         }
         console.log(`DEBUG [SUCCESS] Checkpoint 4: Found zone rate value: ${zoneRateValue}.`);
         
-        // --- If all checkpoints pass, proceed with calculation ---
+        // Calculate final price
         console.log("--- All checkpoints passed. Starting final calculation. ---");
         
         const perKgRate = zoneRateValue / closestDbWeight;
         const baseRate = perKgRate * calculatedWeight;
 
-        const isSpecialRate = rateResult.status === 'unlisted';
+        // For unlisted sales rates or purchase rates, don't apply profit
+        const isSpecialRate = rateResult.status === 'unlisted' || rateCategory === 'purchase';
         let profitCharges = 0;
         let subtotalAfterProfit = baseRate;
-        if (!isSpecialRate) {
+        
+        if (!isSpecialRate && profitPercent > 0) {
             profitCharges = (profitPercent / 100) * baseRate;
             subtotalAfterProfit += profitCharges;
         }
@@ -153,6 +226,7 @@ export async function GET(req) {
         const zoneFixedCharges = processCharges(zoneExtraCharges, extraChargesWeight);
         let subtotalAfterFixedCharges = subtotalAfterProfit + mainFixedCharges + zoneFixedCharges;
 
+        // Process percentage charges
         const allCharges = [...dbCharges, ...zoneExtraCharges];
         allCharges.filter(c => c && c.chargeType === 'percentage').forEach(charge => {
             if (typeof charge.chargeValue === 'number') {
@@ -167,9 +241,15 @@ export async function GET(req) {
         const finalTotal = subtotalBeforeGST + gstAmount;
 
         console.log("--- [END] Request Processed Successfully ---");
+        
         return NextResponse.json({
             service: rateResult.service,
             originalName: rateResult.originalName,
+            vendorName: rateResult.vendorName,
+            rateCategory: rateResult.rateCategory,
+            ratePurchaseId: rateResult.purchaseRateId || null,
+            rateMode: rateResult.rateMode,
+            targetCountry: rateResult.targetCountry,
             zone: selectedZone,
             inputWeight,
             calculatedWeight,
@@ -191,7 +271,7 @@ export async function GET(req) {
         });
 
     } catch (error) {
-        console.error("FATAL: An unexpected error occurred in the try block:", error);
+        console.error("FATAL: An unexpected error occurred:", error);
         return NextResponse.json({ error: "Internal Server Error" }, { status: 500 });
     }
 }

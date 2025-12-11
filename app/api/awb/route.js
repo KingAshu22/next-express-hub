@@ -86,7 +86,7 @@ export async function GET(req) {
     } else {
       // Return limited fields for listing pages
       baseQuery = baseQuery.select(
-        "date invoiceNumber trackingNumber refCode receiver.country receiver.name sender.name forwardingNumber forwardingLink parcelStatus cNoteNumber isBilled boxes.chargeableWeight financials.sales.grandTotal financials"
+        "date invoiceNumber trackingNumber refCode receiver.country receiver.name sender.name forwardingNumber forwardingLink parcelStatus cNoteNumber isBilled boxes.chargeableWeight financials.sales.grandTotal"
       )
     }
 

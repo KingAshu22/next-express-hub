@@ -164,7 +164,7 @@ export default function BillPage() {
     }
   }
 
-  // Handle print - only page 1 will be visible due to CSS
+  // Handle print
   const handlePrint = () => {
     window.print()
   }
@@ -228,7 +228,9 @@ export default function BillPage() {
             margin: 0 !important;
             padding: 0 !important;
             width: 100% !important;
-            height: 100% !important;
+            height: auto !important; /* Changed from 100% to auto */
+            background: white !important;
+            overflow: visible !important;
           }
           * {
             -webkit-print-color-adjust: exact !important;
@@ -237,16 +239,24 @@ export default function BillPage() {
           .print-hidden {
             display: none !important;
           }
+          /* This class handles the page break logic */
           .a4-page {
             box-shadow: none !important;
             margin: 0 !important;
+            break-after: page; 
             page-break-after: always;
-            width: 100% !important;
-            height: 100vh !important;
+            width: 210mm !important; /* Exact A4 Width */
+            height: 297mm !important; /* Exact A4 Height */
+            overflow: hidden !important; /* Prevent content spill */
+            position: relative;
           }
-          /* Only show page 1 when printing */
+          
+          /* Specifically target the annexure page to stop breaking */
           .annexure-page {
-            display: none !important;
+             break-after: auto !important;
+             page-break-after: auto !important;
+             break-inside: avoid !important;
+             margin-bottom: 0 !important;
           }
         }
       `}</style>
@@ -273,7 +283,7 @@ export default function BillPage() {
                  <ImageIcon className="w-4 h-4 mr-2" /> Save All Pages
                </Button>
                <Button size="sm" onClick={handlePrint} className="bg-[#232C65] text-white">
-                 <Printer className="w-4 h-4 mr-2" /> Print Bill Only
+                 <Printer className="w-4 h-4 mr-2" /> Print Bill
                </Button>
             </div>
         </div>
@@ -532,7 +542,7 @@ export default function BillPage() {
         </div>
       </div>
 
-      {/* ================= PAGE 2: ANNEXURE (Hidden during Print) ================= */}
+      {/* ================= PAGE 2: ANNEXURE ================= */}
       <div 
         ref={page2Ref}
         className="a4-page annexure-page shadow-2xl bg-white relative print:shadow-none"

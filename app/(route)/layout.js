@@ -22,7 +22,8 @@ export default function RootLayout({ children }) {
     pathname.includes("/contact") || pathname.includes("/privacy-policy") ||
     pathname.includes("/terms-and-conditions") ||
     pathname.includes("/refunds-cancellation-policy") ||
-    pathname.includes("/merchant-agreement") 
+    pathname.includes("/merchant-agreement") ||
+    (pathname.includes("/billing/") && !pathname.includes("/billing/create") && !pathname.includes("/billing/edit") && !pathname.includes("/billing/payment"));
 
   return (
     <html lang="en">

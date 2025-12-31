@@ -46,7 +46,7 @@ export async function GET(req) {
 
     // Status filter
     if (status === "paid") {
-      query.balance = 0;
+      query.balance = { $lte: 0 }; // Less than or equal to 0
     } else if (status === "pending") {
       query.balance = { $gt: 0 };
     }
@@ -74,9 +74,8 @@ export async function GET(req) {
       }
     }
 
-    // Check if pagination is requested
+    // Pagination
     const isPaginated = page && pageSize;
-
     let baseQuery = Billing.find(query).sort({ createdAt: -1 });
 
     if (isPaginated) {
@@ -90,16 +89,26 @@ export async function GET(req) {
     ]);
 
     // Calculate summary
-    const allBillsForSummary = await Billing.find(query)
-      .select("total paid balance")
-      .lean();
+    // (Optional: Optimization) Only fetch summary if not searching or if requested
+    const summaryAgg = await Billing.aggregate([
+      { $match: query },
+      { 
+        $group: {
+          _id: null,
+          totalAmount: { $sum: "$total" },
+          totalPaid: { $sum: "$paid" },
+          totalPending: { $sum: "$balance" },
+          count: { $sum: 1 }
+        }
+      }
+    ]);
 
-    const summary = {
-      totalBills: totalCount,
-      totalAmount: allBillsForSummary.reduce((sum, b) => sum + (b.total || 0), 0),
-      totalPaid: allBillsForSummary.reduce((sum, b) => sum + (b.paid || 0), 0),
-      totalPending: allBillsForSummary.reduce((sum, b) => sum + (b.balance || 0), 0),
-    };
+    const summary = summaryAgg.length > 0 ? {
+      totalBills: summaryAgg[0].count,
+      totalAmount: summaryAgg[0].totalAmount,
+      totalPaid: summaryAgg[0].totalPaid,
+      totalPending: summaryAgg[0].totalPending
+    } : { totalBills: 0, totalAmount: 0, totalPaid: 0, totalPending: 0 };
 
     if (isPaginated) {
       const totalPages = Math.ceil(totalCount / parseInt(pageSize));
@@ -139,15 +148,22 @@ export async function POST(req) {
 
     const financialYear = getFinancialYear();
 
-    // Find last bill of this financial year
+    // Generate Bill Number
+    // Find last bill of this financial year to increment
     const lastBill = await Billing.findOne({ financialYear })
       .sort({ createdAt: -1 })
+      .select('billNumber')
       .exec();
 
     let nextNumber = "0001";
-    if (lastBill) {
-      const lastNumber = parseInt(lastBill.billNumber.split("/")[1], 10);
-      nextNumber = String(lastNumber + 1).padStart(4, "0");
+    if (lastBill && lastBill.billNumber) {
+      const parts = lastBill.billNumber.split("/");
+      if (parts.length === 2) {
+        const lastNumber = parseInt(parts[1], 10);
+        if (!isNaN(lastNumber)) {
+          nextNumber = String(lastNumber + 1).padStart(4, "0");
+        }
+      }
     }
 
     const billNumber = `${financialYear}/${nextNumber}`;
@@ -156,6 +172,10 @@ export async function POST(req) {
       ...data,
       financialYear,
       billNumber,
+      // Ensure initial paid/balance logic is correct
+      paid: data.paid || 0,
+      balance: (data.total || 0) - (data.paid || 0),
+      paymentHistory: [], // Start empty unless logic added to pay on create
     });
 
     await newBill.save();

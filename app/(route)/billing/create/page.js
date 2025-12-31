@@ -1,3 +1,4 @@
+// app/billing/create/page.js
 "use client"
 
 import { useState, useEffect, useMemo, useCallback } from "react"
@@ -10,10 +11,9 @@ import { Button } from "@/components/ui/button"
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group"
 import { Separator } from "@/components/ui/separator"
 import { Badge } from "@/components/ui/badge"
-import { Save, Package, Loader2, ChevronDown, Check, ChevronRight, Eye, Settings, AlertCircle, Percent, FileText, Filter } from "lucide-react"
+import { Save, Package, Loader2, ChevronDown, Check, ChevronRight, Eye, Settings, AlertCircle, FileText, XCircle, CheckCircle2 } from "lucide-react"
 import { Switch } from "@/components/ui/switch"
 import isAdminAuth from "@/lib/isAdminAuth"
-import { format } from "date-fns" // Optional: if you use date-fns, otherwise standard JS dates used below
 
 // --- Helper Functions ---
 const safeParseFloat = (val) => {
@@ -22,7 +22,6 @@ const safeParseFloat = (val) => {
 }
 
 const calculateAWBWeight = (awb) => {
-  // Priority: 1. Sales Chargeable, 2. Box Calculation, 3. Fallback
   if (awb?.financials?.sales?.weight?.chargeable) {
     return safeParseFloat(awb.financials.sales.weight.chargeable)
   }
@@ -42,11 +41,6 @@ const calculateAWBWeight = (awb) => {
     if (chargeableWeight > 0) return sum + chargeableWeight
     return sum + Math.max(actualWeight, dimensionalWeight)
   }, 0)
-}
-
-const getBoxCount = (awb) => {
-  if (!awb?.boxes || !Array.isArray(awb.boxes)) return 0
-  return awb.boxes.length
 }
 
 // --- Main Component ---
@@ -226,11 +220,9 @@ function BillingCreatePage() {
     // B. Calculate Rates (If Source is AWB)
     if (rateSource === "awb") {
       const ratesFromAwb = result.map((awb) => {
-        // --- DATA EXTRACTION FROM FINANCIALS.SALES ---
         const salesData = awb.financials?.sales || {}
         const calculatedWeight = calculateAWBWeight(awb)
 
-        // Sum up other charges array
         const otherChargesSum = Array.isArray(salesData.charges?.otherCharges) 
           ? salesData.charges.otherCharges.reduce((acc, curr) => acc + safeParseFloat(curr.amount), 0)
           : 0
@@ -239,9 +231,9 @@ function BillingCreatePage() {
           awbId: awb._id,
           weight: safeParseFloat(salesData.weight?.chargeable) || calculatedWeight,
           service: salesData.serviceType || awb.rateInfo?.service || "N/A",
-          baseCharge: safeParseFloat(salesData.rates?.baseTotal), // Use Sales Base Total
-          fuelSurcharge: safeParseFloat(salesData.charges?.fuelAmount), // Use Sales Fuel Amount
-          otherCharges: otherChargesSum, // Use Sum of Other Charges
+          baseCharge: safeParseFloat(salesData.rates?.baseTotal),
+          fuelSurcharge: safeParseFloat(salesData.charges?.fuelAmount),
+          otherCharges: otherChargesSum,
           profitCharges: 0,
           isFromAPI: false,
           billed: awb.isBilled || false,
@@ -250,7 +242,6 @@ function BillingCreatePage() {
       })
       setAwbRates(ratesFromAwb)
     } 
-    // If rateSource is 'rates', we wait for user to select a type, or if logic exists elsewhere
   }, [allAwbs, selectedClientFranchise, startDate, endDate, searchTrackingNumber, searchCountry, hideBilled, rateSource, calculateRowRate])
 
   // Trigger Filter Application
@@ -258,42 +249,47 @@ function BillingCreatePage() {
     applyFiltersAndRates()
   }, [applyFiltersAndRates])
 
-  // --- 5. Selection Logic (Fixed) ---
+  // --- 5. Selection Logic (Improved) ---
+  
+  // Update "Select All" checkbox state based on selection matching filter
+  useEffect(() => {
+    if (filteredAwbs.length === 0) {
+      setSelectAll(false)
+      return
+    }
+    
+    const unbilledInFilter = filteredAwbs.filter(a => !a.isBilled)
+    const allUnbilledSelected = unbilledInFilter.length > 0 && unbilledInFilter.every(a => selectedAwbs.includes(a._id))
+    
+    setSelectAll(allUnbilledSelected)
+  }, [selectedAwbs, filteredAwbs])
+
   const handleToggleSelectAll = (isChecked) => {
-    setSelectAll(isChecked)
     if (isChecked) {
-      // Only select visible, unbilled items
+      // Select ALL unbilled items currently in the filtered view
       const idsToSelect = filteredAwbs
         .filter(a => !a.isBilled)
         .map(a => a._id)
       setSelectedAwbs(idsToSelect)
     } else {
+      // Deselect all
       setSelectedAwbs([])
     }
   }
 
   const handleToggleIndividual = (awbId) => {
     setSelectedAwbs(prev => {
-      const isSelected = prev.includes(awbId)
-      const newSelection = isSelected 
-        ? prev.filter(id => id !== awbId) 
-        : [...prev, awbId]
-      
-      // Update Select All State visually
-      const unbilledCount = filteredAwbs.filter(a => !a.isBilled).length
-      setSelectAll(newSelection.length === unbilledCount && unbilledCount > 0)
-      
-      return newSelection
+      if (prev.includes(awbId)) {
+        return prev.filter(id => id !== awbId)
+      } else {
+        return [...prev, awbId]
+      }
     })
   }
 
-  // --- 6. Recalculate Totals when Selection or Settings Change ---
+  // --- 6. Recalculate Totals ---
   useEffect(() => {
-    // Re-run calculation for all rates first (in case GST settings changed)
     const updatedRates = awbRates.map(rate => calculateRowRate(rate))
-    
-    // Check if we need to update state to avoid infinite loops
-    // Simplified: We just calculate totals from the derived updatedRates
     const selectedRateObjects = updatedRates.filter((rate) => selectedAwbs.includes(rate.awbId))
     
     const newTotals = selectedRateObjects.reduce((acc, rate) => {
@@ -323,17 +319,9 @@ function BillingCreatePage() {
       total: newTotals.total,
       balance: newTotals.total - prev.paid
     }))
-    
-    // Only update awbRates state if the values actually changed significantly to avoid loops, 
-    // or just rely on the fact that calculateRowRate is memoized on settings. 
-    // Ideally, we shouldn't update awbRates inside a useEffect dependent on awbRates.
-    // However, for UI inputs (editing baseCharge), we handle that in handleRateChange.
-    // For Global GST toggle, we need to refresh the view.
-    // Let's rely on the separate `useEffect` below for the `awbRates` update.
+  }, [selectedAwbs, includeGST, gstType, rateSettings, awbRates.length]) // Dependent on rates existence/selection
 
-  }, [selectedAwbs, includeGST, gstType, rateSettings, awbRates.length]) // Dependent on length, not content to avoid loop
-
-  // Effect to update visual rates when Tax Settings change globally
+  // Update visual rates when Tax Settings change globally
   useEffect(() => {
      setAwbRates(prev => prev.map(r => calculateRowRate(r)))
   }, [includeGST, gstType, rateSettings, calculateRowRate])
@@ -379,7 +367,6 @@ function BillingCreatePage() {
         }
         return calculateRowRate(rateData)
       } catch (error) {
-        // Fallback to existing data if API fails
         errors.push(`AWB ${awb.trackingNumber}: ${error.message}`)
         const salesData = awb.financials?.sales || {}
         const fallback = {
@@ -478,7 +465,6 @@ function BillingCreatePage() {
       
       alert(`Bill Saved: ${result.bill?.billNumber || 'Success'}`)
       
-      // Update local state
       setAllAwbs(prev => prev.map(awb => selectedAwbs.includes(awb._id) ? { ...awb, isBilled: true } : awb))
       setSelectedAwbs([])
       setSelectAll(false)
@@ -500,6 +486,9 @@ function BillingCreatePage() {
       </div>
     )
   }
+
+  // Count unbilled items in current filter
+  const unbilledInFilterCount = filteredAwbs.filter(a => !a.isBilled).length
 
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-gray-900 pb-24">
@@ -609,34 +598,61 @@ function BillingCreatePage() {
                   </div>
                 </div>
 
-                <div className="rounded-md border overflow-hidden">
-                  <div className="bg-gray-100 dark:bg-gray-800 p-2 flex justify-between items-center border-b">
-                    <div className="flex items-center gap-2">
-                      <Package className="w-4 h-4 text-gray-500" />
-                      <span className="font-semibold text-sm">
-                        {filteredAwbs.length} Found 
-                        {selectedAwbs.length > 0 && <span className="text-blue-600 ml-1">({selectedAwbs.length} Selected)</span>}
-                      </span>
+                {/* Selection Toolbar - NEW Feature */}
+                <div className="bg-blue-50 dark:bg-blue-900/20 p-3 rounded-md flex flex-wrap gap-4 justify-between items-center border border-blue-100 dark:border-blue-800">
+                    <div className="flex items-center gap-4 text-sm">
+                       <div className="flex items-center gap-2">
+                          <span className="text-gray-500">Total Unbilled:</span>
+                          <span className="font-bold text-gray-900 dark:text-gray-100">{unbilledInFilterCount}</span>
+                       </div>
+                       <Separator orientation="vertical" className="h-4 bg-gray-300"/>
+                       <div className="flex items-center gap-2">
+                          <span className="text-gray-500">Selected:</span>
+                          <span className="font-bold text-blue-600">{selectedAwbs.length}</span>
+                       </div>
                     </div>
-                  </div>
+                    
+                    <div className="flex gap-2">
+                      {selectedAwbs.length > 0 && (
+                        <Button 
+                          size="sm" 
+                          variant="ghost" 
+                          className="text-red-600 hover:text-red-700 hover:bg-red-50"
+                          onClick={() => setSelectedAwbs([])}
+                        >
+                          <XCircle className="w-4 h-4 mr-2" /> Clear
+                        </Button>
+                      )}
+                      <Button 
+                        size="sm" 
+                        variant={selectAll ? "secondary" : "default"}
+                        onClick={() => handleToggleSelectAll(!selectAll)}
+                      >
+                         {selectAll ? "Deselect All" : "Select All Unbilled"}
+                      </Button>
+                    </div>
+                </div>
+
+                <div className="rounded-md border overflow-hidden">
                   <div className="max-h-[500px] overflow-auto">
                     <Table>
                       <TableHeader className="sticky top-0 bg-white dark:bg-gray-900 z-10 shadow-sm">
                         <TableRow>
-                          <TableHead className="w-12 text-center">
+                          <TableHead className="w-12 text-center bg-gray-50/80 backdrop-blur">
                             <input
                               type="checkbox"
                               checked={selectAll}
                               onChange={(e) => handleToggleSelectAll(e.target.checked)}
-                              className="h-4 w-4 rounded border-gray-300 accent-blue-600"
+                              className="h-4 w-4 rounded border-gray-300 accent-blue-600 cursor-pointer"
+                              title="Select all filtered items"
                             />
                           </TableHead>
-                          <TableHead>Date</TableHead>
-                          <TableHead>Tracking</TableHead>
-                          <TableHead>Consignee</TableHead>
-                          <TableHead>Dest.</TableHead>
-                          <TableHead className="text-center">Weight</TableHead>
-                          <TableHead className="text-right">Status</TableHead>
+                          <TableHead className="bg-gray-50/80 backdrop-blur">Date</TableHead>
+                          <TableHead className="bg-gray-50/80 backdrop-blur">Tracking</TableHead>
+                          <TableHead className="bg-gray-50/80 backdrop-blur">Consignee</TableHead>
+                          <TableHead className="bg-gray-50/80 backdrop-blur">Dest.</TableHead>
+                          <TableHead className="text-center bg-gray-50/80 backdrop-blur">Weight</TableHead>
+                          <TableHead className="text-right bg-gray-50/80 backdrop-blur">Status</TableHead>
                         </TableRow>
                       </TableHeader>
                       <TableBody>
@@ -647,18 +663,20 @@ function BillingCreatePage() {
                             return (
                               <TableRow
                                 key={awb._id}
+                                onClick={() => !awb.isBilled && handleToggleIndividual(awb._id)}
                                 className={`
+                                  cursor-pointer transition-colors
                                   ${isSelected ? "bg-blue-50 dark:bg-blue-900/20" : ""} 
-                                  ${awb.isBilled ? "opacity-50 grayscale bg-gray-50" : "hover:bg-gray-50 dark:hover:bg-gray-800"}
+                                  ${awb.isBilled ? "opacity-50 grayscale bg-gray-50 cursor-not-allowed" : "hover:bg-gray-50 dark:hover:bg-gray-800"}
                                 `}
                               >
-                                <TableCell className="text-center">
+                                <TableCell className="text-center" onClick={(e) => e.stopPropagation()}>
                                   <input
                                     type="checkbox"
                                     checked={isSelected}
                                     onChange={() => handleToggleIndividual(awb._id)}
                                     disabled={awb.isBilled}
-                                    className="h-4 w-4 rounded border-gray-300 accent-blue-600"
+                                    className="h-4 w-4 rounded border-gray-300 accent-blue-600 cursor-pointer"
                                   />
                                 </TableCell>
                                 <TableCell className="text-xs whitespace-nowrap">
@@ -696,7 +714,7 @@ function BillingCreatePage() {
             </Card>
 
             {selectedAwbs.length > 0 && (
-              <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 pb-20">
+              <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 pb-20 animate-in slide-in-from-bottom-5">
                 {/* 3. Rates Configuration */}
                 <div className="lg:col-span-2 space-y-6">
                   <Card className="shadow-sm border-l-4 border-l-orange-500 h-full">

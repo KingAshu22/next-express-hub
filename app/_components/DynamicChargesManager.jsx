@@ -1,3 +1,5 @@
+"use client"
+
 import { useState } from "react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -12,15 +14,15 @@ const chargeTypeLabels = {
   percentage: "Percentage (%)",
   perKg: "Per Kg (₹)",
   oneTime: "One Time (₹)",
-};
+}
 
 export default function DynamicChargesManager({ value, onChange }) {
-  const [isDialogOpen, setIsDialogOpen] = useState(false);
+  const [isDialogOpen, setIsDialogOpen] = useState(false)
   const [newCharge, setNewCharge] = useState({
     chargeName: "",
     chargeType: "percentage",
     chargeValue: "",
-  });
+  })
 
   const handleAddCharge = () => {
     if (!newCharge.chargeName || !newCharge.chargeType || newCharge.chargeValue <= 0) {
@@ -28,17 +30,17 @@ export default function DynamicChargesManager({ value, onChange }) {
         title: "Invalid Charge",
         description: "Please provide a valid name, type, and positive value.",
         variant: "destructive",
-      });
-      return;
+      })
+      return
     }
-    onChange([...value, { ...newCharge, chargeValue: Number(newCharge.chargeValue) }]);
-    setNewCharge({ chargeName: "", chargeType: "percentage", chargeValue: "" });
-    setIsDialogOpen(false);
-  };
+    onChange([...value, { ...newCharge, chargeValue: Number(newCharge.chargeValue) }])
+    setNewCharge({ chargeName: "", chargeType: "percentage", chargeValue: "" })
+    setIsDialogOpen(false)
+  }
 
   const handleRemoveCharge = (indexToRemove) => {
-    onChange(value.filter((_, index) => index !== indexToRemove));
-  };
+    onChange(value.filter((_, index) => index !== indexToRemove))
+  }
 
   return (
     <div className="space-y-4">
@@ -92,7 +94,9 @@ export default function DynamicChargesManager({ value, onChange }) {
                 value={newCharge.chargeType}
                 onValueChange={(val) => setNewCharge({ ...newCharge, chargeType: val })}
               >
-                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="percentage">{chargeTypeLabels.percentage}</SelectItem>
                   <SelectItem value="perKg">{chargeTypeLabels.perKg}</SelectItem>
@@ -112,10 +116,12 @@ export default function DynamicChargesManager({ value, onChange }) {
             </div>
           </div>
           <DialogFooter>
-            <Button type="button" onClick={handleAddCharge}>Save Charge</Button>
+            <Button type="button" onClick={handleAddCharge}>
+              Save Charge
+            </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
     </div>
-  );
+  )
 }

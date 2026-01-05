@@ -83,7 +83,15 @@ export async function POST(request) {
 
     // --- Country Code using iso-3166-1-alpha-2 ---
     const destCountry = awb.receiver?.country?.trim()
-    const destCountryCode = iso.getCode(destCountry)
+    let destCountryCode
+
+    // FIX: Check specifically for United States Of America (case insensitive)
+    if (destCountry && destCountry.toLowerCase() === "united states of america") {
+      destCountryCode = "US"
+    } else {
+      // Fallback to standard ISO lookup for other countries
+      destCountryCode = iso.getCode(destCountry)
+    }
 
     const originCountry = awb.sender?.country?.trim() || "India"
     const originCountryCode = iso.getCode(originCountry) || "IN"

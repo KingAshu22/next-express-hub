@@ -204,18 +204,32 @@ export default function ViewRatePage() {
                       ))}
                     </div>
                   </div>
-                  {zone.extraCharges && Object.keys(zone.extraCharges).length > 0 && (
+
+                  {/* --- FIXED SECTION START --- */}
+                  {zone.extraCharges && (
                     <div className="mt-3 pt-3 border-t">
                       <p className="text-sm text-muted-foreground mb-2">Extra Charges:</p>
                       <div className="space-y-1">
-                        {Object.entries(zone.extraCharges).map(([name, value]) => (
-                          <p key={name} className="text-sm">
-                            {name}: <span className="font-semibold">₹{value}</span>
-                          </p>
-                        ))}
+                        {Array.isArray(zone.extraCharges) ? (
+                          // Case 1: It is an Array of objects (This fixes your specific error)
+                          zone.extraCharges.map((charge, idx) => (
+                            <p key={idx} className="text-sm">
+                              {charge.chargeName}: <span className="font-semibold">₹{charge.chargeValue}</span>
+                            </p>
+                          ))
+                        ) : typeof zone.extraCharges === 'object' ? (
+                          // Case 2: It is a simple Key-Value object (Backwards compatibility)
+                          Object.entries(zone.extraCharges).map(([name, value]) => (
+                            <p key={name} className="text-sm">
+                              {name}: <span className="font-semibold">₹{value}</span>
+                            </p>
+                          ))
+                        ) : null}
                       </div>
                     </div>
                   )}
+                  {/* --- FIXED SECTION END --- */}
+
                 </div>
               ))}
             </div>

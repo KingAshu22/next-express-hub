@@ -641,8 +641,8 @@ export default function EditRatePage() {
                     </Label>
                   </div>
                   <div className="flex items-center space-x-2">
-                    <RadioGroupItem value="visible" id="visible" />
-                    <Label htmlFor="visible" className="font-normal cursor-pointer">
+                    <RadioGroupItem value="live" id="live" />
+                    <Label htmlFor="live" className="font-normal cursor-pointer">
                       Visible to All
                     </Label>
                   </div>

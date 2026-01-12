@@ -18,15 +18,12 @@ export async function POST(req) {
     await connectToDB()
     const body = await req.json()
     
-    // DEBUG: Log the incoming body to see exactly what is being sent
     console.log("Incoming POST Body:", body)
 
-    // Destructure all fields. 
-    // note: Added fields seen in your previous code (vendorName, rateCategory, rateMode)
     const {
-      vendorName,    // Likely required by your Schema
-      rateCategory,  // Likely required (Purchase/Sales)
-      rateMode,      // Likely required
+      vendorName,
+      rateCategory,
+      rateMode,
       type,
       service,
       originalName,
@@ -35,23 +32,21 @@ export async function POST(req) {
       charges, 
       status,
       assignedTo,
-      targetCountry
+      targetCountry,
+      purchaseRateId // <--- 1. ADD THIS: Needed for Sales rates
     } = body
 
     // 1. IMPROVED MANUAL VALIDATION
-    // Check which specific field is missing to give a helpful error message
     const requiredFields = ['service', 'originalName', 'rates', 'zones', 'status'];
     const missingFields = requiredFields.filter(field => !body[field]);
 
     if (missingFields.length > 0) {
-      console.error("Missing fields:", missingFields);
       return NextResponse.json({ 
         message: `Missing required fields: ${missingFields.join(', ')}` 
       }, { status: 400 })
     }
 
     // 2. CREATE DATABASE ENTRY
-    // We pass the individual fields explicitly to ensure everything is captured
     const newRate = new Rate({
       vendorName,
       rateCategory,
@@ -64,19 +59,17 @@ export async function POST(req) {
       charges: charges || [],
       status,
       assignedTo,
-      targetCountry
+      targetCountry,
+      purchaseRateId // <--- 2. ADD THIS: Pass it to Mongoose
     })
 
     await newRate.save()
-
     return NextResponse.json(newRate, { status: 201 })
 
   } catch (error) {
     console.error("Error creating rate:", error)
     
-    // 3. HANDLE MONGOOSE VALIDATION ERRORS
     if (error.name === "ValidationError") {
-      // Return the specific Mongoose validation errors
       return NextResponse.json({ 
         message: "Database Validation Failed", 
         details: error.errors 

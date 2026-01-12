@@ -7,7 +7,7 @@ import Rate from "@/models/Rate"
 export async function GET(req, { params }) {
   try {
     await connectToDB()
-    const { id } = params
+    const { id } = await params
     const rate = await Rate.findById(id)
 
     if (!rate) {
@@ -24,7 +24,7 @@ export async function GET(req, { params }) {
 export async function PUT(req, { params }) {
   try {
     await connectToDB()
-    const { id } = params
+    const { id } = await params
     const body = await req.json()
 
     const {
@@ -37,10 +37,6 @@ export async function PUT(req, { params }) {
       status,
       assignedTo,
     } = body
-
-    if (!type || !service || !originalName || !rates || !zones || !status) {
-      return NextResponse.json({ message: "Missing required fields" }, { status: 400 })
-    }
 
     const updateData = {
       type,
@@ -76,7 +72,7 @@ export async function PUT(req, { params }) {
 export async function DELETE(req, { params }) {
   try {
     await connectToDB()
-    const { id } = params
+    const { id } = await params
     const deletedRate = await Rate.findByIdAndDelete(id)
 
     if (!deletedRate) {

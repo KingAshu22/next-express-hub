@@ -1,87 +1,119 @@
-// /components/ui/multi-select.jsx
-"use client";
+"use client"
 
-import * as React from "react";
-import { Check, X, ChevronsUpDown } from "lucide-react";
-import { cn } from "@/lib/utils";
-import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
-import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "@/components/ui/command";
-import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import React from "react"
 
-export function MultiSelect({ options, selected, onChange, className, ...props }) {
-  const [open, setOpen] = React.useState(false);
+import { useState, useRef, useEffect } from "react"
+import { Input } from "@/components/ui/input"
+import { Badge } from "@/components/ui/badge"
+import { X, ChevronDown } from "lucide-react"
 
-  const handleUnselect = (item) => {
-    onChange(selected.filter((i) => i !== item));
-  };
+export function MultiSelect({
+  options,
+  selected,
+  onChange,
+  placeholder = "Select items...",
+  disabled = false,
+}) {
+  const [isOpen, setIsOpen] = useState(false)
+  const [searchTerm, setSearchTerm] = useState("")
+  const containerRef = useRef(null)
+
+  const filteredOptions = options.filter(
+    (option) => option.label.toLowerCase().includes(searchTerm.toLowerCase()) && !selected.includes(option.value),
+  )
+
+  const selectedLabels = selected.map((val) => options.find((opt) => opt.value === val)?.label || val)
+
+  const handleSelectOption = (value) => {
+    onChange([...selected, value])
+    setSearchTerm("")
+  }
+
+  const handleRemoveOption = (value) => {
+    onChange(selected.filter((item) => item !== value))
+  }
+
+  const handleKeyDown = (e) => {
+    if (e.key === "Escape") {
+      setIsOpen(false)
+    }
+  }
+
+  useEffect(() => {
+    const handleClickOutside = (event) => {
+      if (containerRef.current && !containerRef.current.contains(event.target)) {
+        setIsOpen(false)
+      }
+    }
+
+    document.addEventListener("mousedown", handleClickOutside)
+    return () => document.removeEventListener("mousedown", handleClickOutside)
+  }, [])
 
   return (
-    <Popover open={open} onOpenChange={setOpen} {...props}>
-      <PopoverTrigger asChild>
-        <Button
-          variant="outline"
-          role="combobox"
-          aria-expanded={open}
-          className={`w-full justify-between ${selected.length > 0 ? "h-full" : "h-10"}`}
-          onClick={() => setOpen(!open)}
-        >
-          <div className="flex gap-1 flex-wrap">
-            {selected.length > 0 ? (
-              options
-                .filter((option) => selected.includes(option.value))
-                .map((option) => (
-                  <Badge
-                    variant="secondary"
-                    key={option.value}
-                    className="mr-1 mb-1"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      handleUnselect(option.value);
-                    }}
-                  >
-                    {option.label}
-                    <X className="ml-1 h-3 w-3" />
-                  </Badge>
-                ))
+    <div ref={containerRef} className="relative w-full">
+      <div
+        className="flex flex-wrap gap-2 p-2 border rounded-md bg-background min-h-10 cursor-pointer"
+        onClick={() => !disabled && setIsOpen(!isOpen)}
+        role="button"
+        tabIndex={0}
+        onKeyDown={(e) => {
+          if (e.key === "Enter" || e.key === " ") {
+            !disabled && setIsOpen(!isOpen)
+          }
+        }}
+      >
+        {selectedLabels.length > 0 ? (
+          selectedLabels.map((label, index) => (
+            <Badge key={index} variant="secondary" className="flex items-center gap-1">
+              {label}
+              <button
+                type="button"
+                onClick={(e) => {
+                  e.stopPropagation()
+                  handleRemoveOption(selected[index])
+                }}
+                disabled={disabled}
+              >
+                <X className="h-3 w-3" />
+              </button>
+            </Badge>
+          ))
+        ) : (
+          <span className="text-muted-foreground text-sm">{placeholder}</span>
+        )}
+        <ChevronDown className="h-4 w-4 ml-auto text-muted-foreground" />
+      </div>
+
+      {isOpen && !disabled && (
+        <div className="absolute top-full left-0 right-0 mt-1 border rounded-md bg-background shadow-lg z-50">
+          <Input
+            type="text"
+            placeholder="Search..."
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+            onKeyDown={handleKeyDown}
+            className="border-0 border-b rounded-none"
+            autoFocus
+          />
+          <div className="max-h-60 overflow-y-auto">
+            {filteredOptions.length > 0 ? (
+              filteredOptions.map((option) => (
+                <button
+                  key={option.value}
+                  type="button"
+                  onClick={() => handleSelectOption(option.value)}
+                  className="w-full text-left px-3 py-2 hover:bg-muted transition-colors"
+                >
+                  {option.label}
+                </button>
+              ))
             ) : (
-              <span className="text-muted-foreground">Select countries...</span>
+              <div className="px-3 py-2 text-sm text-muted-foreground">No matching options</div>
             )}
           </div>
-          <ChevronsUpDown className="h-4 w-4 shrink-0 opacity-50" />
-        </Button>
-      </PopoverTrigger>
-      <PopoverContent className="w-[--radix-popover-trigger-width] p-0">
-        <Command className={className}>
-          <CommandInput placeholder="Search ..." />
-          <CommandEmpty>No item found.</CommandEmpty>
-          <CommandList>
-            <CommandGroup>
-              {options.map((option) => (
-                <CommandItem
-                  key={option.value}
-                  onSelect={() => {
-                    onChange(
-                      selected.includes(option.value)
-                        ? selected.filter((item) => item !== option.value)
-                        : [...selected, option.value]
-                    );
-                    setOpen(true);
-                  }}
-                >
-                  <Check
-                    className={cn(
-                      "mr-2 h-4 w-4",
-                      selected.includes(option.value) ? "opacity-100" : "opacity-0"
-                    )}
-                  />
-                  {option.label}
-                </CommandItem>
-              ))}
-            </CommandGroup>
-          </CommandList>
-        </Command>
-      </PopoverContent>
-    </Popover>
-  );
+        </div>
+      )}
+    </div>
+  )
 }

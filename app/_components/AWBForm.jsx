@@ -399,7 +399,9 @@ export default function AWBForm({ isEdit = false, awb }) {
         const postalData = await fetchPostalData(senderZipCode, countryCode)
         if (postalData) {
           const { postalLocation, province, district, state } = postalData
-          const formattedAddress = [postalLocation, province, district, state].filter(Boolean).join(", ")
+          const formattedAddress = [postalLocation, province].filter(Boolean).join(", ")
+          setSenderCity(district || "")
+          setSenderState(state || "")
           if (!senderAddress2) setSenderAddress2(formattedAddress)
         }
       }
@@ -415,8 +417,10 @@ export default function AWBForm({ isEdit = false, awb }) {
         const postalData = await fetchPostalData(receiverZipCode, countryCode)
         if (postalData) {
           const { postalLocation, province, district, state } = postalData
-          const formattedAddress = [postalLocation, province, district, state].filter(Boolean).join(", ")
-          if (!receiverAddress2) setReceiverAddress2(formattedAddress)
+          const formattedAddress = [postalLocation, province].filter(Boolean).join(", ")
+          setReceiverCity(district || "")
+          setReceiverState(state || "")
+          // if (!receiverAddress2) setReceiverAddress2(formattedAddress)
         }
       }
     }
@@ -1274,7 +1278,7 @@ export default function AWBForm({ isEdit = false, awb }) {
                 <FormInput label="Email" id="receiverEmail"><Input type="email" value={receiverEmail} onChange={(e) => setReceiverEmail(e.target.value)} /></FormInput>
                 <div className="sm:col-span-2">
                   <FormInput label="Address Line 1" id="receiverAddress" required>
-                    <Textarea rows={2} maxLength={30} value={receiverAddress} onChange={(e) => setReceiverAddress(e.target.value)} />
+                    <Textarea rows={2} maxLength={50} value={receiverAddress} onChange={(e) => setReceiverAddress(e.target.value)} />
                     <div className="text-xs text-muted-foreground text-right">{receiverAddress.length}/20</div>
                   </FormInput>
                 </div>

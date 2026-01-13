@@ -13,6 +13,16 @@ import { Label } from "@/components/ui/label"
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group"
 import { format } from "date-fns"
 import JsBarcode from "jsbarcode"
+import { Input } from "@/components/ui/input"
+import { Textarea } from "@/components/ui/textarea"
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+  DialogFooter,
+} from "@/components/ui/dialog"
 
 export default function EnhancedShippingPage() {
   const { trackingNumber } = useParams()
@@ -28,6 +38,20 @@ export default function EnhancedShippingPage() {
   const [authorizationCopies, setAuthorizationCopies] = useState(1)
   const [kycDocumentUrl, setKycDocumentUrl] = useState(null)
   const [kycLoading, setKycLoading] = useState(false)
+  // New state for invoice sender option
+  const [invoiceSenderOption, setInvoiceSenderOption] = useState("original") // "original" or "custom"
+  const [showCustomSenderDialog, setShowCustomSenderDialog] = useState(false)
+  const [customSenderDetails, setCustomSenderDetails] = useState({
+    name: "",
+    companyName: "",
+    address: "",
+    zip: "",
+    country: "",
+    contact: "",
+    email: "",
+    kycType: "",
+    kycNumber: "",
+  })
 
   // New state for document selection and label options
   const [selectedDocuments, setSelectedDocuments] = useState({
@@ -57,6 +81,21 @@ export default function EnhancedShippingPage() {
         setFormattedKycType(
           kycTypeMap[response.data[0]?.sender?.kyc?.type] || response.data[0]?.sender?.kyc?.type || "",
         )
+
+        // Initialize custom sender details with original data
+        if (response.data[0]?.sender) {
+          setCustomSenderDetails({
+            name: response.data[0].sender.name || "",
+            companyName: response.data[0].sender.companyName || "",
+            address: response.data[0].sender.address || "",
+            zip: response.data[0].sender.zip || "",
+            country: response.data[0].sender.country || "",
+            contact: response.data[0].sender.contact || "",
+            email: response.data[0].sender.email || "",
+            kycType: response.data[0].sender.kyc?.type || "",
+            kycNumber: response.data[0].sender.kyc?.kyc || "",
+          })
+        }
 
         // Process KYC document URL if available
         if (response.data[0]?.sender?.kyc?.document) {
@@ -173,126 +212,181 @@ export default function EnhancedShippingPage() {
     return total
   }
 
+  // Get sender details based on selected option
+  const getSenderDetails = () => {
+    if (invoiceSenderOption === "custom") {
+      return {
+        name: customSenderDetails.name,
+        companyName: customSenderDetails.companyName,
+        address: customSenderDetails.address,
+        zip: customSenderDetails.zip,
+        country: customSenderDetails.country,
+        contact: customSenderDetails.contact,
+        email: customSenderDetails.email,
+        kyc: {
+          type: customSenderDetails.kycType,
+          kyc: customSenderDetails.kycNumber,
+        },
+      }
+    }
+    return awbData?.sender
+  }
+
+  // Handle custom sender option change
+  const handleInvoiceSenderOptionChange = (value) => {
+    setInvoiceSenderOption(value)
+    if (value === "custom") {
+      setShowCustomSenderDialog(true)
+    }
+  }
+
+  // Handle custom sender form input change
+  const handleCustomSenderChange = (field, value) => {
+    setCustomSenderDetails((prev) => ({
+      ...prev,
+      [field]: value,
+    }))
+  }
+
+  // Reset custom sender details to original
+  const resetCustomSenderDetails = () => {
+    if (awbData?.sender) {
+      setCustomSenderDetails({
+        name: awbData.sender.name || "",
+        companyName: awbData.sender.companyName || "",
+        address: awbData.sender.address || "",
+        zip: awbData.sender.zip || "",
+        country: awbData.sender.country || "",
+        contact: awbData.sender.contact || "",
+        email: awbData.sender.email || "",
+        kycType: awbData.sender.kyc?.type || "",
+        kycNumber: awbData.sender.kyc?.kyc || "",
+      })
+    }
+  }
+
   const generateInvoiceHTML = () => {
     const totalAmount = calculateTotal()
     const amountInWords =
       numberToWords(Math.round(totalAmount)) + " " + (awbData.shippingCurrency === "₹" ? "Rupees" : "Dollars") + " Only"
 
+    const sender = getSenderDetails()
+
     return `
-          <div class="text-center mb-6">
-              <h1 class="text-2xl font-bold">SHIPPING INVOICE</h1>
-          </div>
+        <div class="text-center mb-6">
+            <h1 class="text-2xl font-bold">SHIPPING INVOICE</h1>
+        </div>
 
-          <div class="grid grid-cols-2 gap-4 mb-6 text-[12px]">
-              <div>
-                  <p><strong>Date:</strong> ${awbData.date ? format(new Date(awbData.date), "dd/MM/yyyy") : "N/A"}</p>
-                  <p><strong>Pre Carriage By:</strong> ${awbData.via || "N/A"}</p>
-                  <p><strong>Vessel/Flight No:</strong> ${awbData.forwardingNo || "N/A"}</p>
-                  <p><strong>Port of Discharge:</strong> ${awbData.sender?.country || "N/A"}</p>
-                  <p><strong>Country of Origin of Goods:</strong> ${awbData.sender?.country || "INDIA"}</p>
-              </div>
-              <div>
-                  <p><strong>EXP. REF-</strong> ${awbData.trackingNumber}</p>
-                  <p><strong>Place of Receipt by Pre-carrier:</strong></p>
-                  <p><strong>Port of Loading:</strong> ${awbData.sender?.country || "N/A"}</p>
-                  <p><strong>Final Destination:</strong> ${awbData.receiver?.country || "N/A"}</p>
-                  <p><strong>Country of Final Destination:</strong> ${awbData.receiver?.country || "N/A"}</p>
-              </div>
-          </div>
+        <div class="grid grid-cols-2 gap-4 mb-6 text-[12px]">
+            <div>
+                <p><strong>Date:</strong> ${awbData.date ? format(new Date(awbData.date), "dd/MM/yyyy") : "N/A"}</p>
+                <p><strong>Pre Carriage By:</strong> ${awbData.via || "N/A"}</p>
+                <p><strong>Vessel/Flight No:</strong> ${awbData.forwardingNo || "N/A"}</p>
+                <p><strong>Port of Discharge:</strong> ${sender?.country || "N/A"}</p>
+                <p><strong>Country of Origin of Goods:</strong> ${sender?.country || "INDIA"}</p>
+            </div>
+            <div>
+                <p><strong>EXP. REF-</strong> ${awbData.trackingNumber}</p>
+                <p><strong>Place of Receipt by Pre-carrier:</strong></p>
+                <p><strong>Port of Loading:</strong> ${sender?.country || "N/A"}</p>
+                <p><strong>Final Destination:</strong> ${awbData.receiver?.country || "N/A"}</p>
+                <p><strong>Country of Final Destination:</strong> ${awbData.receiver?.country || "N/A"}</p>
+            </div>
+        </div>
 
-          <div class="grid grid-cols-2 gap-2 mb-6 text-[12px]">
-              <div class="border border-gray-300 p-1 rounded-lg">
-                  <h2 class="font-bold mb-2">Sender:</h2>
-                  <p class="font-bold uppercase">${awbData.sender?.name}</p>
-                  ${awbData.sender?.companyName ? `<p class="font-bold uppercase">C/O ${awbData.sender?.companyName}</p>` : ""}
-                  <p>${awbData.sender?.address}</p>
-                  <p class="flex flex-row gap-2">
-                      <strong>Zip Code:</strong> ${awbData.sender?.zip}
-                      <strong>Country:</strong>${awbData.sender?.country}
-                  </p>
-                  <p><strong>Cont No:</strong> ${awbData.sender?.contact}</p>
-                  <p><strong>Email:</strong> ${awbData.sender?.email || "info@kargoone.com"}</p>
-                  <p><strong>${awbData.sender.kyc.type}</strong> ${awbData.sender.kyc.kyc}</p>
-              </div>
-              <div class="border border-gray-300 rounded-lg p-1">
-                  <h2 class="font-bold mb-2">Receiver:</h2>
-                  <p class="font-bold uppercase">${awbData.receiver?.name}</p>
-                  ${awbData.receiver?.companyName ? `<p class="font-bold uppercase">C/O ${awbData.receiver?.companyName}</p>` : ""}
-                  <p>${awbData.receiver?.address}</p>
-                  <p class="flex flex-row gap-2">
-                      <strong>Zip Code:</strong> ${awbData.receiver?.zip}
-                      <strong>Country:</strong>${awbData.receiver?.country}
-                  </p>
-                  <p><strong>Cont No:</strong> ${awbData.receiver?.contact}</p>
-                  <p><strong>Email:</strong> ${awbData.receiver?.email || "info@kargoone.com"}</p>
-              </div>
-          </div>
+        <div class="grid grid-cols-2 gap-2 mb-6 text-[12px]">
+            <div class="border border-gray-300 p-1 rounded-lg">
+                <h2 class="font-bold mb-2">Sender:</h2>
+                <p class="font-bold uppercase">${sender?.name || ""}</p>
+                ${sender?.companyName ? `<p class="font-bold uppercase">C/O ${sender?.companyName}</p>` : ""}
+                <p>${sender?.address || ""}</p>
+                <p class="flex flex-row gap-2">
+                    <strong>Zip Code:</strong> ${sender?.zip || ""}
+                    <strong>Country:</strong>${sender?.country || ""}
+                </p>
+                <p><strong>Cont No:</strong> ${sender?.contact || ""}</p>
+                <p><strong>Email:</strong> ${sender?.email || ""}</p>
+                <p><strong>${sender?.kyc?.type || ""}</strong> ${sender?.kyc?.kyc || ""}</p>
+            </div>
+            <div class="border border-gray-300 rounded-lg p-1">
+                <h2 class="font-bold mb-2">Receiver:</h2>
+                <p class="font-bold uppercase">${awbData.receiver?.name}</p>
+                ${awbData.receiver?.companyName ? `<p class="font-bold uppercase">C/O ${awbData.receiver?.companyName}</p>` : ""}
+                <p>${awbData.receiver?.address}</p>
+                <p class="flex flex-row gap-2">
+                    <strong>Zip Code:</strong> ${awbData.receiver?.zip}
+                    <strong>Country:</strong>${awbData.receiver?.country}
+                </p>
+                <p><strong>Cont No:</strong> ${awbData.receiver?.contact}</p>
+                <p><strong>Email:</strong> ${awbData.receiver?.email}</p>
+            </div>
+        </div>
 
-          <div class="">
-    <table class="w-full border-collapse mb-2 text-[12px]">
-        <thead>
-            <tr class="bg-gray-100">
-                <th class="border border-gray-300 px-2 text-left w-[10px] whitespace-nowrap">Sr No.</th>
-                <th class="border border-gray-300 px-2 text-left">Description of Goods</th>
-                <th class="border border-gray-300 px-2 text-left w-[80px]">HSN Code</th>
-                <th class="border border-gray-300 px-2 text-left w-[20px]">Quantity</th>
-                <th class="border border-gray-300 px-2 text-left w-[40px]">Rate</th>
-                <th class="border border-gray-300 px-2 text-left w-[40px]">Value</th>
-            </tr>
-        </thead>
-        <tbody style="vertical-align: top;">
-            ${awbData.boxes
-              ?.flatMap((box, boxIndex) => [
-                `<tr class="bg-gray-200">
-                    <td colspan="6" class="border border-gray-300 py-0 font-bold text-center text-[10px]">
-                        Box No ${boxIndex + 1}
-                    </td>
-                </tr>`,
-                ...box.items.map(
-                  (item, itemIndex) => `
-                    <tr>
-                        <td class="border border-gray-300 px-2 w-[10px]">${itemIndex + 1}</td>
-                        <td class="border border-gray-300 px-2">${item.name}</td>
-                        <td class="border border-gray-300 px-2 w-[80px] text-center">${item.hsnCode || "N/A"}</td>
-                        <td class="border border-gray-300 px-2 w-[20px]">${item.quantity}</td>
-                        <td class="border border-gray-300 px-2 w-[40px] whitespace-nowrap">
-                            ${awbData.shippingCurrency || "₹"}${item.price.toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-                        </td>
-                        <td class="border border-gray-300 px-2 w-[40px] whitespace-nowrap">
-                            ${awbData.shippingCurrency || "₹"}${(Number(item.price) * Number(item.quantity)).toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-                        </td>
-                    </tr>
-                `,
-                ),
-              ])
-              .join("")}
-            <tr class="font-bold text-[12px]">
-                <td colspan="5" class="border border-gray-300 p-0 text-[10px] whitespace-nowrap text-right pr-2">
-                    Total Amount:
-                </td>
-                <td class="border border-gray-300 px-2 whitespace-nowrap">
-                    ${awbData.shippingCurrency || "₹"}${totalAmount.toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-                </td>
-            </tr>
-            <tr class="font-bold text-[12px]">
-                <td class="border border-gray-300 p-0 text-[10px] whitespace-nowrap text-center">In Words:</td>
-                <td colspan="5" class="border border-gray-300 px-2">${amountInWords}</td>
-            </tr>
-        </tbody>
-    </table>
+        <div class="">
+  <table class="w-full border-collapse mb-2 text-[12px]">
+      <thead>
+          <tr class="bg-gray-100">
+              <th class="border border-gray-300 px-2 text-left w-[10px] whitespace-nowrap">Sr No.</th>
+              <th class="border border-gray-300 px-2 text-left">Description of Goods</th>
+              <th class="border border-gray-300 px-2 text-left w-[80px]">HSN Code</th>
+              <th class="border border-gray-300 px-2 text-left w-[20px]">Quantity</th>
+              <th class="border border-gray-300 px-2 text-left w-[40px]">Rate</th>
+              <th class="border border-gray-300 px-2 text-left w-[40px]">Value</th>
+          </tr>
+      </thead>
+      <tbody style="vertical-align: top;">
+          ${awbData.boxes
+        ?.flatMap((box, boxIndex) => [
+          `<tr class="bg-gray-200">
+                  <td colspan="6" class="border border-gray-300 py-0 font-bold text-center text-[10px]">
+                      | Box No ${boxIndex + 1} | Weight: ${box.actualWeight || "N/A"} kg | Dimensions: ${box.length} x ${box.breadth} x ${box.height} cm |
+                  </td>
+              </tr>`,
+          ...box.items.map(
+            (item, itemIndex) => `
+                  <tr>
+                      <td class="border border-gray-300 px-2 w-[10px]">${itemIndex + 1}</td>
+                      <td class="border border-gray-300 px-2">${item.name}</td>
+                      <td class="border border-gray-300 px-2 w-[80px] text-center">${item.hsnCode || "N/A"}</td>
+                      <td class="border border-gray-300 px-2 w-[20px]">${item.quantity}</td>
+                      <td class="border border-gray-300 px-2 w-[40px] whitespace-nowrap">
+                          ${awbData.shippingCurrency || "₹"}${item.price.toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                      </td>
+                      <td class="border border-gray-300 px-2 w-[40px] whitespace-nowrap">
+                          ${awbData.shippingCurrency || "₹"}${(Number(item.price) * Number(item.quantity)).toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                      </td>
+                  </tr>
+              `,
+          ),
+        ])
+        .join("")}
+          <tr class="font-bold text-[12px]">
+              <td colspan="5" class="border border-gray-300 p-0 text-[10px] whitespace-nowrap text-right pr-2">
+                  Total Amount:
+              </td>
+              <td class="border border-gray-300 px-2 whitespace-nowrap">
+                  ${awbData.shippingCurrency || "₹"}${totalAmount.toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+              </td>
+          </tr>
+          <tr class="font-bold text-[12px]">
+              <td class="border border-gray-300 p-0 text-[10px] whitespace-nowrap text-center">In Words:</td>
+              <td colspan="5" class="border border-gray-300 px-2">${amountInWords}</td>
+          </tr>
+      </tbody>
+  </table>
 </div>
 
-          <div class="declaration-section mt-2 pt-1 text-justify italic text-[12px] border-t border-gray-400">
-              <p class="font-bold">Declaration:</p>
-              <p>We certify that the information given above is true and correct to the best of our knowledge</p>
-          </div>
+        <div class="declaration-section mt-2 pt-1 text-justify italic text-[12px] border-t border-gray-400">
+            <p class="font-bold">Declaration:</p>
+            <p>We certify that the information given above is true and correct to the best of our knowledge</p>
+        </div>
 
-          <div class="signature-section mt-2 mr-4 text-right text-[12px]">
-              <p class="mr-12">Signature & Date</p>
-              <div class="h-10"></div>
-              <div class="border-t border-gray-400 w-48 ml-auto"></div>
-          </div>
-      `
+        <div class="signature-section mt-2 mr-4 text-right text-[12px]">
+            <p class="mr-12">Signature & Date</p>
+            <div class="h-10"></div>
+            <div class="border-t border-gray-400 w-48 ml-auto"></div>
+        </div>
+    `
   }
 
   const generateLabelHTML = (boxNumber, includeSender = false) => {
@@ -306,7 +400,7 @@ export default function EnhancedShippingPage() {
                 <h2 class="font-bold mb-2">Sender:</h2>
                 <p class="font-bold uppercase">${awbData?.sender?.name || ""}</p>
                 ${awbData?.sender?.companyName ? `<p class="font-bold uppercase">C/O ${awbData?.sender?.companyName}</p>` : ""}
-                <p>${awbData?.sender?.address || ""}</p>
+                <p>${awbData?.sender?.address || ""}, ${awbData?.sender?.address2 || ""}</p>
                 <div class="contact-info">
                     <p><strong>Zip:</strong> ${awbData?.sender?.zip || ""}</p>
                     <p><strong>Country:</strong> ${awbData?.sender?.country || ""}</p>
@@ -317,7 +411,7 @@ export default function EnhancedShippingPage() {
                 <h2 class="font-bold mb-2">Receiver:</h2>
                 <p class="font-bold uppercase">${awbData?.receiver?.name || ""}</p>
                 ${awbData?.receiver?.companyName ? `<p class="font-bold uppercase">C/O ${awbData?.receiver?.companyName}</p>` : ""}
-                <p>${awbData?.receiver?.address || ""}</p>
+                <p>${awbData?.receiver?.address || ""}, ${awbData?.receiver?.address2 || ""}</p>
                 <div class="contact-info">
                     <p><strong>Zip:</strong> ${awbData?.receiver?.zip || ""}</p>
                     <p><strong>Country:</strong> ${awbData?.receiver?.country || ""}</p>
@@ -338,7 +432,7 @@ export default function EnhancedShippingPage() {
             <h2 class="font-bold mb-2">Receiver:</h2>
             <p class="font-bold uppercase">${awbData?.receiver?.name || ""}</p>
             ${awbData?.receiver?.companyName ? `<p class="font-bold uppercase">C/O ${awbData?.receiver?.companyName}</p>` : ""}
-            <p>${awbData?.receiver?.address || ""}</p>
+            <p>${awbData?.receiver?.address}, ${awbData?.receiver?.address2}</p>
             <div class="contact-info">
                 <p><strong>Zip Code:</strong> ${awbData?.receiver?.zip || ""}</p>
                 <p><strong>Country:</strong> ${awbData?.receiver?.country || ""}</p>
@@ -636,13 +730,13 @@ export default function EnhancedShippingPage() {
               <div class="label-half-sender">
                   <div class="sender-quarter">
                       ${generateLabelHTML(startBox + 1, false)
-                        .replace("Receiver:", "Sender:")
-                        .replace(awbData?.receiver?.name, awbData?.sender?.name)
-                        .replace(awbData?.receiver?.companyName, awbData?.sender?.companyName)
-                        .replace(awbData?.receiver?.address, awbData?.sender?.address)
-                        .replace(awbData?.receiver?.zip, awbData?.sender?.zip)
-                        .replace(awbData?.receiver?.country, awbData?.sender?.country)
-                        .replace(awbData?.receiver?.contact, awbData?.sender?.contact)}
+            .replace("Receiver:", "Sender:")
+            .replace(awbData?.receiver?.name, awbData?.sender?.name)
+            .replace(awbData?.receiver?.companyName, awbData?.sender?.companyName)
+            .replace(awbData?.receiver?.address, awbData?.sender?.address)
+            .replace(awbData?.receiver?.zip, awbData?.sender?.zip)
+            .replace(awbData?.receiver?.country, awbData?.sender?.country)
+            .replace(awbData?.receiver?.contact, awbData?.sender?.contact)}
                   </div>
                   <div class="receiver-quarter">
                       ${generateLabelHTML(startBox + 1, false)}
@@ -678,13 +772,13 @@ export default function EnhancedShippingPage() {
                   <div class="label-quarter-sender">
                       <div class="sender-eighth">
                           ${generateLabelHTML(startBox + 1, false)
-                            .replace("Receiver:", "Sender:")
-                            .replace(awbData?.receiver?.name, awbData?.sender?.name)
-                            .replace(awbData?.receiver?.companyName, awbData?.sender?.companyName)
-                            .replace(awbData?.receiver?.address, awbData?.sender?.address)
-                            .replace(awbData?.receiver?.zip, awbData?.sender?.zip)
-                            .replace(awbData?.receiver?.country, awbData?.sender?.country)
-                            .replace(awbData?.receiver?.contact, awbData?.sender?.contact)}
+            .replace("Receiver:", "Sender:")
+            .replace(awbData?.receiver?.name, awbData?.sender?.name)
+            .replace(awbData?.receiver?.companyName, awbData?.sender?.companyName)
+            .replace(awbData?.receiver?.address, awbData?.sender?.address)
+            .replace(awbData?.receiver?.zip, awbData?.sender?.zip)
+            .replace(awbData?.receiver?.country, awbData?.sender?.country)
+            .replace(awbData?.receiver?.contact, awbData?.sender?.contact)}
                       </div>
                       <div class="receiver-eighth">
                           ${generateLabelHTML(startBox + 1, false)}
@@ -733,13 +827,13 @@ export default function EnhancedShippingPage() {
                   <div class="label-quarter-sender">
                       <div class="sender-eighth">
                           ${generateLabelHTML(startBox + 1, false)
-                            .replace("Receiver:", "Sender:")
-                            .replace(awbData?.receiver?.name, awbData?.sender?.name)
-                            .replace(awbData?.receiver?.companyName, awbData?.sender?.companyName)
-                            .replace(awbData?.receiver?.address, awbData?.sender?.address)
-                            .replace(awbData?.receiver?.zip, awbData?.sender?.zip)
-                            .replace(awbData?.receiver?.country, awbData?.sender?.country)
-                            .replace(awbData?.receiver?.contact, awbData?.sender?.contact)}
+            .replace("Receiver:", "Sender:")
+            .replace(awbData?.receiver?.name, awbData?.sender?.name)
+            .replace(awbData?.receiver?.companyName, awbData?.sender?.companyName)
+            .replace(awbData?.receiver?.address, awbData?.sender?.address)
+            .replace(awbData?.receiver?.zip, awbData?.sender?.zip)
+            .replace(awbData?.receiver?.country, awbData?.sender?.country)
+            .replace(awbData?.receiver?.contact, awbData?.sender?.contact)}
                       </div>
                       <div class="receiver-eighth">
                           ${generateLabelHTML(startBox + 1, false)}
@@ -750,13 +844,13 @@ export default function EnhancedShippingPage() {
                   <div class="label-quarter-sender">
                       <div class="sender-eighth">
                           ${generateLabelHTML(startBox + 2, false)
-                            .replace("Receiver:", "Sender:")
-                            .replace(awbData?.receiver?.name, awbData?.sender?.name)
-                            .replace(awbData?.receiver?.companyName, awbData?.sender?.companyName)
-                            .replace(awbData?.receiver?.address, awbData?.sender?.address)
-                            .replace(awbData?.receiver?.zip, awbData?.sender?.zip)
-                            .replace(awbData?.receiver?.country, awbData?.sender?.country)
-                            .replace(awbData?.receiver?.contact, awbData?.sender?.contact)}
+            .replace("Receiver:", "Sender:")
+            .replace(awbData?.receiver?.name, awbData?.sender?.name)
+            .replace(awbData?.receiver?.companyName, awbData?.sender?.companyName)
+            .replace(awbData?.receiver?.address, awbData?.sender?.address)
+            .replace(awbData?.receiver?.zip, awbData?.sender?.zip)
+            .replace(awbData?.receiver?.country, awbData?.sender?.country)
+            .replace(awbData?.receiver?.contact, awbData?.sender?.contact)}
                       </div>
                       <div class="receiver-eighth">
                           ${generateLabelHTML(startBox + 2, false)}
@@ -765,13 +859,13 @@ export default function EnhancedShippingPage() {
                   <div class="label-quarter-sender">
                       <div class="sender-eighth">
                           ${generateLabelHTML(startBox + 3, false)
-                            .replace("Receiver:", "Sender:")
-                            .replace(awbData?.receiver?.name, awbData?.sender?.name)
-                            .replace(awbData?.receiver?.companyName, awbData?.sender?.companyName)
-                            .replace(awbData?.receiver?.address, awbData?.sender?.address)
-                            .replace(awbData?.receiver?.zip, awbData?.sender?.zip)
-                            .replace(awbData?.receiver?.country, awbData?.sender?.country)
-                            .replace(awbData?.receiver?.contact, awbData?.sender?.contact)}
+            .replace("Receiver:", "Sender:")
+            .replace(awbData?.receiver?.name, awbData?.sender?.name)
+            .replace(awbData?.receiver?.companyName, awbData?.sender?.companyName)
+            .replace(awbData?.receiver?.address, awbData?.sender?.address)
+            .replace(awbData?.receiver?.zip, awbData?.sender?.zip)
+            .replace(awbData?.receiver?.country, awbData?.sender?.country)
+            .replace(awbData?.receiver?.contact, awbData?.sender?.contact)}
                       </div>
                       <div class="receiver-eighth">
                           ${generateLabelHTML(startBox + 3, false)}
@@ -1700,6 +1794,36 @@ export default function EnhancedShippingPage() {
                 className="w-16 h-10 rounded-md border border-input bg-background px-3 py-2 text-sm"
               />
             </div>
+
+            {/* Sender Details Option */}
+            <div className="mb-4">
+              <Label className="text-sm font-medium mb-2 block">Sender Details:</Label>
+              <RadioGroup value={invoiceSenderOption} onValueChange={handleInvoiceSenderOptionChange}>
+                <div className="flex items-center space-x-2">
+                  <RadioGroupItem value="original" id="sender-original" />
+                  <Label htmlFor="sender-original" className="text-sm">
+                    Print with Original Sender
+                  </Label>
+                </div>
+                <div className="flex items-center space-x-2">
+                  <RadioGroupItem value="custom" id="sender-custom" />
+                  <Label htmlFor="sender-custom" className="text-sm">
+                    Print with Custom Sender Details
+                  </Label>
+                </div>
+              </RadioGroup>
+              {invoiceSenderOption === "custom" && (
+                <Button
+                  variant="link"
+                  size="sm"
+                  className="mt-1 p-0 h-auto text-blue-600"
+                  onClick={() => setShowCustomSenderDialog(true)}
+                >
+                  Edit Custom Sender Details
+                </Button>
+              )}
+            </div>
+
             <div className="text-sm text-gray-600">
               <p>• Each copy will be printed on a separate page</p>
               <p>• Contains detailed item breakdown and pricing</p>
@@ -1707,6 +1831,9 @@ export default function EnhancedShippingPage() {
                 • Total Amount: {awbData.shippingCurrency || "₹"}
                 {totalAmount.toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
               </p>
+              {invoiceSenderOption === "custom" && (
+                <p className="text-blue-600 font-medium">• Using custom sender: {customSenderDetails.name}</p>
+              )}
             </div>
           </CardContent>
           <CardFooter>
@@ -1994,6 +2121,135 @@ export default function EnhancedShippingPage() {
         </div>
         <div ref={labelRef}>{/* Label preview content would go here */}</div>
       </div>
+
+      {/* Custom Sender Details Dialog */}
+      <Dialog open={showCustomSenderDialog} onOpenChange={setShowCustomSenderDialog}>
+        <DialogContent className="sm:max-w-[600px] max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>Custom Sender Details</DialogTitle>
+            <DialogDescription>
+              Enter the sender details you want to use for the invoice. These details will replace the original sender information.
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="grid gap-4 py-4">
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label htmlFor="custom-name">Sender Name *</Label>
+                <Input
+                  id="custom-name"
+                  value={customSenderDetails.name}
+                  onChange={(e) => handleCustomSenderChange("name", e.target.value)}
+                  placeholder="Enter sender name"
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="custom-company">Company Name</Label>
+                <Input
+                  id="custom-company"
+                  value={customSenderDetails.companyName}
+                  onChange={(e) => handleCustomSenderChange("companyName", e.target.value)}
+                  placeholder="Enter company name (optional)"
+                />
+              </div>
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="custom-address">Address *</Label>
+              <Textarea
+                id="custom-address"
+                value={customSenderDetails.address}
+                onChange={(e) => handleCustomSenderChange("address", e.target.value)}
+                placeholder="Enter full address"
+                rows={3}
+              />
+            </div>
+
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label htmlFor="custom-zip">Zip Code *</Label>
+                <Input
+                  id="custom-zip"
+                  value={customSenderDetails.zip}
+                  onChange={(e) => handleCustomSenderChange("zip", e.target.value)}
+                  placeholder="Enter zip code"
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="custom-country">Country *</Label>
+                <Input
+                  id="custom-country"
+                  value={customSenderDetails.country}
+                  onChange={(e) => handleCustomSenderChange("country", e.target.value)}
+                  placeholder="Enter country"
+                />
+              </div>
+            </div>
+
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label htmlFor="custom-contact">Contact Number *</Label>
+                <Input
+                  id="custom-contact"
+                  value={customSenderDetails.contact}
+                  onChange={(e) => handleCustomSenderChange("contact", e.target.value)}
+                  placeholder="Enter contact number"
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="custom-email">Email *</Label>
+                <Input
+                  id="custom-email"
+                  type="email"
+                  value={customSenderDetails.email}
+                  onChange={(e) => handleCustomSenderChange("email", e.target.value)}
+                  placeholder="Enter email address"
+                />
+              </div>
+            </div>
+
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label htmlFor="custom-kyc-type">KYC Document Type</Label>
+                <Select
+                  value={customSenderDetails.kycType}
+                  onValueChange={(value) => handleCustomSenderChange("kycType", value)}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select KYC type" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="Aadhaar No - ">Aadhaar Card</SelectItem>
+                    <SelectItem value="Pan No - ">PAN Card</SelectItem>
+                    <SelectItem value="Passport No - ">Passport</SelectItem>
+                    <SelectItem value="Driving License No - ">Driving License</SelectItem>
+                    <SelectItem value="Voter ID Card No - ">Voter ID Card</SelectItem>
+                    <SelectItem value="GST No - ">GST Certificate</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="custom-kyc-number">KYC Number (Aadhaar/PAN/etc.) *</Label>
+                <Input
+                  id="custom-kyc-number"
+                  value={customSenderDetails.kycNumber}
+                  onChange={(e) => handleCustomSenderChange("kycNumber", e.target.value)}
+                  placeholder="Enter KYC number"
+                />
+              </div>
+            </div>
+          </div>
+
+          <DialogFooter className="flex gap-2">
+            <Button variant="outline" onClick={resetCustomSenderDetails}>
+              Reset to Original
+            </Button>
+            <Button onClick={() => setShowCustomSenderDialog(false)}>
+              Save Details
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   )
 }

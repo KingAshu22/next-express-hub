@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { Check, ChevronsUpDown, Loader2, Info, PackageSearch, Package, ShoppingCart, Filter } from 'lucide-react'
+import { Check, ChevronsUpDown, Loader2, Info, PackageSearch, Package, ShoppingCart, Filter, MapPin, Globe } from 'lucide-react'
 import { cn } from "@/lib/utils"
 import { Input } from '@/components/ui/input'
 import { Button } from '@/components/ui/button'
@@ -12,7 +12,6 @@ import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/
 import { Label } from '@/components/ui/label'
 import { Badge } from '@/components/ui/badge'
 import { Switch } from '@/components/ui/switch'
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Countries } from '@/app/constants/country'
 import { Separator } from '@/components/ui/separator'
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs"
@@ -46,9 +45,49 @@ const RateCategoryBadge = ({ category }) => {
     );
 };
 
-// A dedicated component for rendering each result card
+// Rate mode badge
+const RateModeBadge = ({ mode, targetCountry }) => {
+    if (mode === 'single-country-zip') {
+        return (
+            <Badge variant="outline" className="bg-blue-100 dark:bg-blue-950 text-blue-700 dark:text-blue-400 border-blue-300 dark:border-blue-800">
+                <MapPin className="w-3 h-3 mr-1" />
+                ZIP: {targetCountry}
+            </Badge>
+        );
+    }
+    return (
+        <Badge variant="outline" className="bg-green-100 dark:bg-green-950 text-green-700 dark:text-green-400 border-green-300 dark:border-green-800">
+            <Globe className="w-3 h-3 mr-1" />
+            Multi-Country
+        </Badge>
+    );
+};
+
+// Rate status badge
+const RateStatusBadge = ({ status }) => {
+    if (status === 'hidden') {
+        return (
+            <Badge variant="outline" className="bg-red-100 dark:bg-red-950 text-red-700 dark:text-red-400 border-red-300 dark:border-red-800">
+                Hidden
+            </Badge>
+        );
+    }
+    if (status === 'unlisted') {
+        return (
+            <Badge variant="outline" className="bg-yellow-100 dark:bg-yellow-950 text-yellow-700 dark:text-yellow-400 border-yellow-300 dark:border-yellow-800">
+                Unlisted
+            </Badge>
+        );
+    }
+    return (
+        <Badge variant="outline" className="bg-green-100 dark:bg-green-950 text-green-700 dark:text-green-400 border-green-300 dark:border-green-800">
+            Live
+        </Badge>
+    );
+};
+
+// Result card component
 const ResultCard = ({ data, billedWeight, showProfit, includeGST }) => {
-    // Calculate display total based on GST toggle
     const displayTotal = includeGST ? data.total : data.subtotalBeforeGST;
     const perKgRate = billedWeight > 0 ? displayTotal / billedWeight : 0;
     const hasOtherCharges = data.chargesBreakdown && Object.keys(data.chargesBreakdown).length > 0;
@@ -58,13 +97,17 @@ const ResultCard = ({ data, billedWeight, showProfit, includeGST }) => {
             <CardHeader className="pb-3">
                 <div className="flex justify-between items-start gap-2">
                     <div className="flex-1 min-w-0">
-                        <div className="flex items-center gap-2 flex-wrap mb-1">
-                            <CardTitle className="text-lg font-bold text-gray-800 dark:text-gray-200 truncate">
-                                {data.originalName}
-                            </CardTitle>
+                        <CardTitle className="text-lg font-bold text-gray-800 dark:text-gray-200 truncate mb-1">
+                            {data.originalName}
+                        </CardTitle>
+                        <div className="flex items-center gap-2 flex-wrap mb-2">
                             <RateCategoryBadge category={data.rateCategory} />
+                            <RateModeBadge mode={data.rateMode} targetCountry={data.targetCountry} />
+                            {showProfit && data.rateStatus && (
+                                <RateStatusBadge status={data.rateStatus} />
+                            )}
                         </div>
-                        <CardDescription className="text-sm">
+                        <CardDescription className="text-sm mt-1">
                             {data.vendorName && <span className="font-medium">{data.vendorName} • </span>}
                             Zone {data.zone}
                         </CardDescription>
@@ -72,12 +115,9 @@ const ResultCard = ({ data, billedWeight, showProfit, includeGST }) => {
                     <div className="text-right flex-shrink-0">
                         <p className="text-2xl font-extrabold text-green-600">{formatCurrency(displayTotal)}</p>
                         <p className="text-sm text-muted-foreground">{formatCurrency(perKgRate)}/kg</p>
-                        {!includeGST && (
-                            <p className="text-xs text-muted-foreground">excl. GST</p>
-                        )}
-                        {includeGST && (
-                            <p className="text-xs text-muted-foreground">incl. GST</p>
-                        )}
+                        <p className="text-xs text-muted-foreground">
+                            {includeGST ? 'incl. GST' : 'excl. GST'}
+                        </p>
                     </div>
                 </div>
             </CardHeader>
@@ -95,15 +135,15 @@ const ResultCard = ({ data, billedWeight, showProfit, includeGST }) => {
                                     <div className="flex justify-between items-center p-2 bg-blue-50 dark:bg-blue-950/30 border border-blue-200 dark:border-blue-800 rounded-md">
                                         <Info className="h-4 w-4 text-blue-500 mr-2 flex-shrink-0" />
                                         <span className="text-blue-700 dark:text-blue-300 text-xs font-semibold">
-                                            {data.rateCategory === 'purchase' ? 'Purchase Rate (No Profit)' : 'Special Rate (No Profit Applied)'}
+                                            Special Rate ({data.rateStatus})
                                         </span>
                                     </div>
-                                ) : (
+                                ) : data.profitCharges > 0 ? (
                                     <div className="flex justify-between">
                                         <span>Profit ({data.profitPercent}%):</span>
                                         <span className="font-mono">{formatCurrency(data.profitCharges)}</span>
                                     </div>
-                                )
+                                ) : null
                             )}
                             {hasOtherCharges && (
                                 <>
@@ -163,8 +203,8 @@ export default function GetRatesPage() {
     const [zipCode, setZipCode] = useState('');
     const [profitPercent, setProfitPercent] = useState('0');
     const [countrySearchOpen, setCountrySearchOpen] = useState(false);
-    const [rateCategory, setRateCategory] = useState('sales'); // 'sales', 'purchase', or 'all'
-    const [includeGST, setIncludeGST] = useState(false); // Default: without GST
+    const [rateCategory, setRateCategory] = useState('sales');
+    const [includeGST, setIncludeGST] = useState(false);
 
     // State for calculated values
     const [volumetricWeight, setVolumetricWeight] = useState(0);
@@ -182,6 +222,7 @@ export default function GetRatesPage() {
     const [userType, setUserType] = useState('');
     const [code, setCode] = useState('');
     const [hasSearched, setHasSearched] = useState(false);
+    const [isInitialized, setIsInitialized] = useState(false);
 
     // Calculate weights
     useEffect(() => {
@@ -204,40 +245,72 @@ export default function GetRatesPage() {
     useEffect(() => {
         const ut = localStorage.getItem('userType') || '';
         const c = localStorage.getItem('code') || '';
-        
+
         setUserType(ut);
         setCode(c);
-        
-        // Admin and branch can view purchase rates
+
         if (ut === 'admin' || ut === 'branch') {
             setShowProfit(true);
             setCanViewPurchase(true);
+            setRateCategory('purchase');
+        } else {
+            setRateCategory('sales');
         }
         
-        // Fetch services with initial category
-        fetchServices(ut, c, 'sales');
+        setIsInitialized(true);
     }, []);
 
-    // Refetch services when category changes
+    // Fetch services when country or zip changes (debounced)
     useEffect(() => {
-        if (userType) {
-            fetchServices(userType, code, rateCategory);
+        if (isInitialized && country) {
+            const timer = setTimeout(() => {
+                fetchServices(userType, code, rateCategory, country, zipCode);
+            }, 300); // Debounce 300ms
+            return () => clearTimeout(timer);
+        } else if (isInitialized && !country) {
+            // If no country, fetch all services without filtering
+            fetchServices(userType, code, rateCategory, '', '');
         }
-    }, [rateCategory]);
+    }, [isInitialized, rateCategory, country, zipCode]);
 
-    const fetchServices = async (currentUserType, currentCode, category) => {
+    const fetchServices = async (currentUserType, currentCode, category, selectedCountry, selectedZip) => {
         setLoadingServices(true);
+        setError('');
+        
+        const effectiveUserType = currentUserType || 'admin';
+        const effectiveCode = currentCode || '';
+        
         try {
-            const response = await fetch(`/api/services?rateCategory=${category}`, {
+            // Build query params
+            const params = new URLSearchParams();
+            params.append('rateCategory', category);
+            if (selectedCountry) {
+                params.append('country', selectedCountry);
+            }
+            if (selectedZip) {
+                params.append('zipCode', selectedZip);
+            }
+
+            const response = await fetch(`/api/services?${params.toString()}`, {
                 headers: {
-                    userType: currentUserType,
-                    userId: currentCode,
+                    'userType': effectiveUserType,
+                    'userId': effectiveCode,
                 },
             });
+            
+            if (!response.ok) {
+                throw new Error(`Failed to fetch services: ${response.status}`);
+            }
+            
             const data = await response.json();
-            setAvailableServices(Array.isArray(data) ? data : []);
+            
+            if (Array.isArray(data)) {
+                setAvailableServices(data);
+            } else {
+                setAvailableServices([]);
+            }
         } catch (error) {
-            console.error("Error fetching services:", error);
+            setError(`Error loading services: ${error.message}`);
             setAvailableServices([]);
         } finally {
             setLoadingServices(false);
@@ -249,9 +322,9 @@ export default function GetRatesPage() {
             setError('Please provide a valid weight/dimensions and select a country.');
             return;
         }
-        
+
         if (availableServices.length === 0) {
-            setError('No services available for the selected rate category.');
+            setError('No services available for the selected criteria. Try selecting a different country or adding a ZIP code.');
             return;
         }
 
@@ -261,41 +334,48 @@ export default function GetRatesPage() {
         setHasSearched(true);
 
         try {
-            const apiHeaders = {
-                userType: userType,
-                userId: code,
-            };
+            const effectiveUserType = userType || 'admin';
+            const effectiveCode = code || '';
 
             const promises = availableServices.map(async (service) => {
-                const params = new URLSearchParams({ 
-                    type: service.originalName, 
-                    weight: billedWeight, 
-                    country, 
+                const params = new URLSearchParams({
+                    type: service.originalName,
+                    weight: billedWeight.toString(),
+                    country,
                     profitPercent,
                     rateCategory: service.rateCategory || rateCategory
                 });
-                
-                // Add ZIP code if provided
-                if (zipCode) {
+
+                // Add ZIP code if service requires it or if provided
+                if (zipCode && service.rateMode === 'single-country-zip') {
+                    params.append('zipCode', zipCode);
+                } else if (zipCode) {
                     params.append('zipCode', zipCode);
                 }
-                
-                const res = await fetch(`/api/rate?${params.toString()}`, { headers: apiHeaders });
-                
+
+                const res = await fetch(`/api/rate?${params.toString()}`, { 
+                    headers: {
+                        'userType': effectiveUserType,
+                        'userId': effectiveCode,
+                    }
+                });
+
                 if (!res.ok) {
                     const errorData = await res.json();
-                    return { 
-                        service: service.originalName, 
+                    return {
+                        service: service.originalName,
                         rateCategory: service.rateCategory,
-                        data: { error: errorData.error || `HTTP error! status: ${res.status}` } 
+                        rateMode: service.rateMode,
+                        data: { error: errorData.error || `HTTP error! status: ${res.status}` }
                     };
                 }
-                
+
                 const data = await res.json();
-                return { 
-                    service: service.originalName, 
+                return {
+                    service: service.originalName,
                     rateCategory: service.rateCategory,
-                    data 
+                    rateMode: service.rateMode,
+                    data
                 };
             });
 
@@ -303,7 +383,6 @@ export default function GetRatesPage() {
             const filtered = resultsData
                 .filter(r => r.data && !r.data.error)
                 .sort((a, b) => {
-                    // Sort by the display total (with or without GST based on toggle)
                     const aTotal = includeGST ? a.data.total : a.data.subtotalBeforeGST;
                     const bTotal = includeGST ? b.data.total : b.data.subtotalBeforeGST;
                     return aTotal - bTotal;
@@ -335,19 +414,21 @@ export default function GetRatesPage() {
         }
     }, [includeGST]);
 
-    // Count services by category for display
+    // Count services by type
     const purchaseCount = availableServices.filter(s => s.rateCategory === 'purchase').length;
     const salesCount = availableServices.filter(s => s.rateCategory === 'sales').length;
+    const multiCountryCount = availableServices.filter(s => s.rateMode === 'multi-country').length;
+    const zipBasedCount = availableServices.filter(s => s.rateMode === 'single-country-zip').length;
 
     return (
         <div className="container mx-auto px-4 py-8">
             <div className="max-w-4xl mx-auto">
                 <h1 className="text-4xl font-bold text-center mb-2">Ship Smarter, Not Harder</h1>
                 <p className="text-center text-muted-foreground mb-8">Instantly compare shipping rates across top carriers.</p>
-                
+
                 <Card className="shadow-lg">
                     <CardContent className="p-6">
-                        {/* Rate Category Selector - Only show for admin/branch */}
+                        {/* Rate Category Selector */}
                         {canViewPurchase && (
                             <div className="mb-6">
                                 <Label className="font-semibold mb-2 block">Rate Category</Label>
@@ -377,9 +458,9 @@ export default function GetRatesPage() {
                                     </TabsList>
                                 </Tabs>
                                 <p className="text-xs text-muted-foreground mt-2">
-                                    {rateCategory === 'purchase' && "Viewing internal cost rates (no profit applied)"}
-                                    {rateCategory === 'sales' && "Viewing client-facing rates"}
-                                    {rateCategory === 'all' && "Viewing all available rates"}
+                                    {rateCategory === 'purchase' && "Viewing internal cost rates (hidden from clients)."}
+                                    {rateCategory === 'sales' && "Viewing client-facing rates."}
+                                    {rateCategory === 'all' && "Viewing all available rates."}
                                 </p>
                             </div>
                         )}
@@ -390,10 +471,10 @@ export default function GetRatesPage() {
                                     <Label htmlFor="country" className="font-semibold">Destination Country</Label>
                                     <Popover open={countrySearchOpen} onOpenChange={setCountrySearchOpen}>
                                         <PopoverTrigger asChild>
-                                            <Button 
-                                                variant="outline" 
-                                                role="combobox" 
-                                                aria-expanded={countrySearchOpen} 
+                                            <Button
+                                                variant="outline"
+                                                role="combobox"
+                                                aria-expanded={countrySearchOpen}
                                                 className="w-full justify-between mt-1"
                                             >
                                                 {country ? country : "Select Country..."}
@@ -406,9 +487,9 @@ export default function GetRatesPage() {
                                                 <CommandEmpty>No country found.</CommandEmpty>
                                                 <CommandGroup className="max-h-60 overflow-y-auto">
                                                     {Countries.map((c) => (
-                                                        <CommandItem 
-                                                            key={c} 
-                                                            value={c} 
+                                                        <CommandItem
+                                                            key={c}
+                                                            value={c}
                                                             onSelect={(currentValue) => {
                                                                 const selectedCountry = Countries.find(
                                                                     countryInList => countryInList.toLowerCase() === currentValue.toLowerCase()
@@ -426,94 +507,101 @@ export default function GetRatesPage() {
                                         </PopoverContent>
                                     </Popover>
                                 </div>
-                                
-                                {/* ZIP Code field */}
+
                                 <div>
-                                    <Label htmlFor="zipCode" className="font-semibold">
-                                        ZIP/Postal Code 
-                                        <span className="text-muted-foreground font-normal ml-1">(for ZIP-based rates)</span>
+                                    <Label htmlFor="zipCode" className="font-semibold flex items-center gap-2">
+                                        <MapPin className="w-4 h-4" />
+                                        ZIP/Postal Code
+                                        <span className="text-muted-foreground font-normal text-xs">(optional)</span>
                                     </Label>
-                                    <Input 
-                                        id="zipCode" 
-                                        type="text" 
-                                        placeholder="e.g., 2000" 
-                                        value={zipCode} 
-                                        onChange={(e) => setZipCode(e.target.value)} 
-                                        className="mt-1" 
+                                    <Input
+                                        id="zipCode"
+                                        type="text"
+                                        placeholder="e.g., 2000"
+                                        value={zipCode}
+                                        onChange={(e) => setZipCode(e.target.value)}
+                                        className="mt-1"
                                     />
+                                    <p className="text-xs text-muted-foreground mt-1">
+                                        {zipCode ? (
+                                            <span className="text-blue-600">
+                                                Showing both ZIP-based ({zipBasedCount}) and country-based ({multiCountryCount}) rates
+                                            </span>
+                                        ) : (
+                                            "Enter ZIP code to see location-specific rates (if available)"
+                                        )}
+                                    </p>
                                 </div>
-                                
+
                                 <div>
                                     <Label htmlFor="actualWeight" className="font-semibold">Actual Weight (kg)</Label>
-                                    <Input 
-                                        id="actualWeight" 
-                                        type="number" 
-                                        placeholder="e.g., 2.5" 
-                                        value={actualWeight} 
-                                        onChange={(e) => setActualWeight(e.target.value)} 
-                                        className="mt-1" 
+                                    <Input
+                                        id="actualWeight"
+                                        type="number"
+                                        placeholder="e.g., 2.5"
+                                        value={actualWeight}
+                                        onChange={(e) => setActualWeight(e.target.value)}
+                                        className="mt-1"
                                     />
                                 </div>
                             </div>
-                            
+
                             <div className="space-y-4">
                                 <Label className="font-semibold">Dimensions (cm) - Optional</Label>
                                 <div className="grid grid-cols-3 gap-2">
-                                    <Input 
-                                        type="number" 
-                                        placeholder="L" 
-                                        value={length} 
-                                        onChange={(e) => setLength(e.target.value)} 
+                                    <Input
+                                        type="number"
+                                        placeholder="L"
+                                        value={length}
+                                        onChange={(e) => setLength(e.target.value)}
                                     />
-                                    <Input 
-                                        type="number" 
-                                        placeholder="B" 
-                                        value={breadth} 
-                                        onChange={(e) => setBreadth(e.target.value)} 
+                                    <Input
+                                        type="number"
+                                        placeholder="B"
+                                        value={breadth}
+                                        onChange={(e) => setBreadth(e.target.value)}
                                     />
-                                    <Input 
-                                        type="number" 
-                                        placeholder="H" 
-                                        value={height} 
-                                        onChange={(e) => setHeight(e.target.value)} 
+                                    <Input
+                                        type="number"
+                                        placeholder="H"
+                                        value={height}
+                                        onChange={(e) => setHeight(e.target.value)}
                                     />
                                 </div>
-                                
-                                {/* Weight calculations display */}
+
                                 <div className="grid grid-cols-3 gap-2 pt-2">
                                     <div>
                                         <Label htmlFor="volWeight" className="text-xs text-muted-foreground">Vol. Wt.</Label>
-                                        <Input 
-                                            id="volWeight" 
-                                            value={volumetricWeight.toFixed(2)} 
-                                            readOnly 
-                                            className="mt-1 bg-gray-100 dark:bg-gray-800 text-sm h-9" 
+                                        <Input
+                                            id="volWeight"
+                                            value={volumetricWeight.toFixed(2)}
+                                            readOnly
+                                            className="mt-1 bg-gray-100 dark:bg-gray-800 text-sm h-9"
                                         />
                                     </div>
                                     <div>
                                         <Label htmlFor="chargeWeight" className="text-xs text-muted-foreground">Chg. Wt.</Label>
-                                        <Input 
-                                            id="chargeWeight" 
-                                            value={chargeableWeight.toFixed(2)} 
-                                            readOnly 
-                                            className="mt-1 bg-gray-100 dark:bg-gray-800 text-sm h-9" 
+                                        <Input
+                                            id="chargeWeight"
+                                            value={chargeableWeight.toFixed(2)}
+                                            readOnly
+                                            className="mt-1 bg-gray-100 dark:bg-gray-800 text-sm h-9"
                                         />
                                     </div>
                                     <div>
                                         <Label htmlFor="billedWeight" className="text-xs font-bold">Billed Wt.</Label>
-                                        <Input 
-                                            id="billedWeight" 
-                                            value={billedWeight.toFixed(2)} 
-                                            readOnly 
-                                            className="mt-1 bg-blue-50 dark:bg-blue-900/30 border-blue-400 font-bold text-sm h-9" 
+                                        <Input
+                                            id="billedWeight"
+                                            value={billedWeight.toFixed(2)}
+                                            readOnly
+                                            className="mt-1 bg-blue-50 dark:bg-blue-900/30 border-blue-400 font-bold text-sm h-9"
                                         />
                                     </div>
                                 </div>
                             </div>
-                            
+
                             {/* GST Toggle and Profit Input Row */}
                             <div className="md:col-span-2 grid grid-cols-1 md:grid-cols-2 gap-4">
-                                {/* GST Toggle */}
                                 <div className="flex items-center justify-between p-4 border rounded-lg bg-muted/30">
                                     <div className="space-y-0.5">
                                         <Label htmlFor="gst-toggle" className="font-semibold">Include GST (18%)</Label>
@@ -527,67 +615,89 @@ export default function GetRatesPage() {
                                         onCheckedChange={setIncludeGST}
                                     />
                                 </div>
-                                
-                                {/* Profit input - only for admin */}
+
                                 {showProfit && (
                                     <div className="p-4 border rounded-lg bg-muted/30">
                                         <Label htmlFor="profit" className="font-semibold">Profit %</Label>
-                                        <Input 
-                                            id="profit" 
-                                            type="number" 
-                                            placeholder="e.g., 50" 
-                                            value={profitPercent} 
-                                            onChange={(e) => setProfitPercent(e.target.value)} 
-                                            className="mt-1" 
+                                        <Input
+                                            id="profit"
+                                            type="number"
+                                            placeholder="e.g., 50"
+                                            value={profitPercent}
+                                            onChange={(e) => setProfitPercent(e.target.value)}
+                                            className="mt-1"
                                         />
                                         <p className="text-xs text-muted-foreground mt-1">
-                                            {rateCategory === 'purchase' 
-                                                ? "Profit is not applied to purchase rates" 
-                                                : "Enter the profit percentage to add to base rates"
-                                            }
+                                            Add profit percentage to base rates.
                                         </p>
                                     </div>
                                 )}
                             </div>
-                            
+
+                            {/* Service Summary */}
+                            {country && (
+                                <div className="md:col-span-2">
+                                    <div className="flex flex-wrap gap-2 p-3 bg-muted/30 rounded-lg">
+                                        <span className="text-sm text-muted-foreground">Available for {country}:</span>
+                                        <Badge variant="outline" className="bg-green-50 dark:bg-green-950/30">
+                                            <Globe className="w-3 h-3 mr-1" />
+                                            {multiCountryCount} Country-based
+                                        </Badge>
+                                        {zipCode && (
+                                            <Badge variant="outline" className="bg-blue-50 dark:bg-blue-950/30">
+                                                <MapPin className="w-3 h-3 mr-1" />
+                                                {zipBasedCount} ZIP-based
+                                            </Badge>
+                                        )}
+                                        {!zipCode && zipBasedCount > 0 && (
+                                            <Badge variant="outline" className="bg-yellow-50 dark:bg-yellow-950/30 text-yellow-700">
+                                                <MapPin className="w-3 h-3 mr-1" />
+                                                Enter ZIP to see {zipBasedCount} more
+                                            </Badge>
+                                        )}
+                                    </div>
+                                </div>
+                            )}
+
                             {/* Fetch rates button */}
                             <div className="md:col-span-2 mt-4">
-                                <Button 
-                                    onClick={handleFetchRates} 
-                                    disabled={loading || loadingServices || billedWeight <= 0 || !country} 
+                                <Button
+                                    onClick={handleFetchRates}
+                                    disabled={loading || loadingServices || billedWeight <= 0 || !country}
                                     className="w-full text-lg py-6"
                                 >
                                     {loading ? (
                                         <>
-                                            <Loader2 className="mr-2 h-5 w-5 animate-spin" /> 
+                                            <Loader2 className="mr-2 h-5 w-5 animate-spin" />
                                             Fetching Best Rates...
                                         </>
                                     ) : loadingServices ? (
                                         <>
-                                            <Loader2 className="mr-2 h-5 w-5 animate-spin" /> 
+                                            <Loader2 className="mr-2 h-5 w-5 animate-spin" />
                                             Loading Services...
                                         </>
                                     ) : (
-                                        `Get ${rateCategory === 'all' ? '' : rateCategory.charAt(0).toUpperCase() + rateCategory.slice(1) + ' '}Rates`
+                                        `Get ${rateCategory === 'all' ? '' : rateCategory.charAt(0).toUpperCase() + rateCategory.slice(1) + ' '}Rates (${availableServices.length})`
                                     )}
                                 </Button>
-                                
-                                {/* Service count indicator */}
+
                                 <p className="text-xs text-center text-muted-foreground mt-2">
-                                    {loadingServices 
-                                        ? "Loading available services..." 
+                                    {loadingServices
+                                        ? "Loading available services..."
                                         : `${availableServices.length} service${availableServices.length !== 1 ? 's' : ''} available`
                                     }
                                 </p>
                             </div>
                         </div>
-                        
+
                         {error && (
-                            <p className="text-red-600 mt-4 text-center">{error}</p>
+                            <div className="mt-4 p-3 bg-red-50 dark:bg-red-950/30 border border-red-200 dark:border-red-800 rounded-lg">
+                                <p className="text-red-600 dark:text-red-400 text-center">{error}</p>
+                            </div>
                         )}
                     </CardContent>
                 </Card>
-                
+
                 {/* Results Section */}
                 <div className="mt-10">
                     {loading ? (
@@ -597,7 +707,6 @@ export default function GetRatesPage() {
                         </div>
                     ) : results.length > 0 ? (
                         <>
-                            {/* Results header with GST toggle reminder */}
                             <div className="flex flex-wrap items-center justify-between gap-4 mb-6">
                                 <div>
                                     <h2 className="text-xl font-semibold">
@@ -607,8 +716,7 @@ export default function GetRatesPage() {
                                         Prices shown {includeGST ? 'include' : 'exclude'} 18% GST
                                     </p>
                                 </div>
-                                
-                                {/* Quick GST toggle in results */}
+
                                 <div className="flex items-center gap-3 p-2 px-4 border rounded-lg bg-muted/30">
                                     <Label htmlFor="gst-toggle-results" className="text-sm font-medium cursor-pointer">
                                         {includeGST ? 'With GST' : 'Without GST'}
@@ -620,31 +728,45 @@ export default function GetRatesPage() {
                                     />
                                 </div>
                             </div>
-                            
-                            {/* Category breakdown */}
-                            {rateCategory === 'all' && (
-                                <div className="flex gap-4 mb-4">
-                                    {results.filter(r => r.data.rateCategory === 'purchase').length > 0 && (
-                                        <Badge variant="outline" className="bg-orange-50 dark:bg-orange-950/30">
-                                            <Package className="w-3 h-3 mr-1" />
-                                            {results.filter(r => r.data.rateCategory === 'purchase').length} Purchase
-                                        </Badge>
-                                    )}
-                                    {results.filter(r => r.data.rateCategory === 'sales').length > 0 && (
-                                        <Badge variant="outline" className="bg-purple-50 dark:bg-purple-950/30">
-                                            <ShoppingCart className="w-3 h-3 mr-1" />
-                                            {results.filter(r => r.data.rateCategory === 'sales').length} Sales
-                                        </Badge>
-                                    )}
-                                </div>
-                            )}
-                            
+
+                            {/* Results Summary Badges */}
+                            <div className="flex flex-wrap gap-2 mb-4">
+                                {results.filter(r => r.data.rateMode === 'multi-country').length > 0 && (
+                                    <Badge variant="outline" className="bg-green-50 dark:bg-green-950/30">
+                                        <Globe className="w-3 h-3 mr-1" />
+                                        {results.filter(r => r.data.rateMode === 'multi-country').length} Country-based
+                                    </Badge>
+                                )}
+                                {results.filter(r => r.data.rateMode === 'single-country-zip').length > 0 && (
+                                    <Badge variant="outline" className="bg-blue-50 dark:bg-blue-950/30">
+                                        <MapPin className="w-3 h-3 mr-1" />
+                                        {results.filter(r => r.data.rateMode === 'single-country-zip').length} ZIP-based
+                                    </Badge>
+                                )}
+                                {rateCategory === 'all' && (
+                                    <>
+                                        {results.filter(r => r.data.rateCategory === 'purchase').length > 0 && (
+                                            <Badge variant="outline" className="bg-orange-50 dark:bg-orange-950/30">
+                                                <Package className="w-3 h-3 mr-1" />
+                                                {results.filter(r => r.data.rateCategory === 'purchase').length} Purchase
+                                            </Badge>
+                                        )}
+                                        {results.filter(r => r.data.rateCategory === 'sales').length > 0 && (
+                                            <Badge variant="outline" className="bg-purple-50 dark:bg-purple-950/30">
+                                                <ShoppingCart className="w-3 h-3 mr-1" />
+                                                {results.filter(r => r.data.rateCategory === 'sales').length} Sales
+                                            </Badge>
+                                        )}
+                                    </>
+                                )}
+                            </div>
+
                             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                                 {results.map(({ service, data }) => (
-                                    <ResultCard 
-                                        key={`${service}-${data.rateCategory}`} 
-                                        data={data} 
-                                        billedWeight={billedWeight} 
+                                    <ResultCard
+                                        key={`${service}-${data.rateCategory}-${data.rateMode}`}
+                                        data={data}
+                                        billedWeight={billedWeight}
                                         showProfit={showProfit}
                                         includeGST={includeGST}
                                     />
@@ -657,10 +779,12 @@ export default function GetRatesPage() {
                             <h3 className="text-xl font-semibold">No Services Found</h3>
                             <p className="text-muted-foreground mt-2">
                                 We couldn't find any {rateCategory !== 'all' ? rateCategory + ' ' : ''}shipping services for the selected criteria.
-                                {rateCategory === 'purchase' && canViewPurchase && (
-                                    <span className="block mt-1">Try switching to Sales rates for more options.</span>
-                                )}
                             </p>
+                            {!zipCode && (
+                                <p className="text-sm text-blue-600 mt-2">
+                                    Try entering a ZIP code to see location-specific rates.
+                                </p>
+                            )}
                         </div>
                     ) : null}
                 </div>

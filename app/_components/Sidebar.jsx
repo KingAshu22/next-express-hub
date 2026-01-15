@@ -472,7 +472,7 @@ export function AppSidebar() {
             {!isCollapsed && (
               <div className="min-w-0 flex-1 animate-in fade-in slide-in-from-left-2 duration-300">
                 <h2 className="truncate text-base font-bold tracking-tight bg-gradient-to-r from-amber-600 to-orange-600 bg-clip-text text-transparent">
-                  SunEx
+                  Kargo One
                 </h2>
                 <p className="truncate text-xs text-muted-foreground capitalize">
                   {userType || "Guest"} Portal

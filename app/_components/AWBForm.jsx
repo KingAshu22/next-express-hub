@@ -418,8 +418,8 @@ export default function AWBForm({ isEdit = false, awb }) {
         if (postalData) {
           const { postalLocation, province, district, state } = postalData
           const formattedAddress = [postalLocation, province].filter(Boolean).join(", ")
-          setReceiverCity(district || "")
-          setReceiverState(state || "")
+          // setReceiverCity(district || "")
+          // setReceiverState(state || "")
           // if (!receiverAddress2) setReceiverAddress2(formattedAddress)
         }
       }

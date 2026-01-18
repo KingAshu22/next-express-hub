@@ -183,68 +183,70 @@ async function sendToXpression(awb, vendor, serviceData) {
   const apiResponse = await response.json()
 
   console.log("Xpression API Response:", apiResponse)
+
+  const responseData = apiResponse.Response || apiResponse
   
   // Handle errors
-  if (apiResponse.Status === "Fail") {
-    const errorMessage = apiResponse.APIError || apiResponse.ErrorCode || "Failed to generate AWB"
+  if (responseData.Status === "Fail") {
+    const errorMessage = responseData.APIError || responseData.ErrorCode || "Failed to generate AWB"
     throw new Error(errorMessage)
   }
   
-  if (apiResponse.ResponseCode !== "RT01" || apiResponse.Status !== "Success") {
-    throw new Error(apiResponse.APIError || "Failed to generate AWB")
+  if (responseData.ResponseCode !== "RT01" || responseData.Status !== "Success") {
+    throw new Error(responseData.APIError || "Failed to generate AWB")
   }
   
   // Build labels array
   const labels = []
   
-  if (apiResponse.Pdfdownload) {
+  if (responseData.Pdfdownload) {
     labels.push({
       type: "awb_label",
       name: "AWB Label",
       filename: "awb_label.pdf",
-      data: apiResponse.Pdfdownload,
+      data: responseData.Pdfdownload,
     })
   }
-  
-  if (apiResponse.BoxLabel) {
+
+  if (responseData.BoxLabel) {
     labels.push({
       type: "box_label",
       name: "Box Label",
       filename: "box_label.pdf",
-      data: apiResponse.BoxLabel,
+      data: responseData.BoxLabel,
     })
   }
-  
-  if (apiResponse.Label) {
+
+  if (responseData.Label) {
     labels.push({
       type: "shipping_label",
       name: "Shipping Label",
       filename: "shipping_label.pdf",
-      data: apiResponse.Label,
+      data: responseData.Label,
     })
   }
-  
-  if (apiResponse.Performa) {
+
+  if (responseData.Performa) {
     labels.push({
       type: "performa",
       name: "Performa Invoice",
       filename: "performa_invoice.pdf",
-      data: apiResponse.Performa,
+      data: responseData.Performa,
     })
   }
-  
-  if (apiResponse.AuxLbl) {
+
+  if (responseData.AuxLbl) {
     labels.push({
       type: "aux_label",
       name: "Auxiliary Label",
       filename: "auxiliary_label.pdf",
-      data: apiResponse.AuxLbl,
+      data: responseData.AuxLbl,
     })
   }
   
   return {
-    awbNumber: apiResponse.AWBNo,
-    refNo: apiResponse.RefNo,
+    awbNumber: responseData.AWBNo,
+    refNo: responseData.RefNo,
     labels: labels,
   }
 }

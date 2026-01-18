@@ -6,7 +6,8 @@ export async function GET(request, { params }) {
   try {
     await connectToDB()
     
-    const { id } = params
+    // Await params in Next.js 15+
+    const { id } = await params
     
     const vendor = await VendorIntegration.findById(id)
     

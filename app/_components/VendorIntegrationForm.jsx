@@ -3,7 +3,6 @@
 
 import { useState, useEffect } from "react"
 
-// Default ITD services
 const DEFAULT_ITD_SERVICES = [
   { serviceName: "DPD CLASSIC", serviceCode: "DPD CLASSIC", apiServiceCode: "DPD CLASSIC" },
   { serviceName: "DPD UK NEXT DAY", serviceCode: "DPD UK NEXT DAY", apiServiceCode: "DPD UK NEXT DAY" },
@@ -24,7 +23,6 @@ export default function VendorIntegrationForm({
     vendorCode: "",
     softwareType: "xpression",
     description: "",
-    // Xpression fields
     xpression: {
       apiUrl: "http://courierjourney.xpresion.in/api/v1/Awbentry/Awbentry",
       trackingUrl: "http://courierjourney.xpresion.in/api/v1/Tracking/Tracking",
@@ -34,9 +32,11 @@ export default function VendorIntegrationForm({
       originName: "BOM",
       services: [{ serviceName: "", vendorCode: "", productCode: "SPX" }],
     },
-    // ITD fields
     itd: {
       apiUrl: "https://online.expressimpex.com/docket_api",
+      trackingApiUrl: "",
+      trackingCompanyId: "",
+      trackingCustomerCode: "",
       companyId: "",
       email: "",
       password: "",
@@ -47,14 +47,38 @@ export default function VendorIntegrationForm({
   // Load edit data if provided
   useEffect(() => {
     if (editData) {
-      setFormData({
+      const newFormData = {
         vendorName: editData.vendorName || "",
         vendorCode: editData.vendorCode || "",
         softwareType: editData.softwareType || "xpression",
         description: editData.description || "",
-        xpression: editData.xpressionCredentials || formData.xpression,
-        itd: editData.itdCredentials || formData.itd,
-      })
+        xpression: {
+          apiUrl: editData.xpressionCredentials?.apiUrl || "http://courierjourney.xpresion.in/api/v1/Awbentry/Awbentry",
+          trackingUrl: editData.xpressionCredentials?.trackingUrl || "http://courierjourney.xpresion.in/api/v1/Tracking/Tracking",
+          userId: editData.xpressionCredentials?.userId || "",
+          password: "", // Don't pre-fill password
+          customerCode: editData.xpressionCredentials?.customerCode || "",
+          originName: editData.xpressionCredentials?.originName || "BOM",
+          services: editData.xpressionCredentials?.services?.length > 0 
+            ? editData.xpressionCredentials.services 
+            : [{ serviceName: "", vendorCode: "", productCode: "SPX" }],
+        },
+        itd: {
+          apiUrl: editData.itdCredentials?.apiUrl || "https://online.expressimpex.com/docket_api",
+          trackingApiUrl: editData.itdCredentials?.trackingApiUrl || "",
+          trackingCompanyId: editData.itdCredentials?.trackingCompanyId?.toString() || "",
+          trackingCustomerCode: editData.itdCredentials?.trackingCustomerCode || "",
+          companyId: editData.itdCredentials?.companyId?.toString() || "",
+          email: editData.itdCredentials?.email || "",
+          password: "", // Don't pre-fill password
+          services: editData.itdCredentials?.services?.length > 0 
+            ? editData.itdCredentials.services 
+            : [...DEFAULT_ITD_SERVICES],
+        },
+      }
+      
+      console.log("Loading edit data:", newFormData)
+      setFormData(newFormData)
     }
   }, [editData])
   
@@ -133,7 +157,7 @@ export default function VendorIntegrationForm({
           apiUrl: formData.xpression.apiUrl,
           trackingUrl: formData.xpression.trackingUrl,
           userId: formData.xpression.userId,
-          password: formData.xpression.password,
+          password: formData.xpression.password, // Will be ignored if empty on update
           customerCode: formData.xpression.customerCode,
           originName: formData.xpression.originName,
           services: formData.xpression.services.filter(s => s.serviceName),
@@ -141,12 +165,17 @@ export default function VendorIntegrationForm({
       } else {
         payload.itdCredentials = {
           apiUrl: formData.itd.apiUrl,
+          trackingApiUrl: formData.itd.trackingApiUrl,
+          trackingCompanyId: formData.itd.trackingCompanyId,
+          trackingCustomerCode: formData.itd.trackingCustomerCode,
           companyId: parseInt(formData.itd.companyId, 10),
           email: formData.itd.email,
-          password: formData.itd.password,
+          password: formData.itd.password, // Will be ignored if empty on update
           services: formData.itd.services.filter(s => s.serviceName),
         }
       }
+      
+      console.log("Submitting payload:", JSON.stringify(payload, null, 2))
       
       const url = editData 
         ? `/api/vendor-integrations/${editData._id}`
@@ -163,6 +192,8 @@ export default function VendorIntegrationForm({
       if (!result.success) {
         throw new Error(result.error || "Failed to save vendor integration")
       }
+      
+      console.log("Save result:", result)
       
       if (onSuccess) {
         onSuccess(result.data)
@@ -186,6 +217,9 @@ export default function VendorIntegrationForm({
           },
           itd: {
             apiUrl: "https://online.expressimpex.com/docket_api",
+            trackingApiUrl: "",
+            trackingCompanyId: "",
+            trackingCustomerCode: "",
             companyId: "",
             email: "",
             password: "",
@@ -245,7 +279,7 @@ export default function VendorIntegrationForm({
         </div>
       </div>
       
-      {/* Software Type Selection */}
+      {/* Software Type Selection - Disabled when editing */}
       <div>
         <label className="block text-sm font-medium text-gray-700 mb-2">
           Software Type *
@@ -258,6 +292,7 @@ export default function VendorIntegrationForm({
               value="xpression"
               checked={formData.softwareType === "xpression"}
               onChange={handleInputChange}
+              disabled={!!editData}
               className="mr-2"
             />
             <span className="text-sm">Xpression Software</span>
@@ -269,11 +304,15 @@ export default function VendorIntegrationForm({
               value="itd"
               checked={formData.softwareType === "itd"}
               onChange={handleInputChange}
+              disabled={!!editData}
               className="mr-2"
             />
             <span className="text-sm">ITD Software (Express Impex)</span>
           </label>
         </div>
+        {editData && (
+          <p className="text-xs text-gray-500 mt-1">Software type cannot be changed after creation</p>
+        )}
       </div>
       
       <div>
@@ -329,7 +368,7 @@ export default function VendorIntegrationForm({
                 type="text"
                 value={formData.xpression.userId}
                 onChange={(e) => handleCredentialChange("xpression", "userId", e.target.value)}
-                required
+                required={!editData}
                 className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
                 placeholder="e.g., CJEH065"
               />
@@ -337,7 +376,7 @@ export default function VendorIntegrationForm({
             
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">
-                Password *
+                Password {editData ? "(leave blank to keep existing)" : "*"}
               </label>
               <input
                 type="password"
@@ -357,7 +396,7 @@ export default function VendorIntegrationForm({
                 type="text"
                 value={formData.xpression.customerCode}
                 onChange={(e) => handleCredentialChange("xpression", "customerCode", e.target.value)}
-                required
+                required={!editData}
                 className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
                 placeholder="e.g., CJEH065"
               />
@@ -399,7 +438,7 @@ export default function VendorIntegrationForm({
                   value={service.serviceName}
                   onChange={(e) => handleXpressionServiceChange(index, "serviceName", e.target.value)}
                   className="flex-1 px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  placeholder="Service Name (e.g., DHL EXPRESS)"
+                  placeholder="Service Name"
                 />
                 <input
                   type="text"
@@ -457,7 +496,7 @@ export default function VendorIntegrationForm({
                 type="number"
                 value={formData.itd.companyId}
                 onChange={(e) => handleCredentialChange("itd", "companyId", e.target.value)}
-                required
+                required={!editData}
                 className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-green-500"
                 placeholder="e.g., 7"
               />
@@ -471,7 +510,7 @@ export default function VendorIntegrationForm({
                 type="text"
                 value={formData.itd.email}
                 onChange={(e) => handleCredentialChange("itd", "email", e.target.value)}
-                required
+                required={!editData}
                 className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-green-500"
                 placeholder="e.g., USER@EI.COM"
               />
@@ -479,7 +518,7 @@ export default function VendorIntegrationForm({
             
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">
-                Password *
+                Password {editData ? "(leave blank to keep existing)" : "*"}
               </label>
               <input
                 type="password"
@@ -489,6 +528,56 @@ export default function VendorIntegrationForm({
                 className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-green-500"
                 placeholder={editData ? "(unchanged)" : "Enter password"}
               />
+            </div>
+          </div>
+          
+          {/* ITD Tracking Configuration */}
+          <div className="pt-4 border-t border-green-200">
+            <h4 className="text-sm font-medium text-green-800 mb-3">
+              📍 Tracking API Configuration
+            </h4>
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Tracking API URL
+                </label>
+                <input
+                  type="url"
+                  value={formData.itd.trackingApiUrl}
+                  onChange={(e) => handleCredentialChange("itd", "trackingApiUrl", e.target.value)}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-green-500"
+                  placeholder="e.g., http://admin.expressimpex.com/api/tracking_api"
+                />
+                <p className="text-xs text-gray-500 mt-1">Base URL for tracking API</p>
+              </div>
+              
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Tracking Company ID
+                </label>
+                <input
+                  type="number"
+                  value={formData.itd.trackingCompanyId}
+                  onChange={(e) => handleCredentialChange("itd", "trackingCompanyId", e.target.value)}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-green-500"
+                  placeholder="e.g., 32"
+                />
+                <p className="text-xs text-gray-500 mt-1">api_company_id parameter</p>
+              </div>
+              
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Tracking Customer Code
+                </label>
+                <input
+                  type="text"
+                  value={formData.itd.trackingCustomerCode}
+                  onChange={(e) => handleCredentialChange("itd", "trackingCustomerCode", e.target.value)}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-green-500"
+                  placeholder="e.g., T002"
+                />
+                <p className="text-xs text-gray-500 mt-1">customer_code parameter</p>
+              </div>
             </div>
           </div>
           

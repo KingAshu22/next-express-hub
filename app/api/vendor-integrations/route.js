@@ -6,20 +6,20 @@ import VendorIntegration from "@/models/VendorIntegration"
 export async function GET(request) {
   try {
     await connectToDB()
-    
+
     const { searchParams } = new URL(request.url)
     const softwareType = searchParams.get("softwareType")
     const isActive = searchParams.get("isActive")
-    
+
     // Build query
     const query = {}
     if (softwareType) query.softwareType = softwareType
     if (isActive !== null) query.isActive = isActive === "true"
-    
+
     const vendors = await VendorIntegration.find(query)
       .select("-xpressionCredentials.password -itdCredentials.password -itdCredentials.cachedToken")
       .sort({ createdAt: -1 })
-    
+
     return new Response(
       JSON.stringify({
         success: true,
@@ -44,17 +44,17 @@ export async function GET(request) {
 export async function POST(request) {
   try {
     await connectToDB()
-    
+
     const body = await request.json()
-    const { 
-      vendorName, 
-      vendorCode, 
-      softwareType, 
+    const {
+      vendorName,
+      vendorCode,
+      softwareType,
       description,
       xpressionCredentials,
       itdCredentials,
     } = body
-    
+
     // Validation
     if (!vendorName || !vendorCode || !softwareType) {
       return new Response(
@@ -65,12 +65,12 @@ export async function POST(request) {
         { status: 400, headers: { "Content-Type": "application/json" } }
       )
     }
-    
+
     // Check for duplicate vendor code
-    const existingVendor = await VendorIntegration.findOne({ 
-      vendorCode: vendorCode.toUpperCase() 
+    const existingVendor = await VendorIntegration.findOne({
+      vendorCode: vendorCode.toUpperCase()
     })
-    
+
     if (existingVendor) {
       return new Response(
         JSON.stringify({
@@ -80,12 +80,12 @@ export async function POST(request) {
         { status: 400, headers: { "Content-Type": "application/json" } }
       )
     }
-    
+
     // Validate credentials based on software type
     if (softwareType === "xpression") {
-      if (!xpressionCredentials?.userId || 
-          !xpressionCredentials?.password || 
-          !xpressionCredentials?.customerCode) {
+      if (!xpressionCredentials?.userId ||
+        !xpressionCredentials?.password ||
+        !xpressionCredentials?.customerCode) {
         return new Response(
           JSON.stringify({
             success: false,
@@ -95,11 +95,11 @@ export async function POST(request) {
         )
       }
     }
-    
+
     if (softwareType === "itd") {
-      if (!itdCredentials?.companyId || 
-          !itdCredentials?.email || 
-          !itdCredentials?.password) {
+      if (!itdCredentials?.companyId ||
+        !itdCredentials?.email ||
+        !itdCredentials?.password) {
         return new Response(
           JSON.stringify({
             success: false,
@@ -109,7 +109,7 @@ export async function POST(request) {
         )
       }
     }
-    
+
     // Create vendor integration
     const vendorData = {
       vendorName,
@@ -118,7 +118,7 @@ export async function POST(request) {
       description: description || "",
       isActive: true,
     }
-    
+
     if (softwareType === "xpression") {
       vendorData.xpressionCredentials = {
         apiUrl: xpressionCredentials.apiUrl || "http://courierjourney.xpresion.in/api/v1/Awbentry/Awbentry",
@@ -130,19 +130,22 @@ export async function POST(request) {
         services: xpressionCredentials.services || [],
       }
     }
-    
+
     if (softwareType === "itd") {
       vendorData.itdCredentials = {
         apiUrl: itdCredentials.apiUrl || "https://online.expressimpex.com/docket_api",
+        trackingApiUrl: itdCredentials.trackingApiUrl || "",
+        trackingCompanyId: itdCredentials.trackingCompanyId ? parseInt(itdCredentials.trackingCompanyId, 10) : null,
+        trackingCustomerCode: itdCredentials.trackingCustomerCode || "",
         companyId: itdCredentials.companyId,
         email: itdCredentials.email,
         password: itdCredentials.password,
         services: itdCredentials.services || [],
       }
     }
-    
+
     const vendor = await VendorIntegration.create(vendorData)
-    
+
     // Remove sensitive data from response
     const responseData = vendor.toObject()
     if (responseData.xpressionCredentials) {
@@ -152,7 +155,7 @@ export async function POST(request) {
       delete responseData.itdCredentials.password
       delete responseData.itdCredentials.cachedToken
     }
-    
+
     return new Response(
       JSON.stringify({
         success: true,

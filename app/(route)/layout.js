@@ -21,6 +21,7 @@ import {
   TooltipTrigger,
 } from "@/components/ui/tooltip";
 import { useEffect, useState } from "react";
+import BackFooter from "../_components/BackFooter";
 
 const inter = Inter({ subsets: ["latin"] });
 
@@ -163,16 +164,20 @@ export default function RootLayout({ children }) {
         />
 
         {shouldHideSidebar ? (
-          // Layout without sidebar
-          <main className="min-h-screen">{children}</main>
+          <div className="flex min-h-screen flex-col">
+            <main className="flex-1">{children}</main>
+          </div>
         ) : (
           // Layout with sidebar
+          <>
           <SidebarProvider defaultOpen={true}>
             <div className="flex min-h-screen w-full">
               <AppSidebar />
               <InnerLayout>{children}</InnerLayout>
             </div>
           </SidebarProvider>
+          <BackFooter />
+          </>
         )}
       </body>
     </html>

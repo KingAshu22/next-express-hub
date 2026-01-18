@@ -7,7 +7,7 @@ export async function GET(request, { params }) {
   try {
     await connectToDB()
     
-    const { id } = params
+    const { id } = await params
     
     const vendor = await VendorIntegration.findById(id)
       .select("-xpressionCredentials.password -itdCredentials.password -itdCredentials.cachedToken")
@@ -46,8 +46,11 @@ export async function PUT(request, { params }) {
   try {
     await connectToDB()
     
-    const { id } = params
+    const { id } = await params
     const body = await request.json()
+    
+    // Debug: Log what we received
+    console.log("Update request body:", JSON.stringify(body, null, 2))
     
     const vendor = await VendorIntegration.findById(id)
     
@@ -79,39 +82,128 @@ export async function PUT(request, { params }) {
       }
     }
     
-    // Update fields
-    if (body.vendorName) vendor.vendorName = body.vendorName
-    if (body.vendorCode) vendor.vendorCode = body.vendorCode.toUpperCase()
+    // Update basic fields
+    if (body.vendorName !== undefined) vendor.vendorName = body.vendorName
+    if (body.vendorCode !== undefined) vendor.vendorCode = body.vendorCode.toUpperCase()
     if (body.description !== undefined) vendor.description = body.description
     if (body.isActive !== undefined) vendor.isActive = body.isActive
     
-    // Update credentials based on software type
+    // Update Xpression credentials
     if (vendor.softwareType === "xpression" && body.xpressionCredentials) {
-      vendor.xpressionCredentials = {
-        ...vendor.xpressionCredentials.toObject(),
-        ...body.xpressionCredentials,
-        // Keep existing password if not provided
-        password: body.xpressionCredentials.password || vendor.xpressionCredentials.password,
+      const newCreds = body.xpressionCredentials
+      const existingCreds = vendor.xpressionCredentials || {}
+      
+      // Update each field explicitly
+      if (newCreds.apiUrl !== undefined) {
+        vendor.xpressionCredentials.apiUrl = newCreds.apiUrl
       }
+      if (newCreds.trackingUrl !== undefined) {
+        vendor.xpressionCredentials.trackingUrl = newCreds.trackingUrl
+      }
+      if (newCreds.userId !== undefined) {
+        vendor.xpressionCredentials.userId = newCreds.userId
+      }
+      if (newCreds.password && newCreds.password.trim() !== "") {
+        vendor.xpressionCredentials.password = newCreds.password
+      }
+      if (newCreds.customerCode !== undefined) {
+        vendor.xpressionCredentials.customerCode = newCreds.customerCode
+      }
+      if (newCreds.originName !== undefined) {
+        vendor.xpressionCredentials.originName = newCreds.originName
+      }
+      if (newCreds.services !== undefined) {
+        vendor.xpressionCredentials.services = newCreds.services
+      }
+      
+      // Mark as modified for Mongoose to detect changes
+      vendor.markModified("xpressionCredentials")
     }
     
+    // Update ITD credentials
     if (vendor.softwareType === "itd" && body.itdCredentials) {
-      vendor.itdCredentials = {
-        ...vendor.itdCredentials.toObject(),
-        ...body.itdCredentials,
-        // Keep existing password if not provided
-        password: body.itdCredentials.password || vendor.itdCredentials.password,
-        // Clear token cache if credentials changed
-        cachedToken: null,
-        cachedCustomerId: null,
-        tokenExpiresAt: null,
+      const newCreds = body.itdCredentials
+      
+      // Ensure itdCredentials exists
+      if (!vendor.itdCredentials) {
+        vendor.itdCredentials = {}
       }
+      
+      // Update each field explicitly - only if provided and not undefined
+      if (newCreds.apiUrl !== undefined) {
+        vendor.itdCredentials.apiUrl = newCreds.apiUrl
+      }
+      
+      // Tracking fields - handle empty strings and values
+      if (newCreds.trackingApiUrl !== undefined) {
+        vendor.itdCredentials.trackingApiUrl = newCreds.trackingApiUrl
+        console.log("Setting trackingApiUrl:", newCreds.trackingApiUrl)
+      }
+      
+      if (newCreds.trackingCompanyId !== undefined) {
+        // Convert to number, handle empty string
+        const companyId = newCreds.trackingCompanyId === "" || newCreds.trackingCompanyId === null 
+          ? null 
+          : parseInt(newCreds.trackingCompanyId, 10)
+        vendor.itdCredentials.trackingCompanyId = isNaN(companyId) ? null : companyId
+        console.log("Setting trackingCompanyId:", vendor.itdCredentials.trackingCompanyId)
+      }
+      
+      if (newCreds.trackingCustomerCode !== undefined) {
+        vendor.itdCredentials.trackingCustomerCode = newCreds.trackingCustomerCode
+        console.log("Setting trackingCustomerCode:", newCreds.trackingCustomerCode)
+      }
+      
+      if (newCreds.companyId !== undefined) {
+        vendor.itdCredentials.companyId = parseInt(newCreds.companyId, 10)
+      }
+      
+      if (newCreds.email !== undefined) {
+        vendor.itdCredentials.email = newCreds.email
+      }
+      
+      // Only update password if provided and not empty
+      if (newCreds.password && newCreds.password.trim() !== "") {
+        vendor.itdCredentials.password = newCreds.password
+      }
+      
+      if (newCreds.services !== undefined) {
+        vendor.itdCredentials.services = newCreds.services
+      }
+      
+      // Clear token cache if main credentials changed
+      if (newCreds.companyId !== undefined || 
+          newCreds.email !== undefined || 
+          (newCreds.password && newCreds.password.trim() !== "")) {
+        vendor.itdCredentials.cachedToken = null
+        vendor.itdCredentials.cachedCustomerId = null
+        vendor.itdCredentials.tokenExpiresAt = null
+      }
+      
+      // Mark as modified for Mongoose to detect nested changes
+      vendor.markModified("itdCredentials")
     }
+    
+    // Debug: Log what we're saving
+    console.log("Saving vendor itdCredentials:", {
+      trackingApiUrl: vendor.itdCredentials?.trackingApiUrl,
+      trackingCompanyId: vendor.itdCredentials?.trackingCompanyId,
+      trackingCustomerCode: vendor.itdCredentials?.trackingCustomerCode,
+    })
     
     await vendor.save()
     
+    // Fetch fresh data to confirm save
+    const updatedVendor = await VendorIntegration.findById(id)
+    
+    console.log("After save - itdCredentials:", {
+      trackingApiUrl: updatedVendor.itdCredentials?.trackingApiUrl,
+      trackingCompanyId: updatedVendor.itdCredentials?.trackingCompanyId,
+      trackingCustomerCode: updatedVendor.itdCredentials?.trackingCustomerCode,
+    })
+    
     // Remove sensitive data from response
-    const responseData = vendor.toObject()
+    const responseData = updatedVendor.toObject()
     if (responseData.xpressionCredentials) {
       delete responseData.xpressionCredentials.password
     }
@@ -145,7 +237,7 @@ export async function DELETE(request, { params }) {
   try {
     await connectToDB()
     
-    const { id } = params
+    const { id } = await params
     
     const vendor = await VendorIntegration.findByIdAndDelete(id)
     

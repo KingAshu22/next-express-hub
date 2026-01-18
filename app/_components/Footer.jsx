@@ -44,9 +44,9 @@ export default function Footer() {
         </div>
         <div className="border-t border-gray-700 mt-8 pt-8 text-center text-gray-300">
           <p>
-            &copy; {new Date().getFullYear()} Kargo One. All rights reserved | Created by{" "}
-            <a className="text-[#F44336]" href="https://ashish-prasad.netlify.app">
-              Ashish Sanjay Prasad
+            &copy; {new Date().getFullYear()} Exprova. All rights reserved | Designed & Developed by{" "}
+            <a className="text-[#F44336]" href="https://exprova.com" target="_blank" rel="noopener noreferrer">
+              Exprova.com
             </a>
           </p>
         </div>

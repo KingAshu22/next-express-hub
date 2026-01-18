@@ -40,11 +40,22 @@ const ITDCredentialsSchema = new mongoose.Schema({
     required: true,
     default: "https://online.expressimpex.com/docket_api"
   },
+  trackingApiUrl: {
+    type: String,
+    default: ""
+  },
+  trackingCompanyId: {
+    type: Number,
+    default: null
+  },
+  trackingCustomerCode: {
+    type: String,
+    default: ""
+  },
   companyId: { type: Number, required: true },
   email: { type: String, required: true },
   password: { type: String, required: true },
   services: [ITDServiceSchema],
-  // Token cache (managed by system)
   cachedToken: { type: String, default: null },
   cachedCustomerId: { type: Number, default: null },
   tokenExpiresAt: { type: Date, default: null },
@@ -61,7 +72,7 @@ const VendorIntegrationSchema = new mongoose.Schema(
     vendorCode: {
       type: String,
       required: true,
-      unique: true,
+      unique: true,  // This already creates an index
       uppercase: true,
       trim: true,
     },
@@ -73,7 +84,6 @@ const VendorIntegrationSchema = new mongoose.Schema(
     isActive: { type: Boolean, default: true },
     description: { type: String, default: "" },
     
-    // Credentials based on software type
     xpressionCredentials: {
       type: XpressionCredentialsSchema,
       default: null,
@@ -83,7 +93,6 @@ const VendorIntegrationSchema = new mongoose.Schema(
       default: null,
     },
     
-    // Metadata
     createdBy: { type: mongoose.Schema.Types.ObjectId, ref: "User" },
     lastUsedAt: { type: Date, default: null },
     usageCount: { type: Number, default: 0 },
@@ -95,7 +104,7 @@ const VendorIntegrationSchema = new mongoose.Schema(
   }
 )
 
-// Virtual to get all services regardless of type
+// Virtual to get all services
 VendorIntegrationSchema.virtual("allServices").get(function () {
   if (this.softwareType === "xpression" && this.xpressionCredentials) {
     return this.xpressionCredentials.services.map(s => ({
@@ -114,9 +123,8 @@ VendorIntegrationSchema.virtual("allServices").get(function () {
   return []
 })
 
-// Index for faster queries
+// Only add compound index (vendorCode already has unique index)
 VendorIntegrationSchema.index({ softwareType: 1, isActive: 1 })
-VendorIntegrationSchema.index({ vendorCode: 1 })
 
 export default mongoose.models.VendorIntegration || 
   mongoose.model("VendorIntegration", VendorIntegrationSchema)

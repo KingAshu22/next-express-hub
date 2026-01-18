@@ -27,9 +27,11 @@ import {
   Copy,
   Check,
   ArrowRight,
-  Sparkles,
   Send,
   Flag,
+  ExternalLink,
+  Link2,
+  Share2,
 } from "lucide-react";
 
 // ------------------- HELPER FUNCTIONS -------------------
@@ -194,6 +196,7 @@ export default function TrackingDetails({ parcelDetails }) {
   const [isLoading, setIsLoading] = useState(false);
   const [mergedTimeline, setMergedTimeline] = useState([]);
   const [copied, setCopied] = useState(false);
+  const [copiedForwarding, setCopiedForwarding] = useState(false);
 
   const hasVendorIntegration = parcelDetails?.cNoteNumber && parcelDetails?.cNoteVendorName;
   const vendorId = parcelDetails?.integratedVendorId;
@@ -211,6 +214,12 @@ export default function TrackingDetails({ parcelDetails }) {
     navigator.clipboard.writeText(trackingNumber);
     setCopied(true);
     setTimeout(() => setCopied(false), 2000);
+  };
+
+  const copyForwardingNumber = (number) => {
+    navigator.clipboard.writeText(number);
+    setCopiedForwarding(true);
+    setTimeout(() => setCopiedForwarding(false), 2000);
   };
 
   const fetchVendorTracking = async () => {
@@ -288,16 +297,37 @@ export default function TrackingDetails({ parcelDetails }) {
     setMergedTimeline(deduped);
   }, [vendorTrackingData, parcelDetails]);
 
+  // Get tracking info from API response
+  const trackingInfo = vendorTrackingData?.tracking?.[0] || {};
+  
   const latestStatus = mergedTimeline[0]?.status || "Awaiting Updates";
   const latestLocation = mergedTimeline[0]?.location || "";
   const isDelivered = latestStatus.toLowerCase().includes("delivered");
   const progress = calculateProgress(latestStatus, mergedTimeline);
   const groupedEvents = groupEventsByDate(mergedTimeline);
 
+  // Get forwarding info from API or database
+  const forwardingNumber = trackingInfo.ForwardingNo || 
+                           trackingInfo.ForwardingNo2 || 
+                           trackingInfo.forwarding_no ||
+                           parcelDetails?.forwardingNumber || 
+                           parcelDetails?.forwarding_number ||
+                           "";
+                           
+  const forwardingLink = trackingInfo.ForwardingURL || 
+                         trackingInfo.VendorLinkURL ||
+                         trackingInfo.VendorLinkURL1 ||
+                         trackingInfo.forwarding_url ||
+                         parcelDetails?.forwardingLink || 
+                         parcelDetails?.forwarding_link ||
+                         "";
+
+  const hasForwardingInfo = forwardingNumber || forwardingLink;
+
   if (!parcelDetails) return null;
 
   return (
-    <div className="max-w-2xl mx-auto p-3 sm:p-4 md:p-6 space-y-4 md:space-y-6">
+    <div className="max-w-2xl mx-auto p-3 sm:p-4 md:p-6 space-y-4 md:space-y-5">
       
       {/* ========== HERO SECTION ========== */}
       <div className={`relative rounded-2xl md:rounded-3xl overflow-hidden shadow-2xl ${
@@ -418,6 +448,64 @@ export default function TrackingDetails({ parcelDetails }) {
           </div>
         </div>
       </div>
+
+      {/* ========== FORWARDING INFO ========== */}
+      {hasForwardingInfo && (
+        <Card className="border-0 shadow-lg overflow-hidden bg-gradient-to-r from-amber-50 via-orange-50 to-yellow-50">
+          <CardContent className="p-4 sm:p-5">
+            <div className="flex items-start gap-3 sm:gap-4">
+              {/* Icon */}
+              <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-xl bg-gradient-to-br from-amber-400 to-orange-500 flex items-center justify-center shadow-lg shadow-amber-200 flex-shrink-0">
+                <Share2 className="w-5 h-5 sm:w-6 sm:h-6 text-white" />
+              </div>
+              
+              {/* Content */}
+              <div className="flex-1 min-w-0">
+                <h3 className="font-bold text-gray-900 text-sm sm:text-base mb-2">Partner Tracking</h3>
+                
+                <div className="space-y-2">
+                  {/* Forwarding Number */}
+                  {forwardingNumber && (
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <span className="text-xs sm:text-sm text-gray-500">Forwarding No:</span>
+                      <div className="flex items-center gap-1.5">
+                        <code className="font-mono font-bold text-sm sm:text-base text-gray-900 bg-white px-2 py-0.5 rounded border border-gray-200">
+                          {forwardingNumber}
+                        </code>
+                        <button
+                          onClick={() => copyForwardingNumber(forwardingNumber)}
+                          className="p-1.5 rounded-md bg-white hover:bg-gray-100 border border-gray-200 transition-all active:scale-95"
+                        >
+                          {copiedForwarding ? (
+                            <Check className="w-3.5 h-3.5 text-emerald-600" />
+                          ) : (
+                            <Copy className="w-3.5 h-3.5 text-gray-500" />
+                          )}
+                        </button>
+                      </div>
+                    </div>
+                  )}
+                  
+                  {/* Forwarding Link */}
+                  {forwardingLink && (
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <a
+                        href={forwardingLink}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="inline-flex items-center gap-2 px-3 sm:px-4 py-2 bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-600 hover:to-orange-600 text-white font-semibold text-xs sm:text-sm rounded-lg shadow-md hover:shadow-lg transition-all duration-200 active:scale-95"
+                      >
+                        <ExternalLink className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
+                        Track with Partner
+                      </a>
+                    </div>
+                  )}
+                </div>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      )}
 
       {/* ========== PROGRESS STEPS ========== */}
       <Card className="border-0 shadow-lg overflow-hidden">

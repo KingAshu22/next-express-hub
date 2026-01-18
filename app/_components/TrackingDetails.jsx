@@ -27,8 +27,9 @@ import {
   Copy,
   Check,
   ArrowRight,
-  Circle,
   Sparkles,
+  Send,
+  Flag,
 } from "lucide-react";
 
 // ------------------- HELPER FUNCTIONS -------------------
@@ -36,28 +37,28 @@ import {
 const getStatusIcon = (status) => {
   const s = (status || "").toLowerCase();
   
-  if (s.includes("delivered")) return <Home className="w-5 h-5" />;
-  if (s.includes("out for delivery")) return <Truck className="w-5 h-5" />;
+  if (s.includes("delivered")) return <Home className="w-4 h-4 md:w-5 md:h-5" />;
+  if (s.includes("out for delivery")) return <Truck className="w-4 h-4 md:w-5 md:h-5" />;
   if (s.includes("customs") || s.includes("clearance") || s.includes("cleared") || s.includes("import"))
-    return <ClipboardCheck className="w-5 h-5" />;
+    return <ClipboardCheck className="w-4 h-4 md:w-5 md:h-5" />;
   if (s.includes("arrived") || s.includes("received"))
-    return <Warehouse className="w-5 h-5" />;
+    return <Warehouse className="w-4 h-4 md:w-5 md:h-5" />;
   if (s.includes("departed") || s.includes("transit") || s.includes("left") || s.includes("dispatch"))
-    return <Navigation className="w-5 h-5" />;
+    return <Navigation className="w-4 h-4 md:w-5 md:h-5" />;
   if (s.includes("flight") || s.includes("airport"))
-    return <Plane className="w-5 h-5" />;
+    return <Plane className="w-4 h-4 md:w-5 md:h-5" />;
   if (s.includes("booked") || s.includes("shipment") || s.includes("created") || s.includes("label") || s.includes("entry"))
-    return <Package className="w-5 h-5" />;
+    return <Package className="w-4 h-4 md:w-5 md:h-5" />;
   if (s.includes("unsuccessful") || s.includes("failed") || s.includes("exception") || s.includes("held") || s.includes("delay"))
-    return <PackageX className="w-5 h-5" />;
+    return <PackageX className="w-4 h-4 md:w-5 md:h-5" />;
   if (s.includes("processing") || s.includes("scan"))
-    return <CircleDot className="w-5 h-5" />;
+    return <CircleDot className="w-4 h-4 md:w-5 md:h-5" />;
   
-  return <CheckCircle className="w-5 h-5" />;
+  return <CheckCircle className="w-4 h-4 md:w-5 md:h-5" />;
 };
 
 const getStatusColor = (status, isFirst) => {
-  if (isFirst) return "text-emerald-600 bg-emerald-50 border-emerald-200";
+  if (isFirst) return "text-emerald-600 bg-emerald-50 border-emerald-300";
   
   const s = (status || "").toLowerCase();
   
@@ -173,7 +174,6 @@ const groupEventsByDate = (events) => {
   return groups;
 };
 
-// Calculate progress
 const calculateProgress = (status, events) => {
   const s = (status || "").toLowerCase();
   if (s.includes("delivered")) return 100;
@@ -201,14 +201,18 @@ export default function TrackingDetails({ parcelDetails }) {
   const awbNumber = parcelDetails?.cNoteNumber;
   const trackingNumber = parcelDetails?.trackingNumber;
 
-  // Copy tracking number
+  // Get origin and destination from database only
+  const origin = parcelDetails?.sender?.city || parcelDetails?.sender?.country || "Origin";
+  const originCountry = parcelDetails?.sender?.country || "";
+  const destination = parcelDetails?.receiver?.city || parcelDetails?.receiver?.country || "Destination";
+  const destinationCountry = parcelDetails?.receiver?.country || "";
+
   const copyTrackingNumber = () => {
     navigator.clipboard.writeText(trackingNumber);
     setCopied(true);
     setTimeout(() => setCopied(false), 2000);
   };
 
-  // Fetch vendor tracking
   const fetchVendorTracking = async () => {
     if (!hasVendorIntegration) return;
     
@@ -248,7 +252,6 @@ export default function TrackingDetails({ parcelDetails }) {
     }
   }, [hasVendorIntegration, awbNumber]);
 
-  // Merge timeline
   useEffect(() => {
     const allEvents = [];
 
@@ -285,182 +288,177 @@ export default function TrackingDetails({ parcelDetails }) {
     setMergedTimeline(deduped);
   }, [vendorTrackingData, parcelDetails]);
 
-  // Get tracking info
-  const trackingInfo = vendorTrackingData?.tracking?.[0] || {};
   const latestStatus = mergedTimeline[0]?.status || "Awaiting Updates";
   const latestLocation = mergedTimeline[0]?.location || "";
   const isDelivered = latestStatus.toLowerCase().includes("delivered");
-  
-  const origin = parcelDetails?.sender?.city || parcelDetails?.sender?.country || "Origin";
-  const destination = parcelDetails?.receiver?.city || parcelDetails?.receiver?.country || "Destination";
-  
   const progress = calculateProgress(latestStatus, mergedTimeline);
   const groupedEvents = groupEventsByDate(mergedTimeline);
 
   if (!parcelDetails) return null;
 
   return (
-    <div className="max-w-3xl mx-auto p-4 md:p-6 space-y-5">
+    <div className="max-w-2xl mx-auto p-3 sm:p-4 md:p-6 space-y-4 md:space-y-6">
       
-      {/* ========== TRACKING NUMBER HERO ========== */}
-      <Card className="border-0 shadow-2xl overflow-hidden">
-        <div className={`p-6 md:p-8 text-center ${
-          isDelivered 
-            ? "bg-gradient-to-br from-emerald-500 via-emerald-600 to-teal-600" 
-            : "bg-gradient-to-br from-violet-600 via-indigo-600 to-purple-700"
-        }`}>
-          {/* Decorative Elements */}
-          <div className="absolute inset-0 overflow-hidden pointer-events-none">
-            <div className="absolute -top-10 -right-10 w-40 h-40 bg-white/10 rounded-full blur-2xl" />
-            <div className="absolute -bottom-10 -left-10 w-40 h-40 bg-white/10 rounded-full blur-2xl" />
+      {/* ========== HERO SECTION ========== */}
+      <div className={`relative rounded-2xl md:rounded-3xl overflow-hidden shadow-2xl ${
+        isDelivered 
+          ? "bg-gradient-to-br from-emerald-400 via-emerald-500 to-teal-600" 
+          : "bg-gradient-to-br from-indigo-500 via-purple-500 to-pink-500"
+      }`}>
+        {/* Animated Background */}
+        <div className="absolute inset-0 overflow-hidden">
+          <div className="absolute top-0 -right-20 w-60 h-60 bg-white/10 rounded-full blur-3xl animate-pulse" />
+          <div className="absolute -bottom-20 -left-20 w-60 h-60 bg-white/10 rounded-full blur-3xl animate-pulse delay-700" />
+          <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-96 h-96 bg-white/5 rounded-full blur-3xl" />
+        </div>
+        
+        <div className="relative z-10 p-5 sm:p-6 md:p-8">
+          {/* Origin & Destination */}
+          <div className="flex items-center justify-between mb-6 md:mb-8">
+            {/* Origin */}
+            <div className="flex items-center gap-2 sm:gap-3">
+              <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-xl bg-white/20 backdrop-blur-sm flex items-center justify-center">
+                <Send className="w-5 h-5 sm:w-6 sm:h-6 text-white" />
+              </div>
+              <div>
+                <p className="text-[10px] sm:text-xs text-white/60 uppercase tracking-wider font-medium">From</p>
+                <p className="text-sm sm:text-base md:text-lg font-bold text-white leading-tight">{origin}</p>
+                {originCountry && origin !== originCountry && (
+                  <p className="text-xs text-white/70">{originCountry}</p>
+                )}
+              </div>
+            </div>
+            
+            {/* Arrow */}
+            <div className="flex-1 flex items-center justify-center px-2 sm:px-4">
+              <div className="relative w-full max-w-[120px] sm:max-w-[160px]">
+                <div className="h-[2px] w-full bg-white/30 rounded-full" />
+                <div 
+                  className="absolute top-0 left-0 h-[2px] bg-white rounded-full transition-all duration-1000 ease-out"
+                  style={{ width: `${progress}%` }}
+                />
+                <div 
+                  className="absolute top-1/2 -translate-y-1/2 transition-all duration-1000 ease-out"
+                  style={{ left: `calc(${Math.min(progress, 90)}% - 10px)` }}
+                >
+                  <div className="w-5 h-5 sm:w-6 sm:h-6 rounded-full bg-white flex items-center justify-center shadow-lg">
+                    {isDelivered ? (
+                      <PackageCheck className="w-3 h-3 sm:w-4 sm:h-4 text-emerald-600" />
+                    ) : (
+                      <Plane className="w-3 h-3 sm:w-4 sm:h-4 text-indigo-600 animate-pulse" />
+                    )}
+                  </div>
+                </div>
+              </div>
+            </div>
+            
+            {/* Destination */}
+            <div className="flex items-center gap-2 sm:gap-3">
+              <div className="text-right">
+                <p className="text-[10px] sm:text-xs text-white/60 uppercase tracking-wider font-medium">To</p>
+                <p className="text-sm sm:text-base md:text-lg font-bold text-white leading-tight">{destination}</p>
+                {destinationCountry && destination !== destinationCountry && (
+                  <p className="text-xs text-white/70">{destinationCountry}</p>
+                )}
+              </div>
+              <div className={`w-10 h-10 sm:w-12 sm:h-12 rounded-xl flex items-center justify-center ${
+                isDelivered ? "bg-white/30" : "bg-white/20"
+              } backdrop-blur-sm`}>
+                <Flag className={`w-5 h-5 sm:w-6 sm:h-6 text-white ${isDelivered ? "fill-white" : ""}`} />
+              </div>
+            </div>
           </div>
           
-          <div className="relative z-10">
-            {/* Label */}
-            <div className="inline-flex items-center gap-2 bg-white/20 backdrop-blur-sm rounded-full px-4 py-1.5 mb-4">
-              <Sparkles className="w-4 h-4 text-white" />
-              <span className="text-sm font-medium text-white">Shipment Tracking</span>
-            </div>
-            
-            {/* Tracking Number */}
-            <p className="text-white/70 text-sm md:text-base mb-2">Your Tracking Number</p>
-            
-            <div className="flex items-center justify-center gap-2 md:gap-3 flex-wrap mb-6">
-              <h1 className="text-3xl sm:text-4xl md:text-5xl lg:text-6xl font-black text-white tracking-wider font-mono select-all">
+          {/* Tracking Number */}
+          <div className="text-center">
+            <p className="text-white/60 text-xs sm:text-sm mb-1">Tracking Number</p>
+            <div className="flex items-center justify-center gap-2 sm:gap-3">
+              <h1 className="text-2xl sm:text-3xl md:text-4xl lg:text-5xl font-black text-white tracking-wider font-mono select-all">
                 {trackingNumber}
               </h1>
-              <Button
-                variant="ghost"
-                size="icon"
+              <button
                 onClick={copyTrackingNumber}
-                className="text-white hover:bg-white/20 rounded-full h-10 w-10 md:h-12 md:w-12 transition-all"
+                className="p-2 sm:p-2.5 rounded-full bg-white/20 hover:bg-white/30 active:scale-95 transition-all duration-200"
               >
                 {copied ? (
-                  <Check className="w-5 h-5 md:w-6 md:h-6" />
+                  <Check className="w-4 h-4 sm:w-5 sm:h-5 text-white" />
                 ) : (
-                  <Copy className="w-5 h-5 md:w-6 md:h-6" />
+                  <Copy className="w-4 h-4 sm:w-5 sm:h-5 text-white" />
                 )}
-              </Button>
+              </button>
             </div>
-            
             {copied && (
-              <div className="mb-4 animate-fade-in">
-                <span className="inline-flex items-center gap-1 text-sm text-white/90 bg-white/20 rounded-full px-3 py-1">
-                  <Check className="w-3 h-3" /> Copied!
-                </span>
-              </div>
+              <p className="text-xs text-white/80 mt-2 animate-bounce">✓ Copied to clipboard</p>
             )}
-            
-            {/* Current Status */}
-            <div className={`inline-flex items-center gap-2 px-5 py-2.5 rounded-full shadow-lg ${
+          </div>
+          
+          {/* Current Status */}
+          <div className="mt-6 md:mt-8 flex flex-col items-center">
+            <div className={`inline-flex items-center gap-2 px-4 sm:px-5 py-2 sm:py-2.5 rounded-full shadow-xl transition-all duration-300 ${
               isDelivered 
                 ? "bg-white text-emerald-700" 
                 : "bg-white text-indigo-700"
             }`}>
               {isLoading ? (
-                <Loader2 className="w-5 h-5 animate-spin" />
+                <Loader2 className="w-4 h-4 sm:w-5 sm:h-5 animate-spin" />
               ) : (
                 getStatusIcon(latestStatus)
               )}
-              <span className="font-bold text-base md:text-lg">
+              <span className="font-bold text-sm sm:text-base md:text-lg">
                 {isLoading ? "Updating..." : latestStatus}
               </span>
             </div>
             
             {latestLocation && !isLoading && (
-              <p className="mt-3 flex items-center justify-center gap-2 text-white/80 text-sm md:text-base">
-                <MapPin className="w-4 h-4" />
+              <div className="mt-3 flex items-center gap-1.5 text-white/80 text-xs sm:text-sm">
+                <MapPin className="w-3.5 h-3.5" />
                 <span>{latestLocation}</span>
-              </p>
+              </div>
             )}
           </div>
         </div>
-      </Card>
+      </div>
 
-      {/* ========== JOURNEY PROGRESS ========== */}
+      {/* ========== PROGRESS STEPS ========== */}
       <Card className="border-0 shadow-lg overflow-hidden">
-        <CardContent className="p-5 md:p-6">
-          {/* Origin - Destination Bar */}
-          <div className="flex items-center justify-between mb-4">
-            <div className="flex items-center gap-2">
-              <div className="w-10 h-10 rounded-full bg-gradient-to-br from-blue-500 to-blue-600 flex items-center justify-center shadow-lg shadow-blue-500/25">
-                <Package className="w-5 h-5 text-white" />
-              </div>
-              <div>
-                <p className="text-[10px] text-gray-400 uppercase tracking-wider font-medium">Origin</p>
-                <p className="font-bold text-gray-900 text-sm md:text-base">{origin}</p>
-              </div>
-            </div>
-            
-            <div className="flex-1 mx-4">
-              <div className="relative h-2 bg-gray-100 rounded-full overflow-hidden">
-                <div 
-                  className={`absolute inset-y-0 left-0 rounded-full transition-all duration-1000 ease-out ${
-                    isDelivered 
-                      ? "bg-gradient-to-r from-blue-500 via-emerald-500 to-emerald-500" 
-                      : "bg-gradient-to-r from-blue-500 via-indigo-500 to-violet-500"
-                  }`}
-                  style={{ width: `${progress}%` }}
-                />
-                {!isDelivered && (
-                  <div 
-                    className="absolute top-1/2 -translate-y-1/2 w-4 h-4 bg-white border-2 border-indigo-500 rounded-full shadow-lg transition-all duration-1000 ease-out"
-                    style={{ left: `calc(${progress}% - 8px)` }}
-                  >
-                    <div className="absolute inset-1 bg-indigo-500 rounded-full animate-pulse" />
-                  </div>
-                )}
-              </div>
-              <div className="flex justify-between mt-1">
-                <span className="text-[10px] text-gray-400">{progress}%</span>
-                <span className="text-[10px] text-gray-400">
-                  {isDelivered ? "Completed" : "In Progress"}
-                </span>
-              </div>
-            </div>
-            
-            <div className="flex items-center gap-2">
-              <div>
-                <p className="text-[10px] text-gray-400 uppercase tracking-wider font-medium text-right">Destination</p>
-                <p className="font-bold text-gray-900 text-sm md:text-base">{destination}</p>
-              </div>
-              <div className={`w-10 h-10 rounded-full flex items-center justify-center shadow-lg ${
+        <CardContent className="p-4 sm:p-5 md:p-6">
+          <div className="flex items-center justify-between relative">
+            {/* Progress Line Background */}
+            <div className="absolute top-5 left-0 right-0 h-1 bg-gray-100 rounded-full mx-6 sm:mx-8" />
+            <div 
+              className={`absolute top-5 left-0 h-1 rounded-full mx-6 sm:mx-8 transition-all duration-1000 ${
                 isDelivered 
-                  ? "bg-gradient-to-br from-emerald-500 to-emerald-600 shadow-emerald-500/25" 
-                  : "bg-gradient-to-br from-gray-200 to-gray-300 shadow-gray-300/25"
-              }`}>
-                <Home className={`w-5 h-5 ${isDelivered ? "text-white" : "text-gray-500"}`} />
-              </div>
-            </div>
-          </div>
-          
-          {/* Milestone Steps */}
-          <div className="grid grid-cols-6 gap-1 mt-6">
+                  ? "bg-gradient-to-r from-emerald-400 to-emerald-500" 
+                  : "bg-gradient-to-r from-indigo-400 via-purple-400 to-pink-400"
+              }`}
+              style={{ width: `calc(${progress}% - 48px)` }}
+            />
+            
             {[
-              { icon: Package, label: "Booked" },
-              { icon: Warehouse, label: "Picked Up" },
-              { icon: Plane, label: "In Transit" },
-              { icon: ClipboardCheck, label: "Customs" },
-              { icon: Truck, label: "Out for Delivery" },
-              { icon: Home, label: "Delivered" },
+              { icon: Package, label: "Booked", step: 1 },
+              { icon: Warehouse, label: "Picked", step: 2 },
+              { icon: Plane, label: "Transit", step: 3 },
+              { icon: ClipboardCheck, label: "Customs", step: 4 },
+              { icon: Truck, label: "Out", step: 5 },
+              { icon: Home, label: "Done", step: 6 },
             ].map((milestone, index) => {
               const stepProgress = (index + 1) * (100 / 6);
               const isCompleted = progress >= stepProgress;
               const isCurrent = progress >= stepProgress - (100 / 6) && progress < stepProgress;
               
               return (
-                <div key={index} className="flex flex-col items-center">
-                  <div className={`w-8 h-8 md:w-10 md:h-10 rounded-full flex items-center justify-center transition-all duration-300 ${
+                <div key={index} className="relative z-10 flex flex-col items-center">
+                  <div className={`w-8 h-8 sm:w-10 sm:h-10 rounded-full flex items-center justify-center transition-all duration-500 ${
                     isCompleted 
-                      ? "bg-emerald-500 text-white shadow-lg shadow-emerald-500/30" 
+                      ? "bg-emerald-500 text-white shadow-lg shadow-emerald-200 scale-100" 
                       : isCurrent 
-                        ? "bg-indigo-500 text-white shadow-lg shadow-indigo-500/30 ring-4 ring-indigo-100 scale-110" 
+                        ? "bg-indigo-500 text-white shadow-lg shadow-indigo-200 scale-110 ring-4 ring-indigo-100" 
                         : "bg-gray-100 text-gray-400"
                   }`}>
-                    <milestone.icon className="w-4 h-4 md:w-5 md:h-5" />
+                    <milestone.icon className="w-4 h-4 sm:w-5 sm:h-5" />
                   </div>
-                  <span className={`mt-2 text-[9px] md:text-[10px] font-medium text-center leading-tight ${
-                    isCompleted || isCurrent ? "text-gray-700" : "text-gray-400"
+                  <span className={`mt-2 text-[9px] sm:text-[10px] font-semibold transition-colors duration-300 ${
+                    isCompleted || isCurrent ? "text-gray-800" : "text-gray-400"
                   }`}>
                     {milestone.label}
                   </span>
@@ -471,16 +469,16 @@ export default function TrackingDetails({ parcelDetails }) {
         </CardContent>
       </Card>
 
-      {/* ========== ERROR MESSAGE ========== */}
+      {/* ========== ERROR ========== */}
       {error && (
-        <Card className="border-red-200 bg-red-50 shadow-md">
+        <Card className="border-red-200 bg-gradient-to-r from-red-50 to-rose-50 shadow-md overflow-hidden">
           <CardContent className="p-4 flex items-center gap-3">
             <div className="w-10 h-10 rounded-full bg-red-100 flex items-center justify-center flex-shrink-0">
               <AlertCircle className="w-5 h-5 text-red-500" />
             </div>
             <div className="flex-1 min-w-0">
-              <p className="font-medium text-red-800 text-sm">Failed to load tracking</p>
-              <p className="text-red-600 text-xs mt-0.5 truncate">{error}</p>
+              <p className="font-semibold text-red-800 text-sm">Failed to load</p>
+              <p className="text-red-600 text-xs truncate">{error}</p>
             </div>
             <Button 
               variant="ghost" 
@@ -488,8 +486,7 @@ export default function TrackingDetails({ parcelDetails }) {
               onClick={fetchVendorTracking}
               className="text-red-600 hover:text-red-700 hover:bg-red-100 shrink-0"
             >
-              <RefreshCw className="w-4 h-4 mr-1" />
-              Retry
+              <RefreshCw className="w-4 h-4" />
             </Button>
           </CardContent>
         </Card>
@@ -497,52 +494,50 @@ export default function TrackingDetails({ parcelDetails }) {
 
       {/* ========== TIMELINE ========== */}
       <Card className="border-0 shadow-xl overflow-hidden">
-        <CardHeader className="border-b bg-gray-50/80 py-4">
+        <CardHeader className="bg-gradient-to-r from-gray-50 to-white py-4 px-4 sm:px-5 border-b">
           <div className="flex items-center justify-between">
-            <CardTitle className="flex items-center gap-2 text-base md:text-lg">
-              <div className="w-8 h-8 rounded-lg bg-indigo-100 flex items-center justify-center">
-                <Clock className="w-4 h-4 text-indigo-600" />
+            <div className="flex items-center gap-2.5">
+              <div className="w-8 h-8 sm:w-9 sm:h-9 rounded-lg bg-indigo-100 flex items-center justify-center">
+                <Clock className="w-4 h-4 sm:w-5 sm:h-5 text-indigo-600" />
               </div>
-              Tracking History
-            </CardTitle>
-            <div className="flex items-center gap-2">
-              {mergedTimeline.length > 0 && (
-                <Badge variant="secondary" className="font-normal text-xs">
-                  {mergedTimeline.length} updates
-                </Badge>
-              )}
-              <Button 
-                variant="ghost" 
-                size="sm"
-                onClick={fetchVendorTracking}
-                disabled={isLoading}
-                className="text-gray-500 h-8 w-8 p-0"
-              >
-                <RefreshCw className={`w-4 h-4 ${isLoading ? "animate-spin" : ""}`} />
-              </Button>
+              <div>
+                <CardTitle className="text-sm sm:text-base font-bold text-gray-900">Tracking History</CardTitle>
+                {mergedTimeline.length > 0 && (
+                  <p className="text-[10px] sm:text-xs text-gray-500">{mergedTimeline.length} updates</p>
+                )}
+              </div>
             </div>
+            <Button 
+              variant="ghost" 
+              size="sm"
+              onClick={fetchVendorTracking}
+              disabled={isLoading}
+              className="text-gray-500 hover:text-gray-700 h-8 w-8 sm:h-9 sm:w-9 p-0 rounded-full hover:bg-gray-100"
+            >
+              <RefreshCw className={`w-4 h-4 ${isLoading ? "animate-spin" : ""}`} />
+            </Button>
           </div>
         </CardHeader>
         
         <CardContent className="p-0">
           {isLoading && mergedTimeline.length === 0 ? (
-            <div className="flex flex-col items-center justify-center py-16 px-4">
+            <div className="flex flex-col items-center justify-center py-12 sm:py-16 px-4">
               <div className="relative">
-                <div className="w-16 h-16 rounded-full border-4 border-indigo-100 border-t-indigo-500 animate-spin" />
+                <div className="w-14 h-14 sm:w-16 sm:h-16 rounded-full border-4 border-indigo-100 border-t-indigo-500 animate-spin" />
                 <div className="absolute inset-0 flex items-center justify-center">
-                  <Package className="w-6 h-6 text-indigo-500" />
+                  <Package className="w-5 h-5 sm:w-6 sm:h-6 text-indigo-500" />
                 </div>
               </div>
-              <p className="font-medium text-gray-700 mt-4">Fetching updates...</p>
-              <p className="text-sm text-gray-400 mt-1">Please wait a moment</p>
+              <p className="font-semibold text-gray-700 mt-4 text-sm sm:text-base">Loading updates...</p>
+              <p className="text-xs sm:text-sm text-gray-400 mt-1">Please wait</p>
             </div>
           ) : mergedTimeline.length === 0 ? (
-            <div className="flex flex-col items-center justify-center py-16 px-4">
-              <div className="w-20 h-20 rounded-full bg-gray-100 flex items-center justify-center mb-4">
-                <Package className="w-10 h-10 text-gray-300" />
+            <div className="flex flex-col items-center justify-center py-12 sm:py-16 px-4">
+              <div className="w-16 h-16 sm:w-20 sm:h-20 rounded-full bg-gray-100 flex items-center justify-center mb-4">
+                <Package className="w-8 h-8 sm:w-10 sm:h-10 text-gray-300" />
               </div>
-              <p className="font-semibold text-gray-700">No updates yet</p>
-              <p className="text-sm text-gray-400 mt-1 text-center">Tracking updates will appear here once available</p>
+              <p className="font-semibold text-gray-700 text-sm sm:text-base">No updates yet</p>
+              <p className="text-xs sm:text-sm text-gray-400 mt-1 text-center">Tracking info will appear here</p>
               {hasVendorIntegration && (
                 <Button 
                   variant="outline" 
@@ -551,99 +546,105 @@ export default function TrackingDetails({ parcelDetails }) {
                   onClick={fetchVendorTracking}
                 >
                   <RefreshCw className="w-4 h-4 mr-2" />
-                  Check for Updates
+                  Refresh
                 </Button>
               )}
             </div>
           ) : (
-            <div className="divide-y divide-gray-100">
+            <div>
               {Object.entries(groupedEvents).map(([date, events], groupIndex) => (
                 <div key={date}>
                   {/* Date Header */}
-                  <div className="sticky top-0 z-10 bg-gradient-to-r from-gray-50 to-white/95 backdrop-blur-sm px-4 md:px-6 py-3 border-b border-gray-100">
-                    <div className="flex items-center gap-2 text-xs md:text-sm font-semibold text-gray-600">
-                      <Calendar className="w-4 h-4 text-indigo-500" />
+                  <div className="sticky top-0 z-10 bg-gray-50/95 backdrop-blur-sm px-4 sm:px-5 py-2.5 border-b border-gray-100">
+                    <div className="flex items-center gap-2 text-xs sm:text-sm font-semibold text-gray-600">
+                      <Calendar className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-indigo-500" />
                       {date}
                     </div>
                   </div>
                   
                   {/* Events */}
-                  <div>
-                    {events.map((event, index) => {
-                      const isFirst = groupIndex === 0 && index === 0;
-                      const isLast = groupIndex === Object.keys(groupedEvents).length - 1 && 
-                                     index === events.length - 1;
-                      
-                      return (
-                        <div 
-                          key={`${event.timestamp}-${index}`}
-                          className={`relative flex gap-3 md:gap-4 px-4 md:px-6 py-4 md:py-5 transition-colors hover:bg-gray-50/50 ${
-                            isFirst ? "bg-gradient-to-r from-emerald-50/60 via-emerald-50/30 to-transparent" : ""
-                          }`}
-                        >
-                          {/* Timeline */}
-                          <div className="relative flex flex-col items-center">
-                            {/* Top Line */}
-                            {!(groupIndex === 0 && index === 0) && (
-                              <div className="absolute bottom-1/2 w-0.5 h-full bg-gray-200" />
-                            )}
-                            
-                            {/* Dot */}
-                            <div className={`relative z-10 w-10 h-10 md:w-11 md:h-11 rounded-xl border-2 flex items-center justify-center transition-all ${
-                              isFirst 
-                                ? "border-emerald-400 bg-emerald-50 text-emerald-600 shadow-lg shadow-emerald-100 ring-4 ring-emerald-50" 
-                                : getStatusColor(event.status, false)
-                            }`}>
-                              {getStatusIcon(event.status)}
-                            </div>
-                            
-                            {/* Bottom Line */}
-                            {!isLast && (
-                              <div className="absolute top-1/2 w-0.5 h-full bg-gray-200" />
-                            )}
+                  {events.map((event, index) => {
+                    const isFirst = groupIndex === 0 && index === 0;
+                    const isLast = groupIndex === Object.keys(groupedEvents).length - 1 && 
+                                   index === events.length - 1;
+                    
+                    return (
+                      <div 
+                        key={`${event.timestamp}-${index}`}
+                        className={`relative flex items-start gap-3 sm:gap-4 px-4 sm:px-5 py-4 sm:py-5 transition-all duration-300 hover:bg-gray-50/50 ${
+                          isFirst ? "bg-gradient-to-r from-emerald-50/50 to-transparent" : ""
+                        }`}
+                      >
+                        {/* Timeline Line & Dot */}
+                        <div className="relative flex flex-col items-center flex-shrink-0">
+                          {!(groupIndex === 0 && index === 0) && (
+                            <div className="absolute bottom-1/2 w-0.5 h-full bg-gradient-to-t from-gray-200 to-transparent" />
+                          )}
+                          
+                          <div className={`relative z-10 w-9 h-9 sm:w-10 sm:h-10 rounded-xl border-2 flex items-center justify-center transition-all duration-300 ${
+                            isFirst 
+                              ? "border-emerald-400 bg-emerald-50 text-emerald-600 shadow-lg shadow-emerald-100 scale-105" 
+                              : getStatusColor(event.status, false)
+                          }`}>
+                            {getStatusIcon(event.status)}
                           </div>
                           
-                          {/* Content */}
-                          <div className="flex-1 min-w-0 py-0.5">
-                            <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-1 sm:gap-2">
-                              <div className="flex-1 min-w-0">
-                                <div className="flex items-center gap-2 flex-wrap">
-                                  <h3 className={`font-bold text-sm md:text-base leading-tight ${
-                                    isFirst ? "text-emerald-700" : "text-gray-900"
-                                  }`}>
-                                    {event.status}
-                                  </h3>
-                                  {isFirst && (
-                                    <Badge className="bg-emerald-100 text-emerald-700 border-0 text-[10px] px-2 py-0 h-5">
-                                      Latest
-                                    </Badge>
-                                  )}
-                                </div>
-                                
-                                {event.location && (
-                                  <p className="flex items-center gap-1.5 text-xs md:text-sm text-gray-500 mt-1">
-                                    <MapPin className="w-3 h-3 flex-shrink-0" />
-                                    <span className="truncate">{event.location}</span>
-                                  </p>
-                                )}
-                                
-                                {event.comment && (
-                                  <div className="mt-2 flex items-start gap-2 text-xs md:text-sm text-gray-600 bg-amber-50 border border-amber-100 rounded-lg p-2.5 md:p-3">
-                                    <MessageSquare className="w-3.5 h-3.5 text-amber-500 mt-0.5 flex-shrink-0" />
-                                    <span>{event.comment}</span>
-                                  </div>
+                          {!isLast && (
+                            <div className="absolute top-1/2 w-0.5 h-full bg-gradient-to-b from-gray-200 to-transparent" />
+                          )}
+                        </div>
+                        
+                        {/* Content */}
+                        <div className="flex-1 min-w-0 pt-0.5">
+                          <div className="flex items-start justify-between gap-2">
+                            {/* Status & Comment */}
+                            <div className="flex-1 min-w-0">
+                              <div className="flex items-center gap-2 flex-wrap">
+                                <h3 className={`font-bold text-sm sm:text-base leading-tight ${
+                                  isFirst ? "text-emerald-700" : "text-gray-900"
+                                }`}>
+                                  {event.status}
+                                </h3>
+                                {isFirst && (
+                                  <Badge className="bg-emerald-100 text-emerald-700 border-0 text-[9px] sm:text-[10px] px-1.5 py-0 h-4 sm:h-5 font-semibold">
+                                    Latest
+                                  </Badge>
                                 )}
                               </div>
                               
-                              <time className="text-xs md:text-sm text-gray-400 font-medium tabular-nums whitespace-nowrap bg-gray-100 px-2 py-0.5 rounded self-start">
+                              {/* Time - Mobile */}
+                              <p className="text-[10px] sm:text-xs text-gray-400 mt-0.5 sm:hidden">
+                                {formatTime(event.timestamp)}
+                              </p>
+                              
+                              {event.comment && (
+                                <div className="mt-2 flex items-start gap-2 text-xs sm:text-sm text-gray-600 bg-amber-50 border border-amber-100 rounded-lg p-2 sm:p-2.5">
+                                  <MessageSquare className="w-3.5 h-3.5 text-amber-500 mt-0.5 flex-shrink-0" />
+                                  <span className="leading-relaxed">{event.comment}</span>
+                                </div>
+                              )}
+                            </div>
+                            
+                            {/* Right Side - Location & Time */}
+                            <div className="flex flex-col items-end gap-1 shrink-0">
+                              {/* Time - Desktop */}
+                              <time className="hidden sm:block text-xs text-gray-400 font-medium tabular-nums bg-gray-100 px-2 py-0.5 rounded">
                                 {formatTime(event.timestamp)}
                               </time>
+                              
+                              {/* Location */}
+                              {event.location && (
+                                <div className="flex items-center gap-1 text-[10px] sm:text-xs text-gray-500 bg-gray-50 sm:bg-transparent px-1.5 py-0.5 sm:p-0 rounded">
+                                  <MapPin className="w-3 h-3 text-gray-400" />
+                                  <span className="max-w-[80px] sm:max-w-[120px] truncate">{event.location}</span>
+                                </div>
+                              )}
                             </div>
                           </div>
                         </div>
-                      );
-                    })}
-                  </div>
+                      </div>
+                    );
+                  })}
                 </div>
               ))}
             </div>
@@ -653,27 +654,27 @@ export default function TrackingDetails({ parcelDetails }) {
 
       {/* ========== SHIPMENT DETAILS ========== */}
       <Card className="border-0 shadow-xl overflow-hidden">
-        <CardHeader className="bg-gradient-to-r from-slate-800 to-slate-900 text-white py-4 px-4 md:px-6">
-          <CardTitle className="flex items-center gap-2 text-base">
-            <Package className="w-5 h-5" />
+        <CardHeader className="bg-gradient-to-r from-slate-800 to-slate-900 py-3.5 sm:py-4 px-4 sm:px-5">
+          <CardTitle className="flex items-center gap-2 text-sm sm:text-base text-white font-semibold">
+            <Package className="w-4 h-4 sm:w-5 sm:h-5" />
             Shipment Details
           </CardTitle>
         </CardHeader>
         <CardContent className="p-0">
           <div className="grid grid-cols-1 sm:grid-cols-2">
             {/* Sender */}
-            <div className="p-4 md:p-5 border-b sm:border-b-0 sm:border-r border-gray-100">
-              <div className="flex items-center gap-3 mb-3">
-                <div className="w-9 h-9 md:w-10 md:h-10 rounded-full bg-blue-100 flex items-center justify-center">
-                  <ArrowRight className="w-4 h-4 md:w-5 md:h-5 text-blue-600 rotate-180" />
+            <div className="p-4 sm:p-5 border-b sm:border-b-0 sm:border-r border-gray-100">
+              <div className="flex items-center gap-2.5 sm:gap-3 mb-3">
+                <div className="w-8 h-8 sm:w-9 sm:h-9 rounded-full bg-gradient-to-br from-blue-400 to-blue-500 flex items-center justify-center shadow-md shadow-blue-200">
+                  <ArrowRight className="w-4 h-4 text-white rotate-180" />
                 </div>
-                <div>
-                  <p className="text-[10px] text-gray-400 uppercase tracking-wider font-medium">From</p>
-                  <p className="font-bold text-gray-900 text-sm md:text-base">{parcelDetails?.sender?.name}</p>
+                <div className="min-w-0">
+                  <p className="text-[9px] sm:text-[10px] text-gray-400 uppercase tracking-wider font-semibold">Sender</p>
+                  <p className="font-bold text-gray-900 text-sm sm:text-base truncate">{parcelDetails?.sender?.name}</p>
                 </div>
               </div>
-              <div className="pl-12 md:pl-[52px] space-y-0.5 text-xs md:text-sm text-gray-600">
-                <p className="line-clamp-2">{parcelDetails?.sender?.address}</p>
+              <div className="pl-[42px] sm:pl-12 space-y-0.5 text-xs sm:text-sm text-gray-600">
+                <p className="line-clamp-2 leading-relaxed">{parcelDetails?.sender?.address}</p>
                 {parcelDetails?.sender?.city && (
                   <p>
                     {parcelDetails.sender.city}
@@ -686,18 +687,18 @@ export default function TrackingDetails({ parcelDetails }) {
             </div>
             
             {/* Receiver */}
-            <div className="p-4 md:p-5">
-              <div className="flex items-center gap-3 mb-3">
-                <div className="w-9 h-9 md:w-10 md:h-10 rounded-full bg-emerald-100 flex items-center justify-center">
-                  <ArrowRight className="w-4 h-4 md:w-5 md:h-5 text-emerald-600" />
+            <div className="p-4 sm:p-5">
+              <div className="flex items-center gap-2.5 sm:gap-3 mb-3">
+                <div className="w-8 h-8 sm:w-9 sm:h-9 rounded-full bg-gradient-to-br from-emerald-400 to-emerald-500 flex items-center justify-center shadow-md shadow-emerald-200">
+                  <ArrowRight className="w-4 h-4 text-white" />
                 </div>
-                <div>
-                  <p className="text-[10px] text-gray-400 uppercase tracking-wider font-medium">To</p>
-                  <p className="font-bold text-gray-900 text-sm md:text-base">{parcelDetails?.receiver?.name}</p>
+                <div className="min-w-0">
+                  <p className="text-[9px] sm:text-[10px] text-gray-400 uppercase tracking-wider font-semibold">Receiver</p>
+                  <p className="font-bold text-gray-900 text-sm sm:text-base truncate">{parcelDetails?.receiver?.name}</p>
                 </div>
               </div>
-              <div className="pl-12 md:pl-[52px] space-y-0.5 text-xs md:text-sm text-gray-600">
-                <p className="line-clamp-2">{parcelDetails?.receiver?.address}</p>
+              <div className="pl-[42px] sm:pl-12 space-y-0.5 text-xs sm:text-sm text-gray-600">
+                <p className="line-clamp-2 leading-relaxed">{parcelDetails?.receiver?.address}</p>
                 {parcelDetails?.receiver?.city && (
                   <p>
                     {parcelDetails.receiver.city}
@@ -709,44 +710,12 @@ export default function TrackingDetails({ parcelDetails }) {
               </div>
             </div>
           </div>
-          
-          {/* Package Summary */}
-          {(parcelDetails?.boxes?.length > 0 || trackingInfo.Weight || trackingInfo.BookingDate) && (
-            <div className="border-t border-gray-100 bg-gray-50 px-4 md:px-5 py-3">
-              <div className="flex flex-wrap items-center gap-4 md:gap-6 text-xs md:text-sm">
-                {parcelDetails?.boxes?.length > 0 && (
-                  <div className="flex items-center gap-1.5">
-                    <Package className="w-4 h-4 text-indigo-500" />
-                    <span className="text-gray-600">
-                      <span className="font-semibold text-gray-800">{parcelDetails.boxes.length}</span>
-                      {" "}{parcelDetails.boxes.length === 1 ? "Package" : "Packages"}
-                    </span>
-                  </div>
-                )}
-                {trackingInfo.Weight && (
-                  <div className="flex items-center gap-1.5">
-                    <span className="text-gray-600">
-                      Weight: <span className="font-semibold text-gray-800">{trackingInfo.Weight} kg</span>
-                    </span>
-                  </div>
-                )}
-                {trackingInfo.BookingDate && (
-                  <div className="flex items-center gap-1.5">
-                    <Calendar className="w-4 h-4 text-indigo-500" />
-                    <span className="text-gray-600">
-                      Booked: <span className="font-semibold text-gray-800">{trackingInfo.BookingDate}</span>
-                    </span>
-                  </div>
-                )}
-              </div>
-            </div>
-          )}
         </CardContent>
       </Card>
 
       {/* ========== FOOTER ========== */}
-      <div className="text-center py-4">
-        <p className="text-xs text-gray-400">
+      <div className="text-center py-2 sm:py-4">
+        <p className="text-[10px] sm:text-xs text-gray-400">
           Last updated: {new Date().toLocaleString()}
         </p>
       </div>

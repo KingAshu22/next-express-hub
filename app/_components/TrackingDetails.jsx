@@ -35,8 +35,7 @@ import {
   Smartphone,
 } from "lucide-react";
 
-import { FaWhatsapp } from "react-icons/fa6";
-
+import { FaWhatsapp } from "react-icons/fa";
 // ------------------- HELPER FUNCTIONS -------------------
 
 const getStatusIcon = (status) => {
@@ -232,7 +231,7 @@ export default function TrackingDetails({ parcelDetails }) {
     }
   };
 
-  // WhatsApp Share Handler with Beautified Message
+  // WhatsApp Share Handler - FIXED ENCODING
   const handleWhatsAppShare = () => {
     let cleanUrl = "";
     if (typeof window !== 'undefined') {
@@ -246,20 +245,19 @@ export default function TrackingDetails({ parcelDetails }) {
     const org = parcelDetails?.sender?.city || parcelDetails?.sender?.country || "Origin";
     const dst = parcelDetails?.receiver?.city || parcelDetails?.receiver?.country || "Destination";
 
-    // Format message
+    // Format message - using standard characters to avoid encoding issues
     const message = 
-      `🚚 *Shipment Status Update*\n` +
+      `📦 *Shipment Status Update*\n` +
       `──────────────────\n` +
-      `📦 *Tracking ID:* ${trackingNumber}\n` +
-      `🚩 *Route:* ${org} ➡️ ${dst}\n` +
+      `🆔 *Tracking ID:* ${trackingNumber}\n` +
+      `🚩 *Route:* ${org} -> ${dst}\n` +
       `📊 *Status:* ${currentStatus}\n` +
       (currentLocation ? `📍 *Location:* ${currentLocation}\n` : "") +
       `──────────────────\n` +
-      `👇 *Track Live Status:*\n` +
-      `${cleanUrl}`;
+      `🔗 *Track Live:* ${cleanUrl}`;
 
-    // Open WhatsApp
-    const whatsappUrl = `https://wa.me/?text=${encodeURIComponent(message)}`;
+    // Use api.whatsapp.com for better cross-platform compatibility
+    const whatsappUrl = `https://api.whatsapp.com/send?text=${encodeURIComponent(message)}`;
     window.open(whatsappUrl, '_blank');
   };
 

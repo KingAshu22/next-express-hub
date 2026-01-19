@@ -30,9 +30,12 @@ import {
   Send,
   Flag,
   ExternalLink,
-  Link2,
   Share2,
+  Globe,
+  Smartphone,
 } from "lucide-react";
+
+import { FaWhatsapp } from "react-icons/fa6";
 
 // ------------------- HELPER FUNCTIONS -------------------
 
@@ -60,7 +63,7 @@ const getStatusIcon = (status) => {
 };
 
 const getStatusColor = (status, isFirst) => {
-  if (isFirst) return "text-emerald-600 bg-emerald-50 border-emerald-300";
+  if (isFirst) return "text-emerald-600 bg-emerald-50 border-emerald-200";
   
   const s = (status || "").toLowerCase();
   
@@ -75,7 +78,7 @@ const getStatusColor = (status, isFirst) => {
   if (s.includes("arrived") || s.includes("received"))
     return "text-cyan-600 bg-cyan-50 border-cyan-200";
   
-  return "text-gray-500 bg-gray-50 border-gray-200";
+  return "text-slate-500 bg-slate-50 border-slate-200";
 };
 
 // Parse helpers
@@ -210,16 +213,54 @@ export default function TrackingDetails({ parcelDetails }) {
   const destination = parcelDetails?.receiver?.city || parcelDetails?.receiver?.country || "Destination";
   const destinationCountry = parcelDetails?.receiver?.country || "";
 
+  // Get Forwarding Info directly from AWB Database
+  const forwardingNumber = parcelDetails?.forwardingNumber;
+  const forwardingLink = parcelDetails?.forwardingLink;
+  const hasForwardingInfo = !!(forwardingNumber || forwardingLink);
+
   const copyTrackingNumber = () => {
     navigator.clipboard.writeText(trackingNumber);
     setCopied(true);
     setTimeout(() => setCopied(false), 2000);
   };
 
-  const copyForwardingNumber = (number) => {
-    navigator.clipboard.writeText(number);
-    setCopiedForwarding(true);
-    setTimeout(() => setCopiedForwarding(false), 2000);
+  const copyForwardingNumber = () => {
+    if (forwardingNumber) {
+      navigator.clipboard.writeText(forwardingNumber);
+      setCopiedForwarding(true);
+      setTimeout(() => setCopiedForwarding(false), 2000);
+    }
+  };
+
+  // WhatsApp Share Handler with Beautified Message
+  const handleWhatsAppShare = () => {
+    let cleanUrl = "";
+    if (typeof window !== 'undefined') {
+      // Remove http:// or https:// from the URL
+      cleanUrl = window.location.href.replace(/^https?:\/\//, '');
+    }
+    
+    // Get current data
+    const currentStatus = mergedTimeline[0]?.status || "In Transit";
+    const currentLocation = mergedTimeline[0]?.location || "";
+    const org = parcelDetails?.sender?.city || parcelDetails?.sender?.country || "Origin";
+    const dst = parcelDetails?.receiver?.city || parcelDetails?.receiver?.country || "Destination";
+
+    // Format message
+    const message = 
+      `🚚 *Shipment Status Update*\n` +
+      `──────────────────\n` +
+      `📦 *Tracking ID:* ${trackingNumber}\n` +
+      `🚩 *Route:* ${org} ➡️ ${dst}\n` +
+      `📊 *Status:* ${currentStatus}\n` +
+      (currentLocation ? `📍 *Location:* ${currentLocation}\n` : "") +
+      `──────────────────\n` +
+      `👇 *Track Live Status:*\n` +
+      `${cleanUrl}`;
+
+    // Open WhatsApp
+    const whatsappUrl = `https://wa.me/?text=${encodeURIComponent(message)}`;
+    window.open(whatsappUrl, '_blank');
   };
 
   const fetchVendorTracking = async () => {
@@ -306,506 +347,364 @@ export default function TrackingDetails({ parcelDetails }) {
   const progress = calculateProgress(latestStatus, mergedTimeline);
   const groupedEvents = groupEventsByDate(mergedTimeline);
 
-  // Get forwarding info from API or database
-  const forwardingNumber = trackingInfo.ForwardingNo || 
-                           trackingInfo.ForwardingNo2 || 
-                           trackingInfo.forwarding_no ||
-                           parcelDetails?.forwardingNumber || 
-                           parcelDetails?.forwarding_number ||
-                           "";
-                           
-  const forwardingLink = trackingInfo.ForwardingURL || 
-                         trackingInfo.VendorLinkURL ||
-                         trackingInfo.VendorLinkURL1 ||
-                         trackingInfo.forwarding_url ||
-                         parcelDetails?.forwardingLink || 
-                         parcelDetails?.forwarding_link ||
-                         "";
-
-  const hasForwardingInfo = forwardingNumber || forwardingLink;
-
   if (!parcelDetails) return null;
 
   return (
-    <div className="max-w-2xl mx-auto p-3 sm:p-4 md:p-6 space-y-4 md:space-y-5">
+    <div className="w-full max-w-5xl mx-auto p-4 md:p-8 space-y-8 animate-in fade-in duration-500">
       
-      {/* ========== HERO SECTION ========== */}
-      <div className={`relative rounded-2xl md:rounded-3xl overflow-hidden shadow-2xl ${
+      {/* ========== HERO CARD ========== */}
+      <Card className={`border-0 shadow-2xl overflow-hidden relative ${
         isDelivered 
-          ? "bg-gradient-to-br from-emerald-400 via-emerald-500 to-teal-600" 
-          : "bg-gradient-to-br from-indigo-500 via-purple-500 to-pink-500"
+          ? "bg-gradient-to-br from-emerald-500 via-teal-600 to-cyan-600" 
+          : "bg-gradient-to-br from-indigo-600 via-purple-600 to-pink-600"
       }`}>
-        {/* Animated Background */}
-        <div className="absolute inset-0 overflow-hidden">
-          <div className="absolute top-0 -right-20 w-60 h-60 bg-white/10 rounded-full blur-3xl animate-pulse" />
-          <div className="absolute -bottom-20 -left-20 w-60 h-60 bg-white/10 rounded-full blur-3xl animate-pulse delay-700" />
-          <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-96 h-96 bg-white/5 rounded-full blur-3xl" />
-        </div>
-        
-        <div className="relative z-10 p-5 sm:p-6 md:p-8">
-          {/* Origin & Destination */}
-          <div className="flex items-center justify-between mb-6 md:mb-8">
-            {/* Origin */}
-            <div className="flex items-center gap-2 sm:gap-3">
-              <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-xl bg-white/20 backdrop-blur-sm flex items-center justify-center">
-                <Send className="w-5 h-5 sm:w-6 sm:h-6 text-white" />
-              </div>
-              <div>
-                <p className="text-[10px] sm:text-xs text-white/60 uppercase tracking-wider font-medium">From</p>
-                <p className="text-sm sm:text-base md:text-lg font-bold text-white leading-tight">{origin}</p>
-                {originCountry && origin !== originCountry && (
-                  <p className="text-xs text-white/70">{originCountry}</p>
-                )}
-              </div>
-            </div>
+        {/* Abstract Shapes */}
+        <div className="absolute top-0 right-0 w-64 h-64 bg-white/10 rounded-full -translate-y-1/2 translate-x-1/2 blur-3xl" />
+        <div className="absolute bottom-0 left-0 w-64 h-64 bg-white/10 rounded-full translate-y-1/2 -translate-x-1/2 blur-3xl" />
+
+        <div className="relative z-10 p-6 md:p-10 text-white">
+          <div className="flex flex-col md:flex-row items-center justify-between gap-8">
             
-            {/* Arrow */}
-            <div className="flex-1 flex items-center justify-center px-2 sm:px-4">
-              <div className="relative w-full max-w-[120px] sm:max-w-[160px]">
-                <div className="h-[2px] w-full bg-white/30 rounded-full" />
-                <div 
-                  className="absolute top-0 left-0 h-[2px] bg-white rounded-full transition-all duration-1000 ease-out"
-                  style={{ width: `${progress}%` }}
-                />
-                <div 
-                  className="absolute top-1/2 -translate-y-1/2 transition-all duration-1000 ease-out"
-                  style={{ left: `calc(${Math.min(progress, 90)}% - 10px)` }}
-                >
-                  <div className="w-5 h-5 sm:w-6 sm:h-6 rounded-full bg-white flex items-center justify-center shadow-lg">
-                    {isDelivered ? (
-                      <PackageCheck className="w-3 h-3 sm:w-4 sm:h-4 text-emerald-600" />
-                    ) : (
-                      <Plane className="w-3 h-3 sm:w-4 sm:h-4 text-indigo-600 animate-pulse" />
-                    )}
-                  </div>
-                </div>
+            {/* Tracking Number Section */}
+            <div className="text-center md:text-left flex-1 min-w-0">
+              <div className="inline-flex items-center gap-2 bg-white/20 backdrop-blur-md px-3 py-1 rounded-full mb-4">
+                <Globe className="w-3.5 h-3.5" />
+                <span className="text-xs font-semibold tracking-wide uppercase">Global Tracking</span>
               </div>
-            </div>
-            
-            {/* Destination */}
-            <div className="flex items-center gap-2 sm:gap-3">
-              <div className="text-right">
-                <p className="text-[10px] sm:text-xs text-white/60 uppercase tracking-wider font-medium">To</p>
-                <p className="text-sm sm:text-base md:text-lg font-bold text-white leading-tight">{destination}</p>
-                {destinationCountry && destination !== destinationCountry && (
-                  <p className="text-xs text-white/70">{destinationCountry}</p>
-                )}
-              </div>
-              <div className={`w-10 h-10 sm:w-12 sm:h-12 rounded-xl flex items-center justify-center ${
-                isDelivered ? "bg-white/30" : "bg-white/20"
-              } backdrop-blur-sm`}>
-                <Flag className={`w-5 h-5 sm:w-6 sm:h-6 text-white ${isDelivered ? "fill-white" : ""}`} />
-              </div>
-            </div>
-          </div>
-          
-          {/* Tracking Number */}
-          <div className="text-center">
-            <p className="text-white/60 text-xs sm:text-sm mb-1">Tracking Number</p>
-            <div className="flex items-center justify-center gap-2 sm:gap-3">
-              <h1 className="text-2xl sm:text-3xl md:text-4xl lg:text-5xl font-black text-white tracking-wider font-mono select-all">
+              
+              <h1 className="text-3xl md:text-5xl font-black tracking-tight font-mono mb-3 break-all">
                 {trackingNumber}
               </h1>
-              <button
-                onClick={copyTrackingNumber}
-                className="p-2 sm:p-2.5 rounded-full bg-white/20 hover:bg-white/30 active:scale-95 transition-all duration-200"
-              >
-                {copied ? (
-                  <Check className="w-4 h-4 sm:w-5 sm:h-5 text-white" />
-                ) : (
-                  <Copy className="w-4 h-4 sm:w-5 sm:h-5 text-white" />
-                )}
-              </button>
-            </div>
-            {copied && (
-              <p className="text-xs text-white/80 mt-2 animate-bounce">✓ Copied to clipboard</p>
-            )}
-          </div>
-          
-          {/* Current Status */}
-          <div className="mt-6 md:mt-8 flex flex-col items-center">
-            <div className={`inline-flex items-center gap-2 px-4 sm:px-5 py-2 sm:py-2.5 rounded-full shadow-xl transition-all duration-300 ${
-              isDelivered 
-                ? "bg-white text-emerald-700" 
-                : "bg-white text-indigo-700"
-            }`}>
-              {isLoading ? (
-                <Loader2 className="w-4 h-4 sm:w-5 sm:h-5 animate-spin" />
-              ) : (
-                getStatusIcon(latestStatus)
-              )}
-              <span className="font-bold text-sm sm:text-base md:text-lg">
-                {isLoading ? "Updating..." : latestStatus}
-              </span>
-            </div>
-            
-            {latestLocation && !isLoading && (
-              <div className="mt-3 flex items-center gap-1.5 text-white/80 text-xs sm:text-sm">
-                <MapPin className="w-3.5 h-3.5" />
-                <span>{latestLocation}</span>
-              </div>
-            )}
-          </div>
-        </div>
-      </div>
-
-      {/* ========== FORWARDING INFO ========== */}
-      {hasForwardingInfo && (
-        <Card className="border-0 shadow-lg overflow-hidden bg-gradient-to-r from-amber-50 via-orange-50 to-yellow-50">
-          <CardContent className="p-4 sm:p-5">
-            <div className="flex items-start gap-3 sm:gap-4">
-              {/* Icon */}
-              <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-xl bg-gradient-to-br from-amber-400 to-orange-500 flex items-center justify-center shadow-lg shadow-amber-200 flex-shrink-0">
-                <Share2 className="w-5 h-5 sm:w-6 sm:h-6 text-white" />
-              </div>
               
-              {/* Content */}
-              <div className="flex-1 min-w-0">
-                <h3 className="font-bold text-gray-900 text-sm sm:text-base mb-2">Partner Tracking</h3>
-                
-                <div className="space-y-2">
-                  {/* Forwarding Number */}
-                  {forwardingNumber && (
-                    <div className="flex items-center gap-2 flex-wrap">
-                      <span className="text-xs sm:text-sm text-gray-500">Forwarding No:</span>
-                      <div className="flex items-center gap-1.5">
-                        <code className="font-mono font-bold text-sm sm:text-base text-gray-900 bg-white px-2 py-0.5 rounded border border-gray-200">
-                          {forwardingNumber}
-                        </code>
-                        <button
-                          onClick={() => copyForwardingNumber(forwardingNumber)}
-                          className="p-1.5 rounded-md bg-white hover:bg-gray-100 border border-gray-200 transition-all active:scale-95"
-                        >
-                          {copiedForwarding ? (
-                            <Check className="w-3.5 h-3.5 text-emerald-600" />
-                          ) : (
-                            <Copy className="w-3.5 h-3.5 text-gray-500" />
-                          )}
-                        </button>
-                      </div>
-                    </div>
-                  )}
-                  
-                  {/* Forwarding Link */}
-                  {forwardingLink && (
-                    <div className="flex items-center gap-2 flex-wrap">
-                      <a
-                        href={forwardingLink}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="inline-flex items-center gap-2 px-3 sm:px-4 py-2 bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-600 hover:to-orange-600 text-white font-semibold text-xs sm:text-sm rounded-lg shadow-md hover:shadow-lg transition-all duration-200 active:scale-95"
-                      >
-                        <ExternalLink className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
-                        Track with Partner
-                      </a>
-                    </div>
-                  )}
-                </div>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-      )}
-
-      {/* ========== PROGRESS STEPS ========== */}
-      <Card className="border-0 shadow-lg overflow-hidden">
-        <CardContent className="p-4 sm:p-5 md:p-6">
-          <div className="flex items-center justify-between relative">
-            {/* Progress Line Background */}
-            <div className="absolute top-5 left-0 right-0 h-1 bg-gray-100 rounded-full mx-6 sm:mx-8" />
-            <div 
-              className={`absolute top-5 left-0 h-1 rounded-full mx-6 sm:mx-8 transition-all duration-1000 ${
-                isDelivered 
-                  ? "bg-gradient-to-r from-emerald-400 to-emerald-500" 
-                  : "bg-gradient-to-r from-indigo-400 via-purple-400 to-pink-400"
-              }`}
-              style={{ width: `calc(${progress}% - 48px)` }}
-            />
-            
-            {[
-              { icon: Package, label: "Booked", step: 1 },
-              { icon: Warehouse, label: "Picked", step: 2 },
-              { icon: Plane, label: "Transit", step: 3 },
-              { icon: ClipboardCheck, label: "Customs", step: 4 },
-              { icon: Truck, label: "Out", step: 5 },
-              { icon: Home, label: "Done", step: 6 },
-            ].map((milestone, index) => {
-              const stepProgress = (index + 1) * (100 / 6);
-              const isCompleted = progress >= stepProgress;
-              const isCurrent = progress >= stepProgress - (100 / 6) && progress < stepProgress;
-              
-              return (
-                <div key={index} className="relative z-10 flex flex-col items-center">
-                  <div className={`w-8 h-8 sm:w-10 sm:h-10 rounded-full flex items-center justify-center transition-all duration-500 ${
-                    isCompleted 
-                      ? "bg-emerald-500 text-white shadow-lg shadow-emerald-200 scale-100" 
-                      : isCurrent 
-                        ? "bg-indigo-500 text-white shadow-lg shadow-indigo-200 scale-110 ring-4 ring-indigo-100" 
-                        : "bg-gray-100 text-gray-400"
-                  }`}>
-                    <milestone.icon className="w-4 h-4 sm:w-5 sm:h-5" />
-                  </div>
-                  <span className={`mt-2 text-[9px] sm:text-[10px] font-semibold transition-colors duration-300 ${
-                    isCompleted || isCurrent ? "text-gray-800" : "text-gray-400"
-                  }`}>
-                    {milestone.label}
-                  </span>
-                </div>
-              );
-            })}
-          </div>
-        </CardContent>
-      </Card>
-
-      {/* ========== ERROR ========== */}
-      {error && (
-        <Card className="border-red-200 bg-gradient-to-r from-red-50 to-rose-50 shadow-md overflow-hidden">
-          <CardContent className="p-4 flex items-center gap-3">
-            <div className="w-10 h-10 rounded-full bg-red-100 flex items-center justify-center flex-shrink-0">
-              <AlertCircle className="w-5 h-5 text-red-500" />
-            </div>
-            <div className="flex-1 min-w-0">
-              <p className="font-semibold text-red-800 text-sm">Failed to load</p>
-              <p className="text-red-600 text-xs truncate">{error}</p>
-            </div>
-            <Button 
-              variant="ghost" 
-              size="sm"
-              onClick={fetchVendorTracking}
-              className="text-red-600 hover:text-red-700 hover:bg-red-100 shrink-0"
-            >
-              <RefreshCw className="w-4 h-4" />
-            </Button>
-          </CardContent>
-        </Card>
-      )}
-
-      {/* ========== TIMELINE ========== */}
-      <Card className="border-0 shadow-xl overflow-hidden">
-        <CardHeader className="bg-gradient-to-r from-gray-50 to-white py-4 px-4 sm:px-5 border-b">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-2.5">
-              <div className="w-8 h-8 sm:w-9 sm:h-9 rounded-lg bg-indigo-100 flex items-center justify-center">
-                <Clock className="w-4 h-4 sm:w-5 sm:h-5 text-indigo-600" />
-              </div>
-              <div>
-                <CardTitle className="text-sm sm:text-base font-bold text-gray-900">Tracking History</CardTitle>
-                {mergedTimeline.length > 0 && (
-                  <p className="text-[10px] sm:text-xs text-gray-500">{mergedTimeline.length} updates</p>
-                )}
-              </div>
-            </div>
-            <Button 
-              variant="ghost" 
-              size="sm"
-              onClick={fetchVendorTracking}
-              disabled={isLoading}
-              className="text-gray-500 hover:text-gray-700 h-8 w-8 sm:h-9 sm:w-9 p-0 rounded-full hover:bg-gray-100"
-            >
-              <RefreshCw className={`w-4 h-4 ${isLoading ? "animate-spin" : ""}`} />
-            </Button>
-          </div>
-        </CardHeader>
-        
-        <CardContent className="p-0">
-          {isLoading && mergedTimeline.length === 0 ? (
-            <div className="flex flex-col items-center justify-center py-12 sm:py-16 px-4">
-              <div className="relative">
-                <div className="w-14 h-14 sm:w-16 sm:h-16 rounded-full border-4 border-indigo-100 border-t-indigo-500 animate-spin" />
-                <div className="absolute inset-0 flex items-center justify-center">
-                  <Package className="w-5 h-5 sm:w-6 sm:h-6 text-indigo-500" />
-                </div>
-              </div>
-              <p className="font-semibold text-gray-700 mt-4 text-sm sm:text-base">Loading updates...</p>
-              <p className="text-xs sm:text-sm text-gray-400 mt-1">Please wait</p>
-            </div>
-          ) : mergedTimeline.length === 0 ? (
-            <div className="flex flex-col items-center justify-center py-12 sm:py-16 px-4">
-              <div className="w-16 h-16 sm:w-20 sm:h-20 rounded-full bg-gray-100 flex items-center justify-center mb-4">
-                <Package className="w-8 h-8 sm:w-10 sm:h-10 text-gray-300" />
-              </div>
-              <p className="font-semibold text-gray-700 text-sm sm:text-base">No updates yet</p>
-              <p className="text-xs sm:text-sm text-gray-400 mt-1 text-center">Tracking info will appear here</p>
-              {hasVendorIntegration && (
-                <Button 
-                  variant="outline" 
-                  size="sm" 
-                  className="mt-4"
-                  onClick={fetchVendorTracking}
+              <div className="flex items-center justify-center md:justify-start gap-3 mt-2 flex-wrap">
+                {/* Copy Button */}
+                <button 
+                  onClick={copyTrackingNumber}
+                  className="inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-white/10 hover:bg-white/20 transition-all text-sm font-medium backdrop-blur-sm active:scale-95"
                 >
-                  <RefreshCw className="w-4 h-4 mr-2" />
-                  Refresh
-                </Button>
+                  {copied ? <Check className="w-4 h-4 text-emerald-300" /> : <Copy className="w-4 h-4" />}
+                  {copied ? "Copied" : "Copy Number"}
+                </button>
+
+                {/* WhatsApp Share Button */}
+                <button 
+                  onClick={handleWhatsAppShare}
+                  className="inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-green-500 hover:bg-green-600 text-white transition-all text-sm font-medium shadow-lg shadow-green-900/20 active:scale-95"
+                >
+                  <FaWhatsapp className="w-4 h-4" />
+                  Share Status
+                </button>
+              </div>
+            </div>
+
+            {/* Status Section */}
+            <div className="text-center md:text-right shrink-0">
+              <div className={`inline-flex items-center gap-3 px-6 py-3 rounded-2xl shadow-lg backdrop-blur-sm ${
+                isDelivered ? "bg-emerald-900/30 border border-emerald-400/30" : "bg-white/20 border border-white/20"
+              }`}>
+                {isLoading ? (
+                  <Loader2 className="w-6 h-6 animate-spin" />
+                ) : (
+                  <div className="p-1.5 bg-white rounded-full text-indigo-600">
+                    {getStatusIcon(latestStatus)}
+                  </div>
+                )}
+                <div className="text-left">
+                  <p className="text-xs uppercase tracking-wider opacity-80">Current Status</p>
+                  <p className="font-bold text-lg md:text-xl leading-none">
+                    {isLoading ? "Updating..." : latestStatus}
+                  </p>
+                </div>
+              </div>
+              
+              {/* Added gap here using mt-6 */}
+              {latestLocation && !isLoading && (
+                <div className="mt-6 inline-flex items-center gap-1.5 text-white/90 bg-black/20 px-4 py-1.5 rounded-full text-sm font-medium backdrop-blur-sm border border-white/10">
+                  <MapPin className="w-3.5 h-3.5" />
+                  {latestLocation}
+                </div>
               )}
             </div>
-          ) : (
-            <div>
-              {Object.entries(groupedEvents).map(([date, events], groupIndex) => (
-                <div key={date}>
-                  {/* Date Header */}
-                  <div className="sticky top-0 z-10 bg-gray-50/95 backdrop-blur-sm px-4 sm:px-5 py-2.5 border-b border-gray-100">
-                    <div className="flex items-center gap-2 text-xs sm:text-sm font-semibold text-gray-600">
-                      <Calendar className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-indigo-500" />
-                      {date}
-                    </div>
+          </div>
+
+          {/* Progress Visualizer */}
+          <div className="mt-12 pt-8 border-t border-white/10">
+            <div className="flex items-center justify-between text-sm font-medium opacity-90 mb-4">
+              <div className="flex items-center gap-2">
+                <Send className="w-4 h-4" />
+                <span>{origin}</span>
+              </div>
+              <div className="flex items-center gap-2">
+                <span>{destination}</span>
+                <Flag className="w-4 h-4" />
+              </div>
+            </div>
+            
+            <div className="relative h-2 bg-black/20 rounded-full overflow-hidden">
+              <div 
+                className="absolute top-0 left-0 h-full bg-white transition-all duration-1000 ease-out rounded-full shadow-[0_0_10px_rgba(255,255,255,0.5)]"
+                style={{ width: `${progress}%` }}
+              />
+            </div>
+            
+            <div className="flex justify-between mt-6 px-2">
+              {[
+                { icon: Package, label: "Booked", step: 10 },
+                { icon: Plane, label: "Transit", step: 45 },
+                { icon: ClipboardCheck, label: "Customs", step: 65 },
+                { icon: Truck, label: "Out", step: 85 },
+                { icon: Home, label: "Delivered", step: 100 },
+              ].map((step, idx) => (
+                <div key={idx} className="flex flex-col items-center gap-2">
+                  <div className={`p-2 rounded-full transition-all duration-500 ${
+                    progress >= step.step ? "bg-white text-indigo-600 scale-110" : "bg-black/20 text-white/50"
+                  }`}>
+                    <step.icon className="w-4 h-4 md:w-5 md:h-5" />
                   </div>
-                  
-                  {/* Events */}
-                  {events.map((event, index) => {
-                    const isFirst = groupIndex === 0 && index === 0;
-                    const isLast = groupIndex === Object.keys(groupedEvents).length - 1 && 
-                                   index === events.length - 1;
-                    
-                    return (
-                      <div 
-                        key={`${event.timestamp}-${index}`}
-                        className={`relative flex items-start gap-3 sm:gap-4 px-4 sm:px-5 py-4 sm:py-5 transition-all duration-300 hover:bg-gray-50/50 ${
-                          isFirst ? "bg-gradient-to-r from-emerald-50/50 to-transparent" : ""
-                        }`}
-                      >
-                        {/* Timeline Line & Dot */}
-                        <div className="relative flex flex-col items-center flex-shrink-0">
-                          {!(groupIndex === 0 && index === 0) && (
-                            <div className="absolute bottom-1/2 w-0.5 h-full bg-gradient-to-t from-gray-200 to-transparent" />
-                          )}
-                          
-                          <div className={`relative z-10 w-9 h-9 sm:w-10 sm:h-10 rounded-xl border-2 flex items-center justify-center transition-all duration-300 ${
-                            isFirst 
-                              ? "border-emerald-400 bg-emerald-50 text-emerald-600 shadow-lg shadow-emerald-100 scale-105" 
-                              : getStatusColor(event.status, false)
-                          }`}>
-                            {getStatusIcon(event.status)}
-                          </div>
-                          
-                          {!isLast && (
-                            <div className="absolute top-1/2 w-0.5 h-full bg-gradient-to-b from-gray-200 to-transparent" />
-                          )}
-                        </div>
-                        
-                        {/* Content */}
-                        <div className="flex-1 min-w-0 pt-0.5">
-                          <div className="flex items-start justify-between gap-2">
-                            {/* Status & Comment */}
-                            <div className="flex-1 min-w-0">
-                              <div className="flex items-center gap-2 flex-wrap">
-                                <h3 className={`font-bold text-sm sm:text-base leading-tight ${
-                                  isFirst ? "text-emerald-700" : "text-gray-900"
-                                }`}>
-                                  {event.status}
-                                </h3>
-                                {isFirst && (
-                                  <Badge className="bg-emerald-100 text-emerald-700 border-0 text-[9px] sm:text-[10px] px-1.5 py-0 h-4 sm:h-5 font-semibold">
-                                    Latest
-                                  </Badge>
-                                )}
-                              </div>
-                              
-                              {/* Time - Mobile */}
-                              <p className="text-[10px] sm:text-xs text-gray-400 mt-0.5 sm:hidden">
-                                {formatTime(event.timestamp)}
-                              </p>
-                              
-                              {event.comment && (
-                                <div className="mt-2 flex items-start gap-2 text-xs sm:text-sm text-gray-600 bg-amber-50 border border-amber-100 rounded-lg p-2 sm:p-2.5">
-                                  <MessageSquare className="w-3.5 h-3.5 text-amber-500 mt-0.5 flex-shrink-0" />
-                                  <span className="leading-relaxed">{event.comment}</span>
-                                </div>
-                              )}
-                            </div>
-                            
-                            {/* Right Side - Location & Time */}
-                            <div className="flex flex-col items-end gap-1 shrink-0">
-                              {/* Time - Desktop */}
-                              <time className="hidden sm:block text-xs text-gray-400 font-medium tabular-nums bg-gray-100 px-2 py-0.5 rounded">
-                                {formatTime(event.timestamp)}
-                              </time>
-                              
-                              {/* Location */}
-                              {event.location && (
-                                <div className="flex items-center gap-1 text-[10px] sm:text-xs text-gray-500 bg-gray-50 sm:bg-transparent px-1.5 py-0.5 sm:p-0 rounded">
-                                  <MapPin className="w-3 h-3 text-gray-400" />
-                                  <span className="max-w-[80px] sm:max-w-[120px] truncate">{event.location}</span>
-                                </div>
-                              )}
-                            </div>
-                          </div>
-                        </div>
-                      </div>
-                    );
-                  })}
+                  <span className={`text-[10px] md:text-xs font-medium uppercase tracking-wider ${
+                    progress >= step.step ? "opacity-100" : "opacity-50"
+                  }`}>
+                    {step.label}
+                  </span>
                 </div>
               ))}
             </div>
-          )}
-        </CardContent>
-      </Card>
-
-      {/* ========== SHIPMENT DETAILS ========== */}
-      <Card className="border-0 shadow-xl overflow-hidden">
-        <CardHeader className="bg-gradient-to-r from-slate-800 to-slate-900 py-3.5 sm:py-4 px-4 sm:px-5">
-          <CardTitle className="flex items-center gap-2 text-sm sm:text-base text-white font-semibold">
-            <Package className="w-4 h-4 sm:w-5 sm:h-5" />
-            Shipment Details
-          </CardTitle>
-        </CardHeader>
-        <CardContent className="p-0">
-          <div className="grid grid-cols-1 sm:grid-cols-2">
-            {/* Sender */}
-            <div className="p-4 sm:p-5 border-b sm:border-b-0 sm:border-r border-gray-100">
-              <div className="flex items-center gap-2.5 sm:gap-3 mb-3">
-                <div className="w-8 h-8 sm:w-9 sm:h-9 rounded-full bg-gradient-to-br from-blue-400 to-blue-500 flex items-center justify-center shadow-md shadow-blue-200">
-                  <ArrowRight className="w-4 h-4 text-white rotate-180" />
-                </div>
-                <div className="min-w-0">
-                  <p className="text-[9px] sm:text-[10px] text-gray-400 uppercase tracking-wider font-semibold">Sender</p>
-                  <p className="font-bold text-gray-900 text-sm sm:text-base truncate">{parcelDetails?.sender?.name}</p>
-                </div>
-              </div>
-              <div className="pl-[42px] sm:pl-12 space-y-0.5 text-xs sm:text-sm text-gray-600">
-                <p className="line-clamp-2 leading-relaxed">{parcelDetails?.sender?.address}</p>
-                {parcelDetails?.sender?.city && (
-                  <p>
-                    {parcelDetails.sender.city}
-                    {parcelDetails.sender.state && `, ${parcelDetails.sender.state}`} 
-                    {parcelDetails.sender.zip && ` - ${parcelDetails.sender.zip}`}
-                  </p>
-                )}
-                <p className="font-semibold text-gray-800">{parcelDetails?.sender?.country}</p>
-              </div>
-            </div>
-            
-            {/* Receiver */}
-            <div className="p-4 sm:p-5">
-              <div className="flex items-center gap-2.5 sm:gap-3 mb-3">
-                <div className="w-8 h-8 sm:w-9 sm:h-9 rounded-full bg-gradient-to-br from-emerald-400 to-emerald-500 flex items-center justify-center shadow-md shadow-emerald-200">
-                  <ArrowRight className="w-4 h-4 text-white" />
-                </div>
-                <div className="min-w-0">
-                  <p className="text-[9px] sm:text-[10px] text-gray-400 uppercase tracking-wider font-semibold">Receiver</p>
-                  <p className="font-bold text-gray-900 text-sm sm:text-base truncate">{parcelDetails?.receiver?.name}</p>
-                </div>
-              </div>
-              <div className="pl-[42px] sm:pl-12 space-y-0.5 text-xs sm:text-sm text-gray-600">
-                <p className="line-clamp-2 leading-relaxed">{parcelDetails?.receiver?.address}</p>
-                {parcelDetails?.receiver?.city && (
-                  <p>
-                    {parcelDetails.receiver.city}
-                    {parcelDetails.receiver.state && `, ${parcelDetails.receiver.state}`} 
-                    {parcelDetails.receiver.zip && ` - ${parcelDetails.receiver.zip}`}
-                  </p>
-                )}
-                <p className="font-semibold text-gray-800">{parcelDetails?.receiver?.country}</p>
-              </div>
-            </div>
           </div>
-        </CardContent>
+        </div>
       </Card>
 
-      {/* ========== FOOTER ========== */}
-      <div className="text-center py-2 sm:py-4">
-        <p className="text-[10px] sm:text-xs text-gray-400">
-          Last updated: {new Date().toLocaleString()}
-        </p>
+      {/* ========== FORWARDING INFO (PARTNER CARRIER) ========== */}
+      {hasForwardingInfo && (
+        <Card className="border border-orange-100 bg-orange-50/50 shadow-sm overflow-hidden">
+          <div className="absolute top-0 left-0 w-1 h-full bg-orange-400" />
+          <CardContent className="p-6">
+            <div className="flex flex-col md:flex-row items-start md:items-center gap-6">
+              <div className="w-12 h-12 rounded-full bg-orange-100 flex items-center justify-center shrink-0">
+                <Share2 className="w-6 h-6 text-orange-600" />
+              </div>
+              
+              <div className="flex-1">
+                <h3 className="text-lg font-bold text-gray-900 mb-1">Handed Over to Partner Carrier</h3>
+                <p className="text-sm text-gray-600 mb-4">
+                  This shipment is being completed by a local delivery partner. Use the details below to track on their website.
+                </p>
+                
+                <div className="flex flex-wrap gap-4">
+                  {forwardingNumber && (
+                    <div className="bg-white border border-orange-200 rounded-lg px-4 py-2 flex items-center gap-3 shadow-sm">
+                      <div>
+                        <p className="text-[10px] text-gray-500 uppercase font-bold">Forwarding Number</p>
+                        <p className="font-mono text-base font-bold text-gray-900">{forwardingNumber}</p>
+                      </div>
+                      <button 
+                        onClick={copyForwardingNumber}
+                        className="p-1.5 hover:bg-gray-100 rounded-md transition-colors"
+                      >
+                        {copiedForwarding ? (
+                          <Check className="w-4 h-4 text-green-600" />
+                        ) : (
+                          <Copy className="w-4 h-4 text-gray-400" />
+                        )}
+                      </button>
+                    </div>
+                  )}
+                  
+                  {forwardingLink && (
+                    <a 
+                      href={forwardingLink} 
+                      target="_blank" 
+                      rel="noopener noreferrer"
+                      className="inline-flex items-center gap-2 bg-orange-600 hover:bg-orange-700 text-white px-5 py-2 rounded-lg font-medium shadow-md transition-all active:scale-95 h-full self-end"
+                    >
+                      Track on Partner Site <ExternalLink className="w-4 h-4" />
+                    </a>
+                  )}
+                </div>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
+      {/* ========== ERROR MESSAGE ========== */}
+      {error && (
+        <Card className="border-red-200 bg-red-50">
+          <CardContent className="p-4 flex items-center gap-4">
+            <AlertCircle className="w-6 h-6 text-red-500 shrink-0" />
+            <div className="flex-1">
+              <p className="font-bold text-red-800">Tracking Update Failed</p>
+              <p className="text-sm text-red-600">{error}</p>
+            </div>
+            <Button variant="outline" size="sm" onClick={fetchVendorTracking} className="border-red-200 text-red-700 hover:bg-red-100">
+              <RefreshCw className="w-4 h-4 mr-2" /> Retry
+            </Button>
+          </CardContent>
+        </Card>
+      )}
+
+      {/* ========== TWO COLUMN LAYOUT (TIMELINE & DETAILS) ========== */}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+        
+        {/* LEFT COLUMN: TIMELINE */}
+        <div className="lg:col-span-2 space-y-6">
+          <div className="flex items-center justify-between">
+            <h2 className="text-xl font-bold text-gray-900 flex items-center gap-2">
+              <Clock className="w-5 h-5 text-indigo-600" /> Shipment Progress
+            </h2>
+            <Button 
+              variant="ghost" 
+              size="sm" 
+              onClick={fetchVendorTracking} 
+              disabled={isLoading}
+              className="text-gray-500 hover:text-indigo-600"
+            >
+              <RefreshCw className={`w-4 h-4 mr-2 ${isLoading ? "animate-spin" : ""}`} />
+              Refresh
+            </Button>
+          </div>
+
+          <Card className="border-0 shadow-xl overflow-hidden bg-white/50 backdrop-blur-sm">
+            <CardContent className="p-0">
+              {isLoading && mergedTimeline.length === 0 ? (
+                <div className="py-16 text-center">
+                  <Loader2 className="w-10 h-10 text-indigo-500 animate-spin mx-auto mb-4" />
+                  <p className="text-gray-500">Retrieving live status...</p>
+                </div>
+              ) : mergedTimeline.length === 0 ? (
+                <div className="py-16 text-center">
+                  <div className="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                    <Package className="w-8 h-8 text-gray-400" />
+                  </div>
+                  <p className="text-gray-900 font-medium">No tracking updates yet</p>
+                  <p className="text-sm text-gray-500">Status will appear here shortly</p>
+                </div>
+              ) : (
+                <div className="divide-y divide-gray-100">
+                  {Object.entries(groupedEvents).map(([date, events], groupIndex) => (
+                    <div key={date}>
+                      <div className="sticky top-0 z-10 bg-slate-50/95 backdrop-blur-sm px-6 py-2 border-b border-gray-100">
+                        <div className="flex items-center gap-2 text-xs font-bold text-slate-500 uppercase tracking-wider">
+                          <Calendar className="w-3.5 h-3.5" /> {date}
+                        </div>
+                      </div>
+                      
+                      {events.map((event, index) => {
+                        const isFirst = groupIndex === 0 && index === 0;
+                        
+                        return (
+                          <div 
+                            key={`${event.timestamp}-${index}`}
+                            className={`group flex gap-4 px-6 py-5 transition-all hover:bg-slate-50 ${isFirst ? "bg-indigo-50/30" : ""}`}
+                          >
+                            {/* Timeline Graphic */}
+                            <div className="flex flex-col items-center relative">
+                              <div className={`w-0.5 grow bg-gray-200 absolute top-4 bottom-0 ${index === events.length - 1 ? "hidden" : ""}`} />
+                              <div className={`relative z-10 w-10 h-10 rounded-full flex items-center justify-center border-2 shadow-sm transition-transform group-hover:scale-110 ${
+                                isFirst ? "bg-white border-emerald-500 text-emerald-600" : "bg-white border-slate-200 text-slate-400"
+                              }`}>
+                                {getStatusIcon(event.status)}
+                              </div>
+                            </div>
+
+                            {/* Content */}
+                            <div className="flex-1 min-w-0 pt-1">
+                              <div className="flex flex-wrap justify-between items-start gap-2 mb-1">
+                                <h3 className={`font-bold text-base ${isFirst ? "text-emerald-700" : "text-gray-900"}`}>
+                                  {event.status}
+                                </h3>
+                                <time className="text-xs font-semibold text-slate-500 bg-slate-100 px-2 py-1 rounded-md whitespace-nowrap">
+                                  {formatTime(event.timestamp)}
+                                </time>
+                              </div>
+
+                              <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-4 text-sm">
+                                {event.location && (
+                                  <div className="flex items-center gap-1 text-slate-600">
+                                    <MapPin className="w-3.5 h-3.5" />
+                                    <span>{event.location}</span>
+                                  </div>
+                                )}
+                              </div>
+
+                              {event.comment && (
+                                <div className="mt-3 p-3 bg-white border border-slate-100 rounded-lg text-sm text-slate-600 shadow-sm inline-block">
+                                  <div className="flex items-start gap-2">
+                                    <MessageSquare className="w-3.5 h-3.5 mt-0.5 text-slate-400" />
+                                    {event.comment}
+                                  </div>
+                                </div>
+                              )}
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  ))}
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        </div>
+
+        {/* RIGHT COLUMN: DETAILS */}
+        <div className="space-y-6">
+          <h2 className="text-xl font-bold text-gray-900 flex items-center gap-2">
+            <Package className="w-5 h-5 text-indigo-600" /> Details
+          </h2>
+
+          <Card className="border-0 shadow-lg overflow-hidden">
+            <CardContent className="p-0">
+              <div className="bg-slate-50 p-4 border-b border-slate-100">
+                <p className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-1">Origin</p>
+                <div className="flex items-start gap-3">
+                  <div className="mt-1">
+                    <CircleDot className="w-4 h-4 text-indigo-500" />
+                  </div>
+                  <div>
+                    <p className="font-bold text-gray-900">{parcelDetails?.sender?.name}</p>
+                    <p className="text-sm text-gray-600 line-clamp-2">{parcelDetails?.sender?.address}</p>
+                    <p className="text-sm font-semibold text-indigo-600 mt-1">{origin}</p>
+                  </div>
+                </div>
+              </div>
+
+              <div className="p-4">
+                <p className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-1">Destination</p>
+                <div className="flex items-start gap-3">
+                  <div className="mt-1">
+                    <MapPin className="w-4 h-4 text-emerald-500" />
+                  </div>
+                  <div>
+                    <p className="font-bold text-gray-900">{parcelDetails?.receiver?.name}</p>
+                    <p className="text-sm text-gray-600 line-clamp-2">{parcelDetails?.receiver?.address}</p>
+                    <p className="text-sm font-semibold text-emerald-600 mt-1">{destination}</p>
+                  </div>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* Quick Stats (Optional) */}
+          <div className="grid grid-cols-2 gap-4">
+            <Card className="bg-blue-50 border-blue-100 shadow-none">
+              <CardContent className="p-4 text-center">
+                <p className="text-xs text-blue-600 font-bold uppercase mb-1">Weight</p>
+                <p className="text-lg font-black text-blue-900">{trackingInfo.Weight || parcelDetails.totalWeight || "-"} kg</p>
+              </CardContent>
+            </Card>
+            <Card className="bg-purple-50 border-purple-100 shadow-none">
+              <CardContent className="p-4 text-center">
+                <p className="text-xs text-purple-600 font-bold uppercase mb-1">Pieces</p>
+                <p className="text-lg font-black text-purple-900">{parcelDetails.boxes?.length || "-"}</p>
+              </CardContent>
+            </Card>
+          </div>
+        </div>
+
+      </div>
+
+      <div className="text-center py-6 text-xs text-gray-400">
+        Tracking data updated: {new Date().toLocaleString()}
       </div>
     </div>
   );

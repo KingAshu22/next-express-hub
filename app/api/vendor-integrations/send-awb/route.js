@@ -194,7 +194,7 @@ async function sendToXpression(awb, vendor, serviceData) {
       responseData.Error?.[0]?.ErrorMessage ||
       responseData.Error?.[0]?.Message ||
       responseData.APIError ||
-      `Xpression Error Code: ${responseData.ErrorCode || "UNKNOWN"}`
+      `Xpression Error: ${responseData.Error[0]?.Description || "UNKNOWN"}`
 
     throw new Error(errorMessage)
   }

@@ -27,16 +27,16 @@ const ITD_KYC_TYPE_MAP = {
 async function getITDToken(credentials, vendorId) {
   const vendor = await VendorIntegration.findById(vendorId)
   const itdCreds = vendor.itdCredentials
-  
-  if (itdCreds.cachedToken && 
-      itdCreds.tokenExpiresAt && 
-      Date.now() < new Date(itdCreds.tokenExpiresAt).getTime() - 300000) {
+
+  if (itdCreds.cachedToken &&
+    itdCreds.tokenExpiresAt &&
+    Date.now() < new Date(itdCreds.tokenExpiresAt).getTime() - 300000) {
     return {
       token: itdCreds.cachedToken,
       customerId: itdCreds.cachedCustomerId,
     }
   }
-  
+
   const tokenUrl = `${credentials.apiUrl}/get_token`
   const response = await fetch(tokenUrl, {
     method: "POST",
@@ -47,23 +47,23 @@ async function getITDToken(credentials, vendorId) {
       password: credentials.password,
     }),
   })
-  
+
   if (!response.ok) {
     throw new Error(`ITD Auth API error: ${response.statusText}`)
   }
-  
+
   const result = await response.json()
-  
+
   if (!result.success || !result.data?.token) {
     throw new Error(result.errors?.join(", ") || "Failed to get ITD token")
   }
-  
+
   await VendorIntegration.findByIdAndUpdate(vendorId, {
     "itdCredentials.cachedToken": result.data.token,
     "itdCredentials.cachedCustomerId": result.data.customer_id,
     "itdCredentials.tokenExpiresAt": new Date(Date.now() + 24 * 60 * 60 * 1000),
   })
-  
+
   return {
     token: result.data.token,
     customerId: result.data.customer_id,
@@ -80,7 +80,7 @@ const cleanPhone = (phone) => {
 // Send to Xpression API
 async function sendToXpression(awb, vendor, serviceData) {
   const creds = vendor.xpressionCredentials
-  
+
   const totalShippingValue = Number.parseFloat(
     awb?.boxes.reduce((acc, box) => {
       return acc + box.items.reduce((itemAcc, item) => {
@@ -90,22 +90,22 @@ async function sendToXpression(awb, vendor, serviceData) {
       }, 0)
     }, 0)
   )
-  
+
   const destCountry = awb.receiver?.country?.trim()
   const countryCode = iso.getCode(destCountry)
-  
+
   if (!countryCode) {
     throw new Error(`Country "${destCountry}" not recognized by ISO-3166-1.`)
   }
-  
+
   const rawKycType = (awb.sender?.kyc?.type || "").toString().trim()
   const mappedDocumentType = KYC_TYPE_MAP[rawKycType] || null
-  const documentNumber = 
+  const documentNumber =
     (awb.sender?.kyc?.kyc && String(awb.sender.kyc.kyc).trim()) ||
     (awb.sender?.gst && String(awb.sender.gst).trim()) ||
     "00000000000000"
   const documentType = mappedDocumentType || (awb.sender?.gst ? "GSTIN (Normal)" : "Aadhaar Number")
-  
+
   const payload = {
     UserID: creds.userId,
     Password: creds.password,
@@ -169,36 +169,47 @@ async function sendToXpression(awb, vendor, serviceData) {
       })) || []
     ) || [],
   }
-  
+
   const response = await fetch(creds.apiUrl, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(payload),
   })
-  
+
   if (!response.ok) {
     throw new Error(`Xpression API error: ${response.statusText}`)
   }
-  
+
   const apiResponse = await response.json()
 
   console.log("Xpression API Response:", apiResponse)
 
   const responseData = apiResponse.Response || apiResponse
-  
+
   // Handle errors
   if (responseData.Status === "Fail") {
-    const errorMessage = responseData.APIError || responseData.ErrorCode || "Failed to generate AWB"
+    console.error("Xpression API Full Error:", JSON.stringify(responseData, null, 2))
+
+    const errorMessage =
+      responseData.Error?.[0]?.ErrorMessage ||
+      responseData.Error?.[0]?.Message ||
+      responseData.APIError ||
+      `Xpression Error Code: ${responseData.ErrorCode || "UNKNOWN"}`
+
     throw new Error(errorMessage)
   }
-  
+
   if (responseData.ResponseCode !== "RT01" || responseData.Status !== "Success") {
-    throw new Error(responseData.APIError || "Failed to generate AWB")
+    throw new Error(
+      responseData.Error?.[0]?.ErrorMessage ||
+      responseData.APIError ||
+      "Failed to generate AWB"
+    )
   }
-  
+
   // Build labels array
   const labels = []
-  
+
   if (responseData.Pdfdownload) {
     labels.push({
       type: "awb_label",
@@ -243,7 +254,7 @@ async function sendToXpression(awb, vendor, serviceData) {
       data: responseData.AuxLbl,
     })
   }
-  
+
   return {
     awbNumber: responseData.AWBNo,
     refNo: responseData.RefNo,
@@ -255,7 +266,7 @@ async function sendToXpression(awb, vendor, serviceData) {
 async function sendToITD(awb, vendor, serviceData) {
   const creds = vendor.itdCredentials
   const { token, customerId } = await getITDToken(creds, vendor._id)
-  
+
   const totalShippingValue = Number.parseFloat(
     awb?.boxes.reduce((acc, box) => {
       return acc + box.items.reduce((itemAcc, item) => {
@@ -265,11 +276,11 @@ async function sendToITD(awb, vendor, serviceData) {
       }, 0)
     }, 0)
   ) || 0
-  
+
   const totalActualWeight = awb.boxes
     ?.reduce((sum, box) => sum + Number.parseFloat(box.actualWeight || 0), 0)
     .toFixed(2) || "1.00"
-  
+
   const destCountry = awb.receiver?.country?.trim()
   let destCountryCode
   if (destCountry && destCountry.toLowerCase() === "united states of america") {
@@ -277,32 +288,32 @@ async function sendToITD(awb, vendor, serviceData) {
   } else {
     destCountryCode = iso.getCode(destCountry)
   }
-  
+
   const originCountry = awb.sender?.country?.trim() || "India"
   const originCountryCode = iso.getCode(originCountry) || "IN"
-  
+
   if (!destCountryCode) {
     throw new Error(`Destination country "${destCountry}" not recognized.`)
   }
-  
+
   const rawKycType = (awb.sender?.kyc?.type || "").toString().trim()
   const mappedDocumentType = ITD_KYC_TYPE_MAP[rawKycType] || null
-  const documentNumber = 
+  const documentNumber =
     (awb.sender?.kyc?.kyc && String(awb.sender.kyc.kyc).trim()) ||
     (awb.sender?.gst && String(awb.sender.gst).trim()) ||
     "000000000000"
   const documentType = mappedDocumentType || (awb.sender?.gst ? "GSTIN (Normal)" : "Aadhaar Number")
-  
+
   const now = new Date()
   const bookingDate = now.toISOString().split("T")[0]
   const bookingTime = now.toTimeString().split(" ")[0]
-  
+
   const invoiceNumber = awb.invoiceNumber || awb.invoice_number || `INV-${awb.trackingNumber}-${Date.now()}`
-  
+
   const shipmentContent = awb.boxes
     ?.map((box) => box.items?.map((item) => item.name).join(", "))
     .join("; ") || "General Goods"
-  
+
   const docketItems = awb.boxes?.map((box) => ({
     actual_weight: String(Number.parseFloat(box.actualWeight || 1).toFixed(2)),
     length: String(Number.parseFloat(box.length || 1).toFixed(2)),
@@ -310,7 +321,7 @@ async function sendToITD(awb, vendor, serviceData) {
     height: String(Number.parseFloat(box.height || 1).toFixed(2)),
     number_of_boxes: "1",
   })) || [{ actual_weight: "1.00", length: "10.00", width: "10.00", height: "10.00", number_of_boxes: "1" }]
-  
+
   const freeFormLineItems = awb.boxes?.flatMap((box, boxIndex) =>
     box.items?.map((item) => {
       const quantity = Number.parseInt(item.quantity, 10) || 1
@@ -318,7 +329,7 @@ async function sendToITD(awb, vendor, serviceData) {
       const total = quantity * rate
       const itemCount = box.items?.length || 1
       const unitWeight = Number.parseFloat(box.actualWeight || 1) / itemCount
-      
+
       return {
         total: String(total.toFixed(2)),
         no_of_packages: String(quantity),
@@ -332,7 +343,7 @@ async function sendToITD(awb, vendor, serviceData) {
       }
     }) || []
   ) || []
-  
+
   const kycDetails = []
   if (documentNumber && documentNumber !== "000000000000") {
     kycDetails.push({
@@ -343,9 +354,9 @@ async function sendToITD(awb, vendor, serviceData) {
       file_path: "",
     })
   }
-  
+
   const needsFreeFormInvoice = freeFormLineItems.length > 0 ? "1" : "0"
-  
+
   const payload = {
     tracking_no: awb.trackingNumber,
     reference_name: awb.sender?.name || "Reference",
@@ -400,7 +411,7 @@ async function sendToITD(awb, vendor, serviceData) {
     free_form_line_items: needsFreeFormInvoice === "1" ? freeFormLineItems : [],
     kyc_details: kycDetails,
   }
-  
+
   const createDocketUrl = `${creds.apiUrl}/create_docket`
   const response = await fetch(createDocketUrl, {
     method: "POST",
@@ -410,7 +421,7 @@ async function sendToITD(awb, vendor, serviceData) {
     },
     body: JSON.stringify(payload),
   })
-  
+
   const responseText = await response.text()
   let apiResponse
   try {
@@ -418,31 +429,31 @@ async function sendToITD(awb, vendor, serviceData) {
   } catch (parseError) {
     throw new Error(`Invalid response from ITD: ${responseText.substring(0, 200)}`)
   }
-  
+
   if (!apiResponse.success) {
     const errorMessages = Array.isArray(apiResponse.errors) && apiResponse.errors.length > 0
       ? apiResponse.errors.join("; ")
       : apiResponse.message || apiResponse.error || "Failed to create docket"
     throw new Error(errorMessages)
   }
-  
-  const awbNumber = apiResponse.data?.awb_no?.toString() || 
-                    apiResponse.data?.docket_no?.toString() || 
-                    apiResponse.data?.entry_number?.toString()
-  
+
+  const awbNumber = apiResponse.data?.awb_no?.toString() ||
+    apiResponse.data?.docket_no?.toString() ||
+    apiResponse.data?.entry_number?.toString()
+
   if (!awbNumber) {
     throw new Error("No AWB number received from ITD")
   }
-  
+
   // Build labels array from ITD response
   const labels = []
-  
+
   if (apiResponse.labels && Array.isArray(apiResponse.labels)) {
     apiResponse.labels.forEach((labelItem, index) => {
       if (labelItem.label) {
         let type = "label"
         let name = "Label"
-        
+
         if (labelItem.filename) {
           const filename = labelItem.filename.toLowerCase()
           if (filename.includes("shipper") || filename.includes("awb")) {
@@ -462,7 +473,7 @@ async function sendToITD(awb, vendor, serviceData) {
             name = name.charAt(0).toUpperCase() + name.slice(1)
           }
         }
-        
+
         labels.push({
           type: type,
           name: name,
@@ -472,7 +483,7 @@ async function sendToITD(awb, vendor, serviceData) {
       }
     })
   }
-  
+
   return {
     awbNumber: awbNumber,
     docketId: apiResponse.data?.docket_id,
@@ -484,9 +495,9 @@ async function sendToITD(awb, vendor, serviceData) {
 export async function POST(request) {
   try {
     await connectToDB()
-    
+
     const { awbId, vendorId, serviceData, productCode } = await request.json()
-    
+
     if (!awbId || !vendorId || !serviceData) {
       return new Response(
         JSON.stringify({
@@ -496,7 +507,7 @@ export async function POST(request) {
         { status: 400, headers: { "Content-Type": "application/json" } }
       )
     }
-    
+
     const awb = await Awb.findById(awbId)
     if (!awb) {
       return new Response(
@@ -504,7 +515,7 @@ export async function POST(request) {
         { status: 404, headers: { "Content-Type": "application/json" } }
       )
     }
-    
+
     if (awb.cNoteNumber && awb.cNoteVendorName) {
       return new Response(
         JSON.stringify({
@@ -514,7 +525,7 @@ export async function POST(request) {
         { status: 400, headers: { "Content-Type": "application/json" } }
       )
     }
-    
+
     const vendor = await VendorIntegration.findById(vendorId)
     if (!vendor) {
       return new Response(
@@ -522,16 +533,16 @@ export async function POST(request) {
         { status: 404, headers: { "Content-Type": "application/json" } }
       )
     }
-    
+
     if (!vendor.isActive) {
       return new Response(
         JSON.stringify({ success: false, error: "Vendor is not active" }),
         { status: 400, headers: { "Content-Type": "application/json" } }
       )
     }
-    
+
     let result
-    
+
     if (vendor.softwareType === "xpression") {
       result = await sendToXpression(awb, vendor, {
         ...serviceData,
@@ -551,21 +562,21 @@ export async function POST(request) {
         { status: 400, headers: { "Content-Type": "application/json" } }
       )
     }
-    
+
     // Update AWB with basic info only (no labels saved)
     awb.cNoteNumber = result.awbNumber
     awb.cNoteVendorName = vendor.vendorName
     awb.integratedVendorId = vendor._id
     awb.integratedService = serviceData.serviceName
-    
+
     await awb.save()
-    
+
     // Update vendor usage count
     await VendorIntegration.findByIdAndUpdate(vendorId, {
       $inc: { usageCount: 1 },
       lastUsedAt: new Date(),
     })
-    
+
     // Return labels in response for viewing (not saved to DB)
     return new Response(
       JSON.stringify({

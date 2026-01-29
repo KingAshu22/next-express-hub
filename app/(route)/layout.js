@@ -22,6 +22,7 @@ import {
 } from "@/components/ui/tooltip";
 import { useEffect, useState } from "react";
 import BackFooter from "../_components/BackFooter";
+import { GoogleTagManager } from '@next/third-parties/google'
 
 const inter = Inter({ subsets: ["latin"] });
 
@@ -153,6 +154,7 @@ export default function RootLayout({ children }) {
 
   return (
     <html lang="en" suppressHydrationWarning>
+      <GoogleTagManager gtmId="G-YW6H524P0C" />
       <body
         className={cn(inter.className, "min-h-screen bg-background antialiased")}
       >

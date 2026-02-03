@@ -2,8 +2,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
+import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import {
   Package,
@@ -17,7 +16,6 @@ import {
   RefreshCw,
   Loader2,
   CircleDot,
-  PackageCheck,
   PackageX,
   Warehouse,
   ClipboardCheck,
@@ -26,16 +24,15 @@ import {
   MessageSquare,
   Copy,
   Check,
-  ArrowRight,
   Send,
   Flag,
   ExternalLink,
   Share2,
   Globe,
-  Smartphone,
 } from "lucide-react";
 
 import { FaWhatsapp } from "react-icons/fa";
+
 // ------------------- HELPER FUNCTIONS -------------------
 
 const getStatusIcon = (status) => {
@@ -59,25 +56,6 @@ const getStatusIcon = (status) => {
     return <CircleDot className="w-4 h-4 md:w-5 md:h-5" />;
   
   return <CheckCircle className="w-4 h-4 md:w-5 md:h-5" />;
-};
-
-const getStatusColor = (status, isFirst) => {
-  if (isFirst) return "text-emerald-600 bg-emerald-50 border-emerald-200";
-  
-  const s = (status || "").toLowerCase();
-  
-  if (s.includes("delivered")) return "text-emerald-600 bg-emerald-50 border-emerald-200";
-  if (s.includes("out for delivery")) return "text-blue-600 bg-blue-50 border-blue-200";
-  if (s.includes("unsuccessful") || s.includes("failed") || s.includes("exception") || s.includes("delay"))
-    return "text-red-600 bg-red-50 border-red-200";
-  if (s.includes("customs") || s.includes("clearance"))
-    return "text-purple-600 bg-purple-50 border-purple-200";
-  if (s.includes("transit") || s.includes("departed"))
-    return "text-orange-600 bg-orange-50 border-orange-200";
-  if (s.includes("arrived") || s.includes("received"))
-    return "text-cyan-600 bg-cyan-50 border-cyan-200";
-  
-  return "text-slate-500 bg-slate-50 border-slate-200";
 };
 
 // Parse helpers
@@ -143,6 +121,7 @@ const parseEventTimestamp = (event, softwareType) => {
       }
       return 0;
     }
+    // For DHL and others returning ISO timestamps
     return parseInternalDate(event.timestamp);
   } catch (error) {
     return 0;
@@ -200,21 +179,28 @@ export default function TrackingDetails({ parcelDetails }) {
   const [copied, setCopied] = useState(false);
   const [copiedForwarding, setCopiedForwarding] = useState(false);
 
+  // --- 1. IDENTIFY TRACKING SOURCE ---
+  
+  // Standard Vendor Integration (e.g., ITD / Xpression)
   const hasVendorIntegration = parcelDetails?.cNoteNumber && parcelDetails?.cNoteVendorName;
-  const vendorId = parcelDetails?.integratedVendorId;
-  const vendorName = parcelDetails?.cNoteVendorName;
-  const awbNumber = parcelDetails?.cNoteNumber;
-  const trackingNumber = parcelDetails?.trackingNumber;
-
-  // Get origin and destination from database only
-  const origin = parcelDetails?.sender?.city || parcelDetails?.sender?.country || "Origin";
-  const originCountry = parcelDetails?.sender?.country || "";
-  const destination = parcelDetails?.receiver?.city || parcelDetails?.receiver?.country || "Destination";
-  const destinationCountry = parcelDetails?.receiver?.country || "";
-
-  // Get Forwarding Info directly from AWB Database
+  
+  // Forwarding Details
   const forwardingNumber = parcelDetails?.forwardingNumber;
-  const forwardingLink = parcelDetails?.forwardingLink;
+  const forwardingLink = parcelDetails?.forwardingLink || "";
+  
+  // Check specifically for DHL in forwarding link + existence of forwarding number
+  const isDHLForwarding = 
+    forwardingNumber && 
+    forwardingLink && 
+    forwardingLink.toLowerCase().includes("dhl");
+
+  // Determine if we should attempt to track
+  const shouldTrack = hasVendorIntegration || isDHLForwarding;
+
+  // Variables for display
+  const trackingNumber = parcelDetails?.trackingNumber;
+  const origin = parcelDetails?.sender?.city || parcelDetails?.sender?.country || "Origin";
+  const destination = parcelDetails?.receiver?.city || parcelDetails?.receiver?.country || "Destination";
   const hasForwardingInfo = !!(forwardingNumber || forwardingLink);
 
   const copyTrackingNumber = () => {
@@ -231,51 +217,59 @@ export default function TrackingDetails({ parcelDetails }) {
     }
   };
 
-  // WhatsApp Share Handler - FIXED ENCODING
+  // WhatsApp Share Handler
   const handleWhatsAppShare = () => {
     let cleanUrl = "";
     if (typeof window !== 'undefined') {
-      // Remove http:// or https:// from the URL
       cleanUrl = window.location.href.replace(/^https?:\/\//, '');
     }
     
-    // Get current data
     const currentStatus = mergedTimeline[0]?.status || "In Transit";
     const currentLocation = mergedTimeline[0]?.location || "";
-    const org = parcelDetails?.sender?.city || parcelDetails?.sender?.country || "Origin";
-    const dst = parcelDetails?.receiver?.city || parcelDetails?.receiver?.country || "Destination";
 
-    // Format message - using standard characters to avoid encoding issues
     const message = 
       `📦 *Shipment Status Update*\n` +
       `──────────────────\n` +
       `🆔 *Tracking ID:* ${trackingNumber}\n` +
-      `🚩 *Route:* ${org} -> ${dst}\n` +
+      `🚩 *Route:* ${origin} -> ${destination}\n` +
       `📊 *Status:* ${currentStatus}\n` +
       (currentLocation ? `📍 *Location:* ${currentLocation}\n` : "") +
       `──────────────────\n` +
       `🔗 *Track Live:* ${cleanUrl}`;
 
-    // Use api.whatsapp.com for better cross-platform compatibility
     const whatsappUrl = `https://api.whatsapp.com/send?text=${encodeURIComponent(message)}`;
     window.open(whatsappUrl, '_blank');
   };
 
   const fetchVendorTracking = async () => {
-    if (!hasVendorIntegration) return;
+    if (!shouldTrack) return;
     
     setIsLoading(true);
     setError(null);
     
     try {
+      let payload = {};
+
+      if (isDHLForwarding) {
+        // --- CASE 1: DHL Forwarding Detected ---
+        payload = {
+          awbNumber: forwardingNumber,
+          forceSoftwareType: "dhl",
+        };
+        console.log("Tracking via DHL Forwarding:", payload);
+      } else {
+        // --- CASE 2: Standard Vendor Integration ---
+        payload = {
+          awbNumber: parcelDetails?.cNoteNumber,
+          vendorId: parcelDetails?.integratedVendorId,
+          vendorName: parcelDetails?.cNoteVendorName,
+        };
+      }
+
       const response = await fetch("/api/vendor-integrations/tracking", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          awbNumber: awbNumber,
-          vendorId: vendorId,
-          vendorName: vendorName,
-        }),
+        body: JSON.stringify(payload),
       });
       
       const result = await response.json();
@@ -295,11 +289,12 @@ export default function TrackingDetails({ parcelDetails }) {
   };
 
   useEffect(() => {
-    if (hasVendorIntegration) {
+    if (shouldTrack) {
       fetchVendorTracking();
     }
-  }, [hasVendorIntegration, awbNumber]);
+  }, [shouldTrack, parcelDetails]);
 
+  // Merge events from API and DB
   useEffect(() => {
     const allEvents = [];
 
@@ -336,9 +331,7 @@ export default function TrackingDetails({ parcelDetails }) {
     setMergedTimeline(deduped);
   }, [vendorTrackingData, parcelDetails]);
 
-  // Get tracking info from API response
-  const trackingInfo = vendorTrackingData?.tracking?.[0] || {};
-  
+  // Derived UI State
   const latestStatus = mergedTimeline[0]?.status || "Awaiting Updates";
   const latestLocation = mergedTimeline[0]?.location || "";
   const isDelivered = latestStatus.toLowerCase().includes("delivered");
@@ -396,30 +389,60 @@ export default function TrackingDetails({ parcelDetails }) {
             </div>
 
             {/* Status Section */}
-            <div className="text-center md:text-right shrink-0">
-              <div className={`inline-flex items-center gap-3 px-6 py-3 rounded-2xl shadow-lg backdrop-blur-sm ${
+            <div className="text-center md:text-right shrink-0 flex flex-col items-center md:items-end">
+              <div className={`inline-flex items-center gap-3 px-6 py-3 rounded-2xl shadow-lg backdrop-blur-sm max-w-[90vw] md:max-w-xs ${
                 isDelivered ? "bg-emerald-900/30 border border-emerald-400/30" : "bg-white/20 border border-white/20"
               }`}>
                 {isLoading ? (
-                  <Loader2 className="w-6 h-6 animate-spin" />
+                  <Loader2 className="w-6 h-6 animate-spin shrink-0" />
                 ) : (
-                  <div className="p-1.5 bg-white rounded-full text-indigo-600">
+                  <div className="p-1.5 bg-white rounded-full text-indigo-600 shrink-0">
                     {getStatusIcon(latestStatus)}
                   </div>
                 )}
-                <div className="text-left">
+                
+                <div className="text-left overflow-hidden">
                   <p className="text-xs uppercase tracking-wider opacity-80">Current Status</p>
-                  <p className="font-bold text-lg md:text-xl leading-none">
-                    {isLoading ? "Updating..." : latestStatus}
-                  </p>
+                  
+                  {/* --- MARQUEE STATUS --- */}
+                  <div className="w-[180px] md:w-[220px] overflow-hidden whitespace-nowrap relative">
+                    {isLoading ? (
+                       <p className="font-bold text-lg md:text-xl leading-none">Updating...</p>
+                    ) : latestStatus && latestStatus.length > 20 ? (
+                      <div 
+                        className="inline-block animate-marquee hover:[animation-play-state:paused]"
+                        style={{ animationDuration: '40s' }}
+                      >
+                        <span className="font-bold text-lg md:text-xl leading-none mr-8">{latestStatus}</span>
+                        <span className="font-bold text-lg md:text-xl leading-none mr-8">{latestStatus}</span>
+                        <span className="font-bold text-lg md:text-xl leading-none mr-8">{latestStatus}</span>
+                      </div>
+                    ) : (
+                      <p className="font-bold text-lg md:text-xl leading-none">{latestStatus}</p>
+                    )}
+                  </div>
                 </div>
               </div>
               
-              {/* Added gap here using mt-6 */}
               {latestLocation && !isLoading && (
-                <div className="mt-6 inline-flex items-center gap-1.5 text-white/90 bg-black/20 px-4 py-1.5 rounded-full text-sm font-medium backdrop-blur-sm border border-white/10">
-                  <MapPin className="w-3.5 h-3.5" />
-                  {latestLocation}
+                <div className="mt-6 inline-flex items-center gap-1.5 text-white/90 bg-black/20 px-4 py-1.5 rounded-full text-sm font-medium backdrop-blur-sm border border-white/10 max-w-[200px] md:max-w-[250px] overflow-hidden">
+                  <MapPin className="w-3.5 h-3.5 shrink-0" />
+                  
+                  {/* --- MARQUEE LOCATION --- */}
+                  <div className="overflow-hidden whitespace-nowrap relative w-full">
+                    {latestLocation.length > 20 ? (
+                      <div 
+                        className="inline-block animate-marquee hover:[animation-play-state:paused]"
+                        style={{ animationDuration: '20s' }}
+                      >
+                        <span className="mr-6">{latestLocation}</span>
+                        <span className="mr-6">{latestLocation}</span>
+                        <span className="mr-6">{latestLocation}</span>
+                      </div>
+                    ) : (
+                      <span>{latestLocation}</span>
+                    )}
+                  </div>
                 </div>
               )}
             </div>
@@ -471,7 +494,7 @@ export default function TrackingDetails({ parcelDetails }) {
         </div>
       </Card>
 
-      {/* ========== FORWARDING INFO (PARTNER CARRIER) ========== */}
+      {/* ========== FORWARDING INFO ========== */}
       {hasForwardingInfo && (
         <Card className="border border-orange-100 bg-orange-50/50 shadow-sm overflow-hidden">
           <div className="absolute top-0 left-0 w-1 h-full bg-orange-400" />
@@ -540,11 +563,9 @@ export default function TrackingDetails({ parcelDetails }) {
         </Card>
       )}
 
-      {/* ========== TWO COLUMN LAYOUT (TIMELINE & DETAILS) ========== */}
+      {/* ========== TIMELINE ========== */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-        
-        {/* LEFT COLUMN: TIMELINE */}
-        <div className="lg:col-span-2 space-y-6">
+        <div className="lg:col-span-3 space-y-6">
           <div className="flex items-center justify-between">
             <h2 className="text-xl font-bold text-gray-900 flex items-center gap-2">
               <Clock className="w-5 h-5 text-indigo-600" /> Shipment Progress
@@ -588,13 +609,11 @@ export default function TrackingDetails({ parcelDetails }) {
                       
                       {events.map((event, index) => {
                         const isFirst = groupIndex === 0 && index === 0;
-                        
                         return (
                           <div 
                             key={`${event.timestamp}-${index}`}
                             className={`group flex gap-4 px-6 py-5 transition-all hover:bg-slate-50 ${isFirst ? "bg-indigo-50/30" : ""}`}
                           >
-                            {/* Timeline Graphic */}
                             <div className="flex flex-col items-center relative">
                               <div className={`w-0.5 grow bg-gray-200 absolute top-4 bottom-0 ${index === events.length - 1 ? "hidden" : ""}`} />
                               <div className={`relative z-10 w-10 h-10 rounded-full flex items-center justify-center border-2 shadow-sm transition-transform group-hover:scale-110 ${
@@ -604,7 +623,6 @@ export default function TrackingDetails({ parcelDetails }) {
                               </div>
                             </div>
 
-                            {/* Content */}
                             <div className="flex-1 min-w-0 pt-1">
                               <div className="flex flex-wrap justify-between items-start gap-2 mb-1">
                                 <h3 className={`font-bold text-base ${isFirst ? "text-emerald-700" : "text-gray-900"}`}>
@@ -643,62 +661,6 @@ export default function TrackingDetails({ parcelDetails }) {
             </CardContent>
           </Card>
         </div>
-
-        {/* RIGHT COLUMN: DETAILS */}
-        <div className="space-y-6">
-          <h2 className="text-xl font-bold text-gray-900 flex items-center gap-2">
-            <Package className="w-5 h-5 text-indigo-600" /> Details
-          </h2>
-
-          <Card className="border-0 shadow-lg overflow-hidden">
-            <CardContent className="p-0">
-              <div className="bg-slate-50 p-4 border-b border-slate-100">
-                <p className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-1">Origin</p>
-                <div className="flex items-start gap-3">
-                  <div className="mt-1">
-                    <CircleDot className="w-4 h-4 text-indigo-500" />
-                  </div>
-                  <div>
-                    <p className="font-bold text-gray-900">{parcelDetails?.sender?.name}</p>
-                    <p className="text-sm text-gray-600 line-clamp-2">{parcelDetails?.sender?.address}</p>
-                    <p className="text-sm font-semibold text-indigo-600 mt-1">{origin}</p>
-                  </div>
-                </div>
-              </div>
-
-              <div className="p-4">
-                <p className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-1">Destination</p>
-                <div className="flex items-start gap-3">
-                  <div className="mt-1">
-                    <MapPin className="w-4 h-4 text-emerald-500" />
-                  </div>
-                  <div>
-                    <p className="font-bold text-gray-900">{parcelDetails?.receiver?.name}</p>
-                    <p className="text-sm text-gray-600 line-clamp-2">{parcelDetails?.receiver?.address}</p>
-                    <p className="text-sm font-semibold text-emerald-600 mt-1">{destination}</p>
-                  </div>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-
-          {/* Quick Stats (Optional) */}
-          <div className="grid grid-cols-2 gap-4">
-            <Card className="bg-blue-50 border-blue-100 shadow-none">
-              <CardContent className="p-4 text-center">
-                <p className="text-xs text-blue-600 font-bold uppercase mb-1">Weight</p>
-                <p className="text-lg font-black text-blue-900">{trackingInfo.Weight || parcelDetails.totalWeight || "-"} kg</p>
-              </CardContent>
-            </Card>
-            <Card className="bg-purple-50 border-purple-100 shadow-none">
-              <CardContent className="p-4 text-center">
-                <p className="text-xs text-purple-600 font-bold uppercase mb-1">Pieces</p>
-                <p className="text-lg font-black text-purple-900">{parcelDetails.boxes?.length || "-"}</p>
-              </CardContent>
-            </Card>
-          </div>
-        </div>
-
       </div>
 
       <div className="text-center py-6 text-xs text-gray-400">

@@ -38,6 +38,7 @@ async function getITDToken(credentials, vendorId) {
   }
 
   const tokenUrl = `${credentials.apiUrl}/get_token`
+  console.log("Requesting ITD token from:", tokenUrl)
   const response = await fetch(tokenUrl, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
@@ -412,6 +413,8 @@ async function sendToITD(awb, vendor, serviceData) {
     kyc_details: kycDetails,
   }
 
+  console.log("ITD Create Docket Payload:", JSON.stringify(payload, null, 2))
+
   const createDocketUrl = `${creds.apiUrl}/create_docket`
   const response = await fetch(createDocketUrl, {
     method: "POST",
@@ -423,6 +426,8 @@ async function sendToITD(awb, vendor, serviceData) {
   })
 
   const responseText = await response.text()
+
+  console.log("ITD Create Docket Response:", responseText)
   let apiResponse
   try {
     apiResponse = JSON.parse(responseText)
@@ -551,7 +556,7 @@ export async function POST(request) {
     } else if (vendor.softwareType === "itd") {
       result = await sendToITD(awb, vendor, {
         ...serviceData,
-        productCode: productCode || "NONDOX",
+        productCode: vendor.vendorCode === "BOMBINO" || "TLC" ? "SPX" : productCode || serviceData.productCode || "NONDOX",
       })
     } else {
       return new Response(

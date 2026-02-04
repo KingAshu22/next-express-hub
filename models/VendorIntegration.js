@@ -15,6 +15,12 @@ const XpressionServiceSchema = new mongoose.Schema({
   productCode: { type: String, default: "SPX" },
 })
 
+const Tech440ServiceSchema = new mongoose.Schema({
+  serviceName: { type: String, required: true },
+  serviceCode: { type: String, required: true }, // e.g., "TP05", "DHL1"
+  packageCode: { type: String, default: "NDX" }, // "NDX" or "DOC"
+})
+
 // Xpression credentials schema
 const XpressionCredentialsSchema = new mongoose.Schema({
   apiUrl: { 
@@ -61,6 +67,22 @@ const ITDCredentialsSchema = new mongoose.Schema({
   tokenExpiresAt: { type: Date, default: null },
 })
 
+const DHLCredentialsSchema = new mongoose.Schema({
+  apiKey: { type: String, required: true },
+})
+
+const Tech440CredentialsSchema = new mongoose.Schema({
+  apiUrl: { 
+    type: String, 
+    required: true,
+    default: "https://transitpl.com/api" 
+  },
+  username: { type: String, required: true },
+  password: { type: String, required: true },
+  apiKey: { type: String, required: true }, // The JSON body api_key
+  services: [Tech440ServiceSchema],
+})
+
 // Main Vendor Integration schema
 const VendorIntegrationSchema = new mongoose.Schema(
   {
@@ -78,7 +100,7 @@ const VendorIntegrationSchema = new mongoose.Schema(
     },
     softwareType: { 
       type: String, 
-      enum: ["xpression", "itd"], 
+      enum: ["xpression", "itd", "dhl", "tech440"], 
       required: true 
     },
     isActive: { type: Boolean, default: true },
@@ -90,6 +112,15 @@ const VendorIntegrationSchema = new mongoose.Schema(
     },
     itdCredentials: {
       type: ITDCredentialsSchema,
+      default: null,
+    },
+    dhlCredentials: {
+      type: DHLCredentialsSchema,
+      default: null,
+    },
+
+    tech440Credentials: {
+      type: Tech440CredentialsSchema,
       default: null,
     },
     
@@ -118,6 +149,19 @@ VendorIntegrationSchema.virtual("allServices").get(function () {
       name: s.serviceName,
       code: s.serviceCode,
       apiCode: s.apiServiceCode,
+    }))
+  }
+
+  if (this.softwareType === "dhl") {
+    return [{ name: "DHL Express", code: "DHL", apiCode: "DHL" }]
+  }
+
+  if (this.softwareType === "tech440" && this.tech440Credentials) {
+    return this.tech440Credentials.services.map(s => ({
+      name: s.serviceName,
+      code: s.serviceCode,
+      apiCode: s.serviceCode,
+      packageCode: s.packageCode,
     }))
   }
   return []

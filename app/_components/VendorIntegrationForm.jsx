@@ -42,6 +42,13 @@ export default function VendorIntegrationForm({
       password: "",
       services: [...DEFAULT_ITD_SERVICES],
     },
+    tech440: {
+      apiUrl: "https://transitpl.com/api",
+      username: "",
+      password: "",
+      apiKey: "",
+      services: [{ serviceName: "Express", serviceCode: "TP05", packageCode: "NDX" }],
+    },
   })
   
   // Load edit data if provided
@@ -74,6 +81,18 @@ export default function VendorIntegrationForm({
           services: editData.itdCredentials?.services?.length > 0 
             ? editData.itdCredentials.services 
             : [...DEFAULT_ITD_SERVICES],
+        },
+        tech440: {
+          apiUrl: editData.tech440Credentials?.apiUrl || "https://transitpl.com/api",
+          username: editData.tech440Credentials?.username || "",
+          password: "", // Security: don't prefill
+          apiKey: editData.tech440Credentials?.apiKey || "",
+          services: editData.tech440Credentials?.services?.length > 0 
+            ? editData.tech440Credentials.services 
+            : [{ serviceName: "Express", serviceCode: "TP05", packageCode: "NDX" }],
+        },
+        dhl: {
+          apiKey: editData.dhlCredentials?.apiKey || "",
         },
       }
       
@@ -138,6 +157,26 @@ export default function VendorIntegrationForm({
       handleCredentialChange("itd", "services", newServices)
     }
   }
+
+  const handleTech440ServiceChange = (index, field, value) => {
+    const newServices = [...formData.tech440.services]
+    newServices[index] = { ...newServices[index], [field]: value }
+    handleCredentialChange("tech440", "services", newServices)
+  }
+  
+  const addTech440Service = () => {
+    handleCredentialChange("tech440", "services", [
+      ...formData.tech440.services,
+      { serviceName: "", serviceCode: "", packageCode: "NDX" },
+    ])
+  }
+  
+  const removeTech440Service = (index) => {
+    if (formData.tech440.services.length > 1) {
+      const newServices = formData.tech440.services.filter((_, i) => i !== index)
+      handleCredentialChange("tech440", "services", newServices)
+    }
+  }
   
   const handleSubmit = async (e) => {
     e.preventDefault()
@@ -162,7 +201,7 @@ export default function VendorIntegrationForm({
           originName: formData.xpression.originName,
           services: formData.xpression.services.filter(s => s.serviceName),
         }
-      } else {
+      } else if (formData.softwareType === "itd") {
         payload.itdCredentials = {
           apiUrl: formData.itd.apiUrl,
           trackingApiUrl: formData.itd.trackingApiUrl,
@@ -173,6 +212,18 @@ export default function VendorIntegrationForm({
           password: formData.itd.password, // Will be ignored if empty on update
           services: formData.itd.services.filter(s => s.serviceName),
         }
+      } else if (formData.softwareType === "dhl") {
+        payload.dhlCredentials = {
+          apiKey: formData.dhl.apiKey,
+        }
+      } else if (formData.softwareType === "tech440") {
+        payload.tech440Credentials = {
+        apiUrl: formData.tech440.apiUrl,
+        username: formData.tech440.username,
+        password: formData.tech440.password,
+        apiKey: formData.tech440.apiKey,
+        services: formData.tech440.services.filter(s => s.serviceName),
+      }
       }
       
       console.log("Submitting payload:", JSON.stringify(payload, null, 2))
@@ -308,6 +359,30 @@ export default function VendorIntegrationForm({
               className="mr-2"
             />
             <span className="text-sm">ITD Software (Express Impex)</span>
+          </label>
+          <label className="flex items-center">
+            <input
+              type="radio"
+              name="softwareType"
+              value="tech440"
+              checked={formData.softwareType === "tech440"}
+              onChange={handleInputChange}
+              disabled={!!editData}
+              className="mr-2"
+            />
+            <span className="text-sm">Tech440</span>
+          </label>
+          <label className="flex items-center">
+            <input
+              type="radio"
+              name="softwareType"
+              value="dhl"
+              checked={formData.softwareType === "dhl"}
+              onChange={handleInputChange}
+              disabled={!!editData}
+              className="mr-2"
+            />
+            <span className="text-sm">DHL Express</span>
           </label>
         </div>
         {editData && (
@@ -632,6 +707,116 @@ export default function VendorIntegrationForm({
                 </div>
               ))}
             </div>
+          </div>
+        </div>
+      )}
+
+      {formData.softwareType === "dhl" && (
+        <div className="space-y-4 p-4 bg-red-50 rounded-lg">
+          <h3 className="font-semibold text-red-800 flex items-center gap-2">
+             DHL Express Credentials
+          </h3>
+          
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">
+              DHL API Key *
+            </label>
+            <input
+              type="password" // Use password to mask key visually
+              value={formData?.dhl?.apiKey}
+              onChange={(e) => handleCredentialChange("dhl", "apiKey", e.target.value)}
+              required
+              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-red-500"
+              placeholder="Enter your DHL API Key"
+            />
+            <p className="text-xs text-gray-500 mt-1">
+              Requires access to the DHL Express Tracking API (api-eu.dhl.com)
+            </p>
+          </div>
+        </div>
+      )}
+
+      {formData.softwareType === "tech440" && (
+        <div className="space-y-4 p-4 bg-purple-50 rounded-lg">
+          <h3 className="font-semibold text-purple-800">Tech440 Credentials</h3>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">API URL *</label>
+              <input
+                type="url"
+                value={formData.tech440.apiUrl}
+                onChange={(e) => handleCredentialChange("tech440", "apiUrl", e.target.value)}
+                required
+                className="w-full px-3 py-2 border border-gray-300 rounded-md"
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">JSON API Key *</label>
+              <input
+                type="text"
+                value={formData.tech440.apiKey}
+                onChange={(e) => handleCredentialChange("tech440", "apiKey", e.target.value)}
+                required={!editData}
+                className="w-full px-3 py-2 border border-gray-300 rounded-md"
+                placeholder="e.g. 2f5fb3f865"
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Username *</label>
+              <input
+                type="text"
+                value={formData.tech440.username}
+                onChange={(e) => handleCredentialChange("tech440", "username", e.target.value)}
+                required={!editData}
+                className="w-full px-3 py-2 border border-gray-300 rounded-md"
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Password</label>
+              <input
+                type="password"
+                value={formData.tech440.password}
+                onChange={(e) => handleCredentialChange("tech440", "password", e.target.value)}
+                required={!editData}
+                className="w-full px-3 py-2 border border-gray-300 rounded-md"
+                placeholder={editData ? "(unchanged)" : "Enter password"}
+              />
+            </div>
+          </div>
+          
+          {/* Services */}
+          <div className="mt-4">
+            <div className="flex justify-between items-center mb-2">
+              <label className="block text-sm font-medium text-gray-700">Services</label>
+              <button type="button" onClick={addTech440Service} className="text-sm text-purple-600 hover:text-purple-800">+ Add Service</button>
+            </div>
+            {formData.tech440.services.map((service, index) => (
+              <div key={index} className="flex gap-2 mb-2">
+                <input
+                  type="text"
+                  value={service.serviceName}
+                  onChange={(e) => handleTech440ServiceChange(index, "serviceName", e.target.value)}
+                  className="flex-1 px-3 py-2 border border-gray-300 rounded-md"
+                  placeholder="Name"
+                />
+                <input
+                  type="text"
+                  value={service.serviceCode}
+                  onChange={(e) => handleTech440ServiceChange(index, "serviceCode", e.target.value)}
+                  className="flex-1 px-3 py-2 border border-gray-300 rounded-md"
+                  placeholder="Service Code (TP05)"
+                />
+                <select
+                  value={service.packageCode}
+                  onChange={(e) => handleTech440ServiceChange(index, "packageCode", e.target.value)}
+                  className="w-24 px-3 py-2 border border-gray-300 rounded-md"
+                >
+                  <option value="NDX">NDX</option>
+                  <option value="DOC">DOC</option>
+                </select>
+                <button type="button" onClick={() => removeTech440Service(index)} className="px-3 text-red-600">✕</button>
+              </div>
+            ))}
           </div>
         </div>
       )}

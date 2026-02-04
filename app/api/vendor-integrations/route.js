@@ -53,6 +53,7 @@ export async function POST(request) {
       description,
       xpressionCredentials,
       itdCredentials,
+      tech440Credentials,
     } = body
 
     // Validation
@@ -110,6 +111,24 @@ export async function POST(request) {
       }
     }
 
+    if (softwareType === "dhl") {
+      if (!body.dhlCredentials?.apiKey) {
+        return new Response(
+          JSON.stringify({
+            success: false,
+            error: "DHL Credentials (apiKey) are required",
+          }),
+          { status: 400, headers: { "Content-Type": "application/json" } }
+        )
+      }
+    }
+
+    if (softwareType === "tech440") {
+    if (!tech440Credentials?.username || !tech440Credentials?.password || !tech440Credentials?.apiKey) {
+       return new Response(JSON.stringify({ success: false, error: "Tech440 username, password and api_key are required" }), { status: 400 })
+    }
+  }
+
     // Create vendor integration
     const vendorData = {
       vendorName,
@@ -144,6 +163,22 @@ export async function POST(request) {
       }
     }
 
+    if (softwareType === "dhl") {
+      vendorData.dhlCredentials = {
+        apiKey: body.dhlCredentials.apiKey
+      }
+    }
+
+    if (softwareType === "tech440") {
+    vendorData.tech440Credentials = {
+      apiUrl: tech440Credentials.apiUrl || "https://transitpl.com/api",
+      username: tech440Credentials.username,
+      password: tech440Credentials.password,
+      apiKey: tech440Credentials.apiKey,
+      services: tech440Credentials.services || []
+    }
+  }
+
     const vendor = await VendorIntegration.create(vendorData)
 
     // Remove sensitive data from response
@@ -155,6 +190,10 @@ export async function POST(request) {
       delete responseData.itdCredentials.password
       delete responseData.itdCredentials.cachedToken
     }
+    if (responseData.tech440Credentials) {
+      delete responseData.tech440Credentials.password
+      delete responseData.tech440Credentials.apiKey // optional to strip api key
+  }
 
     return new Response(
       JSON.stringify({

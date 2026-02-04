@@ -9,8 +9,9 @@ export async function GET(request, { params }) {
     
     const { id } = await params
     
+    // Updated select to exclude Tech440 password as well
     const vendor = await VendorIntegration.findById(id)
-      .select("-xpressionCredentials.password -itdCredentials.password -itdCredentials.cachedToken")
+      .select("-xpressionCredentials.password -itdCredentials.password -itdCredentials.cachedToken -tech440Credentials.password")
     
     if (!vendor) {
       return new Response(
@@ -91,30 +92,19 @@ export async function PUT(request, { params }) {
     // Update Xpression credentials
     if (vendor.softwareType === "xpression" && body.xpressionCredentials) {
       const newCreds = body.xpressionCredentials
-      const existingCreds = vendor.xpressionCredentials || {}
       
       // Update each field explicitly
-      if (newCreds.apiUrl !== undefined) {
-        vendor.xpressionCredentials.apiUrl = newCreds.apiUrl
-      }
-      if (newCreds.trackingUrl !== undefined) {
-        vendor.xpressionCredentials.trackingUrl = newCreds.trackingUrl
-      }
-      if (newCreds.userId !== undefined) {
-        vendor.xpressionCredentials.userId = newCreds.userId
-      }
+      if (newCreds.apiUrl !== undefined) vendor.xpressionCredentials.apiUrl = newCreds.apiUrl
+      if (newCreds.trackingUrl !== undefined) vendor.xpressionCredentials.trackingUrl = newCreds.trackingUrl
+      if (newCreds.userId !== undefined) vendor.xpressionCredentials.userId = newCreds.userId
+      
       if (newCreds.password && newCreds.password.trim() !== "") {
         vendor.xpressionCredentials.password = newCreds.password
       }
-      if (newCreds.customerCode !== undefined) {
-        vendor.xpressionCredentials.customerCode = newCreds.customerCode
-      }
-      if (newCreds.originName !== undefined) {
-        vendor.xpressionCredentials.originName = newCreds.originName
-      }
-      if (newCreds.services !== undefined) {
-        vendor.xpressionCredentials.services = newCreds.services
-      }
+      
+      if (newCreds.customerCode !== undefined) vendor.xpressionCredentials.customerCode = newCreds.customerCode
+      if (newCreds.originName !== undefined) vendor.xpressionCredentials.originName = newCreds.originName
+      if (newCreds.services !== undefined) vendor.xpressionCredentials.services = newCreds.services
       
       // Mark as modified for Mongoose to detect changes
       vendor.markModified("xpressionCredentials")
@@ -124,52 +114,35 @@ export async function PUT(request, { params }) {
     if (vendor.softwareType === "itd" && body.itdCredentials) {
       const newCreds = body.itdCredentials
       
-      // Ensure itdCredentials exists
-      if (!vendor.itdCredentials) {
-        vendor.itdCredentials = {}
-      }
+      if (!vendor.itdCredentials) vendor.itdCredentials = {}
       
-      // Update each field explicitly - only if provided and not undefined
-      if (newCreds.apiUrl !== undefined) {
-        vendor.itdCredentials.apiUrl = newCreds.apiUrl
-      }
+      if (newCreds.apiUrl !== undefined) vendor.itdCredentials.apiUrl = newCreds.apiUrl
       
-      // Tracking fields - handle empty strings and values
+      // Tracking fields
       if (newCreds.trackingApiUrl !== undefined) {
         vendor.itdCredentials.trackingApiUrl = newCreds.trackingApiUrl
-        console.log("Setting trackingApiUrl:", newCreds.trackingApiUrl)
       }
       
       if (newCreds.trackingCompanyId !== undefined) {
-        // Convert to number, handle empty string
         const companyId = newCreds.trackingCompanyId === "" || newCreds.trackingCompanyId === null 
           ? null 
           : parseInt(newCreds.trackingCompanyId, 10)
         vendor.itdCredentials.trackingCompanyId = isNaN(companyId) ? null : companyId
-        console.log("Setting trackingCompanyId:", vendor.itdCredentials.trackingCompanyId)
       }
       
       if (newCreds.trackingCustomerCode !== undefined) {
         vendor.itdCredentials.trackingCustomerCode = newCreds.trackingCustomerCode
-        console.log("Setting trackingCustomerCode:", newCreds.trackingCustomerCode)
       }
       
-      if (newCreds.companyId !== undefined) {
-        vendor.itdCredentials.companyId = parseInt(newCreds.companyId, 10)
-      }
-      
-      if (newCreds.email !== undefined) {
-        vendor.itdCredentials.email = newCreds.email
-      }
+      if (newCreds.companyId !== undefined) vendor.itdCredentials.companyId = parseInt(newCreds.companyId, 10)
+      if (newCreds.email !== undefined) vendor.itdCredentials.email = newCreds.email
       
       // Only update password if provided and not empty
       if (newCreds.password && newCreds.password.trim() !== "") {
         vendor.itdCredentials.password = newCreds.password
       }
       
-      if (newCreds.services !== undefined) {
-        vendor.itdCredentials.services = newCreds.services
-      }
+      if (newCreds.services !== undefined) vendor.itdCredentials.services = newCreds.services
       
       // Clear token cache if main credentials changed
       if (newCreds.companyId !== undefined || 
@@ -180,15 +153,47 @@ export async function PUT(request, { params }) {
         vendor.itdCredentials.tokenExpiresAt = null
       }
       
-      // Mark as modified for Mongoose to detect nested changes
       vendor.markModified("itdCredentials")
+    }
+
+    // ------------------------------------------------------------------
+    // NEW: Update Tech440 credentials
+    // ------------------------------------------------------------------
+    if (vendor.softwareType === "tech440" && body.tech440Credentials) {
+      const newCreds = body.tech440Credentials
+      
+      if (!vendor.tech440Credentials) vendor.tech440Credentials = {}
+
+      if (newCreds.apiUrl !== undefined) vendor.tech440Credentials.apiUrl = newCreds.apiUrl
+      if (newCreds.username !== undefined) vendor.tech440Credentials.username = newCreds.username
+      if (newCreds.apiKey !== undefined) vendor.tech440Credentials.apiKey = newCreds.apiKey
+      
+      // Only update password if provided and not empty
+      if (newCreds.password && newCreds.password.trim() !== "") {
+        vendor.tech440Credentials.password = newCreds.password
+      }
+
+      if (newCreds.services !== undefined) vendor.tech440Credentials.services = newCreds.services
+
+      vendor.markModified("tech440Credentials")
+    }
+
+    // ------------------------------------------------------------------
+    // NEW: Update DHL credentials (Good practice to keep consistent)
+    // ------------------------------------------------------------------
+    if (vendor.softwareType === "dhl" && body.dhlCredentials) {
+      const newCreds = body.dhlCredentials
+      if (!vendor.dhlCredentials) vendor.dhlCredentials = {}
+      
+      if (newCreds.apiKey !== undefined) vendor.dhlCredentials.apiKey = newCreds.apiKey
+      
+      vendor.markModified("dhlCredentials")
     }
     
     // Debug: Log what we're saving
-    console.log("Saving vendor itdCredentials:", {
-      trackingApiUrl: vendor.itdCredentials?.trackingApiUrl,
-      trackingCompanyId: vendor.itdCredentials?.trackingCompanyId,
-      trackingCustomerCode: vendor.itdCredentials?.trackingCustomerCode,
+    console.log("Saving vendor...", {
+      type: vendor.softwareType,
+      tech440Updated: !!body.tech440Credentials
     })
     
     await vendor.save()
@@ -196,20 +201,19 @@ export async function PUT(request, { params }) {
     // Fetch fresh data to confirm save
     const updatedVendor = await VendorIntegration.findById(id)
     
-    console.log("After save - itdCredentials:", {
-      trackingApiUrl: updatedVendor.itdCredentials?.trackingApiUrl,
-      trackingCompanyId: updatedVendor.itdCredentials?.trackingCompanyId,
-      trackingCustomerCode: updatedVendor.itdCredentials?.trackingCustomerCode,
-    })
-    
     // Remove sensitive data from response
     const responseData = updatedVendor.toObject()
+    
     if (responseData.xpressionCredentials) {
       delete responseData.xpressionCredentials.password
     }
     if (responseData.itdCredentials) {
       delete responseData.itdCredentials.password
       delete responseData.itdCredentials.cachedToken
+    }
+    // Remove Tech440 sensitive data
+    if (responseData.tech440Credentials) {
+      delete responseData.tech440Credentials.password
     }
     
     return new Response(

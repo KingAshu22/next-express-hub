@@ -4,6 +4,8 @@
 import { useState, useEffect, use } from "react"
 import { Button } from "@/components/ui/button"
 import { Card } from "@/components/ui/card"
+import { Input } from "@/components/ui/input"
+import { Label } from "@/components/ui/label"
 import {
   AlertCircle,
   CheckCircle,
@@ -30,12 +32,12 @@ import {
   X,
   ChevronDown,
   ChevronUp,
+  Pencil,
+  Banknote,
 } from "lucide-react"
 import axios from "axios"
 
-// ============================================
-// PDF Label Card Component
-// ============================================
+// ... [LabelCard Component remains the same] ...
 function LabelCard({ label, trackingNumber }) {
   const [showPreview, setShowPreview] = useState(false)
 
@@ -164,9 +166,7 @@ function LabelCard({ label, trackingNumber }) {
   )
 }
 
-// ============================================
-// Integration Success Modal with Labels
-// ============================================
+// ... [IntegrationSuccessModal Component remains the same] ...
 function IntegrationSuccessModal({ isOpen, onClose, result, trackingNumber }) {
   const [expandedLabels, setExpandedLabels] = useState({})
 
@@ -227,7 +227,7 @@ function IntegrationSuccessModal({ isOpen, onClose, result, trackingNumber }) {
             </div>
             <div className="bg-white/10 rounded-lg px-4 py-3">
               <p className="text-xs text-green-100 uppercase">Service</p>
-              <p className="text-lg font-bold">{result.serviceName}</p>
+              <p className="text-lg font-bold">{result.serviceName || "Selected Service"}</p>
             </div>
             <div className="bg-white/10 rounded-lg px-4 py-3">
               <p className="text-xs text-green-100 uppercase">Software</p>
@@ -284,6 +284,107 @@ function IntegrationSuccessModal({ isOpen, onClose, result, trackingNumber }) {
 }
 
 // ============================================
+// Edit Sender Details Modal
+// ============================================
+function EditSenderModal({ isOpen, onClose, senderData, onSave }) {
+  const [formData, setFormData] = useState(senderData || {})
+
+  useEffect(() => {
+    if (senderData) {
+      setFormData({
+        name: senderData.name || "",
+        company: senderData.company || "",
+        email: senderData.email || "",
+        contact: senderData.contact || "",
+        address: senderData.address || "",
+        address2: senderData.address2 || "",
+        city: senderData.city || "",
+        state: senderData.state || "",
+        zip: senderData.zip || "",
+        country: senderData.country || "",
+      })
+    }
+  }, [senderData])
+
+  const handleChange = (e) => {
+    const { name, value } = e.target
+    setFormData((prev) => ({ ...prev, [name]: value }))
+  }
+
+  const handleSubmit = (e) => {
+    e.preventDefault()
+    onSave(formData)
+    onClose()
+  }
+
+  if (!isOpen) return null
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+      <div className="absolute inset-0 bg-black/50 backdrop-blur-sm" onClick={onClose} />
+      <div className="relative bg-white rounded-xl shadow-xl w-full max-w-2xl max-h-[90vh] overflow-y-auto">
+        <div className="sticky top-0 bg-white border-b px-6 py-4 flex items-center justify-between z-10">
+          <h2 className="text-lg font-bold text-gray-900">Edit Sender Details for Vendor</h2>
+          <button onClick={onClose} className="p-2 hover:bg-gray-100 rounded-full">
+            <X className="h-5 w-5 text-gray-500" />
+          </button>
+        </div>
+        
+        <form onSubmit={handleSubmit} className="p-6 space-y-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="space-y-2">
+              <Label htmlFor="name">Sender Name</Label>
+              <Input id="name" name="name" value={formData.name} onChange={handleChange} />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="company">Company Name</Label>
+              <Input id="company" name="company" value={formData.company} onChange={handleChange} />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="email">Email</Label>
+              <Input id="email" name="email" type="email" value={formData.email} onChange={handleChange} />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="contact">Phone Number</Label>
+              <Input id="contact" name="contact" value={formData.contact} onChange={handleChange} />
+            </div>
+            <div className="space-y-2 md:col-span-2">
+              <Label htmlFor="address">Address Line 1</Label>
+              <Input id="address" name="address" value={formData.address} onChange={handleChange} />
+            </div>
+            <div className="space-y-2 md:col-span-2">
+              <Label htmlFor="address2">Address Line 2</Label>
+              <Input id="address2" name="address2" value={formData.address2} onChange={handleChange} />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="city">City</Label>
+              <Input id="city" name="city" value={formData.city} onChange={handleChange} />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="state">State</Label>
+              <Input id="state" name="state" value={formData.state} onChange={handleChange} />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="zip">ZIP / Postal Code</Label>
+              <Input id="zip" name="zip" value={formData.zip} onChange={handleChange} />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="country">Country</Label>
+              <Input id="country" name="country" value={formData.country} onChange={handleChange} />
+            </div>
+          </div>
+          
+          <div className="pt-4 flex justify-end gap-3">
+            <Button type="button" variant="outline" onClick={onClose}>Cancel</Button>
+            <Button type="submit" className="bg-indigo-600 hover:bg-indigo-700">Save Changes</Button>
+          </div>
+        </form>
+      </div>
+    </div>
+  )
+}
+
+// ============================================
 // Main Page Component
 // ============================================
 export default function AWBTrackingPage({ params }) {
@@ -302,7 +403,16 @@ export default function AWBTrackingPage({ params }) {
   const [selectedVendor, setSelectedVendor] = useState(null)
   const [selectedService, setSelectedService] = useState(null)
   const [customService, setCustomService] = useState("")
-  const [selectedProductCode, setSelectedProductCode] = useState("NONDOX")
+  const [selectedProductCode, setSelectedProductCode] = useState("SPX")
+
+  // Tech440 State
+  const [tech440Rates, setTech440Rates] = useState([])
+  const [tech440Loading, setTech440Loading] = useState(false)
+  const [tech440RateError, setTech440RateError] = useState(null)
+
+  // Custom Sender Details State
+  const [customSenderDetails, setCustomSenderDetails] = useState(null)
+  const [showEditSenderModal, setShowEditSenderModal] = useState(false)
 
   // Integration result modal
   const [showResultModal, setShowResultModal] = useState(false)
@@ -328,6 +438,10 @@ export default function AWBTrackingPage({ params }) {
       setLoading(true)
       const response = await axios.get(`/api/awb/${trackingNumber}`)
       setAwbData(response.data[0])
+      // Initialize custom sender details with original data
+      if (response.data[0]?.sender) {
+        setCustomSenderDetails(response.data[0].sender)
+      }
       setError(null)
     } catch (err) {
       setError(err.message)
@@ -344,6 +458,8 @@ export default function AWBTrackingPage({ params }) {
 
       if (result.success) {
         setVendors(result.data)
+      } else {
+        console.error("Failed to fetch vendors:", result.error)
       }
     } catch (err) {
       console.error("Error fetching vendors:", err)
@@ -362,7 +478,17 @@ export default function AWBTrackingPage({ params }) {
     setSelectedVendor(vendor)
     setSelectedService(null)
     setCustomService("")
-    setSelectedProductCode(vendor.softwareType === "xpression" ? "SPX" : "NONDOX")
+    setTech440Rates([])
+    setTech440RateError(null)
+    
+    // Set default product code
+    if (vendor.softwareType === "tech440") {
+      setSelectedProductCode("NDX")
+    } else if (vendor.softwareType === "xpression") {
+      setSelectedProductCode("SPX")
+    } else {
+      setSelectedProductCode("NONDOX")
+    }
   }
 
   const handleServiceSelect = (service) => {
@@ -374,8 +500,61 @@ export default function AWBTrackingPage({ params }) {
     setCustomService("")
   }
 
+  // Tech440 Logic
+  const handleFetchTech440Rates = async () => {
+    if (!selectedVendor || selectedVendor.softwareType !== "tech440") return
+    
+    setTech440Loading(true)
+    setTech440RateError(null)
+    setSelectedService(null)
+
+    try {
+      const response = await fetch("/api/vendor-integrations/check-rates", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          vendorId: selectedVendor._id,
+          awbData: awbData,
+          packageCode: selectedProductCode
+        })
+      })
+      
+      const result = await response.json()
+      
+      if (result.success) {
+        setTech440Rates(result.rates)
+        if (result.rates.length === 0) {
+          setTech440RateError("No rates found for this shipment configuration.")
+        }
+      } else {
+        setTech440RateError(result.error || "Failed to fetch rates")
+      }
+    } catch (err) {
+      setTech440RateError(err.message || "Error connecting to rate server")
+    } finally {
+      setTech440Loading(false)
+    }
+  }
+
+  const handleTech440RateSelect = (rate) => {
+    setSelectedService({
+      serviceName: rate.serviceName,
+      serviceCode: rate.serviceCode, // Vital for API
+      branchName: rate.branchName,   // Vital for API
+      packageCode: selectedProductCode
+    })
+  }
+
   const isIntegrationValid = () => {
-    if (!selectedVendor || !selectedService) return false
+    if (!selectedVendor) return false
+    
+    // Tech440 Validation
+    if (selectedVendor.softwareType === "tech440") {
+      return !!selectedService // Must have selected a rate
+    }
+
+    // Standard Validation
+    if (!selectedService) return false
     if (selectedService.serviceName === "other" && !customService.trim()) return false
     return true
   }
@@ -407,6 +586,7 @@ export default function AWBTrackingPage({ params }) {
           vendorId: selectedVendor._id,
           serviceData: serviceData,
           productCode: selectedProductCode,
+          customSenderDetails: customSenderDetails, // Send custom sender details
         }),
       })
 
@@ -432,6 +612,7 @@ export default function AWBTrackingPage({ params }) {
       // Reset selection
       setSelectedVendor(null)
       setSelectedService(null)
+      setTech440Rates([])
       setError(null)
     } catch (err) {
       setError(err.message || "An unexpected error occurred")
@@ -441,6 +622,11 @@ export default function AWBTrackingPage({ params }) {
   }
 
   const getVendorColor = (softwareType, isSelected) => {
+    if (softwareType === "tech440") {
+      return isSelected 
+        ? "border-purple-500 bg-purple-50 text-purple-700 shadow-md"
+        : "border-gray-200 bg-white text-gray-700 hover:border-purple-300 hover:bg-purple-50/50"
+    }
     if (softwareType === "xpression") {
       return isSelected
         ? "border-blue-500 bg-blue-50 text-blue-700 shadow-md"
@@ -452,18 +638,21 @@ export default function AWBTrackingPage({ params }) {
   }
 
   const getVendorIconBg = (softwareType, isSelected) => {
+    if (softwareType === "tech440") return isSelected ? "bg-purple-100" : "bg-gray-100"
     return softwareType === "xpression"
       ? isSelected ? "bg-blue-100" : "bg-gray-100"
       : isSelected ? "bg-emerald-100" : "bg-gray-100"
   }
 
   const getServiceBgColor = (softwareType) => {
+    if (softwareType === "tech440") return "bg-purple-50 border-purple-100"
     return softwareType === "xpression"
       ? "bg-blue-50 border-blue-100"
       : "bg-emerald-50 border-emerald-100"
   }
 
   const getButtonColor = (softwareType) => {
+    if (softwareType === "tech440") return "bg-purple-600 hover:bg-purple-700"
     return softwareType === "xpression"
       ? "bg-blue-600 hover:bg-blue-700"
       : "bg-emerald-600 hover:bg-emerald-700"
@@ -522,6 +711,14 @@ export default function AWBTrackingPage({ params }) {
         onClose={() => setShowResultModal(false)}
         result={integrationResult}
         trackingNumber={trackingNumber}
+      />
+
+      {/* Edit Sender Modal */}
+      <EditSenderModal 
+        isOpen={showEditSenderModal}
+        onClose={() => setShowEditSenderModal(false)}
+        senderData={customSenderDetails}
+        onSave={(newData) => setCustomSenderDetails(newData)}
       />
 
       {/* Header */}
@@ -694,21 +891,16 @@ export default function AWBTrackingPage({ params }) {
                             className={`flex items-center gap-3 px-4 py-3 rounded-xl border-2 transition-all text-left ${getVendorColor(vendor.softwareType, isSelected)}`}
                           >
                             <div className={`p-2 rounded-lg ${getVendorIconBg(vendor.softwareType, isSelected)}`}>
-                              {vendor.softwareType === "xpression" ? (
-                                <Truck className="h-5 w-5" />
-                              ) : (
-                                <Package className="h-5 w-5" />
-                              )}
+                              {vendor.softwareType === "tech440" ? <Zap className="h-5 w-5"/> : (vendor.softwareType === "xpression" ? <Truck className="h-5 w-5" /> : <Package className="h-5 w-5" />)}
                             </div>
                             <div className="flex-1 min-w-0">
                               <p className="font-semibold truncate">{vendor.vendorName}</p>
                               <div className="flex items-center gap-2 mt-0.5">
                                 <span className={`text-xs px-1.5 py-0.5 rounded ${
-                                  vendor.softwareType === "xpression"
-                                    ? "bg-blue-100 text-blue-700"
-                                    : "bg-emerald-100 text-emerald-700"
+                                  vendor.softwareType === "tech440" ? "bg-purple-100 text-purple-700" :
+                                  vendor.softwareType === "xpression" ? "bg-blue-100 text-blue-700" : "bg-emerald-100 text-emerald-700"
                                 }`}>
-                                  {vendor.softwareType === "xpression" ? "Xpression" : "ITD"}
+                                  {vendor.softwareType === "tech440" ? "Tech440" : (vendor.softwareType === "xpression" ? "Xpression" : "ITD")}
                                 </span>
                                 <span className="text-xs text-gray-400">
                                   {vendor.services?.length || 0} services
@@ -725,72 +917,139 @@ export default function AWBTrackingPage({ params }) {
                   {/* Service Selection */}
                   {selectedVendor && (
                     <div className={`rounded-xl p-5 border ${getServiceBgColor(selectedVendor.softwareType)}`}>
-                      <div className="grid grid-cols-1 lg:grid-cols-12 gap-4 items-end">
-                        <div className="lg:col-span-3">
-                          <label className="block text-sm font-medium text-gray-700 mb-2">
-                            Product Type
-                          </label>
-                          <select
-                            value={selectedProductCode}
-                            onChange={(e) => setSelectedProductCode(e.target.value)}
-                            className="w-full px-4 py-2.5 rounded-lg border border-gray-200 bg-white"
-                          >
-                            {productCodeOptions.map((option) => (
+                      <div className="mb-4">
+                        <label className="block text-sm font-medium text-gray-700 mb-2">
+                          Product Type
+                        </label>
+                        <select
+                          value={selectedProductCode}
+                          onChange={(e) => setSelectedProductCode(e.target.value)}
+                          className="w-full md:w-1/3 px-4 py-2.5 rounded-lg border border-gray-200 bg-white"
+                        >
+                          {selectedVendor.softwareType === "tech440" ? (
+                            <>
+                              <option value="NDX">NDX (Non-Doc)</option>
+                              <option value="DOC">DOC (Document)</option>
+                            </>
+                          ) : (
+                            productCodeOptions.map((option) => (
                               <option key={option.code} value={option.code}>
                                 {option.label}
                               </option>
-                            ))}
-                          </select>
-                        </div>
+                            ))
+                          )}
+                        </select>
+                      </div>
 
-                        <div className="lg:col-span-4">
-                          <label className="block text-sm font-medium text-gray-700 mb-2">
-                            Select Service
-                          </label>
-                          <select
-                            value={selectedService?.serviceName || ""}
-                            onChange={(e) => {
-                              if (e.target.value === "other") {
-                                handleServiceSelect("other")
-                              } else {
-                                const service = selectedVendor.services.find(
-                                  (s) => s.serviceName === e.target.value
-                                )
-                                handleServiceSelect(service)
-                              }
-                            }}
-                            className="w-full px-4 py-2.5 rounded-lg border border-gray-200 bg-white"
-                          >
-                            <option value="">Choose service...</option>
-                            {selectedVendor.services?.map((service, idx) => (
-                              <option key={idx} value={service.serviceName}>
-                                {service.serviceName}
-                              </option>
-                            ))}
-                            <option value="other">Other (Custom)</option>
-                          </select>
-                        </div>
+                      {/* --- TECH440 SPECIFIC: FETCH RATES --- */}
+                      {selectedVendor.softwareType === "tech440" ? (
+                        <div className="space-y-4">
+                           <Button 
+                             onClick={handleFetchTech440Rates} 
+                             disabled={tech440Loading}
+                             className="bg-purple-600 hover:bg-purple-700 text-white w-full md:w-auto"
+                           >
+                             {tech440Loading ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <Banknote className="h-4 w-4 mr-2" />}
+                             Fetch Available Rates & Services
+                           </Button>
 
-                        {selectedService?.serviceName === "other" && (
-                          <div className="lg:col-span-3">
+                           {tech440RateError && (
+                             <div className="p-3 bg-red-100 text-red-700 rounded-md text-sm">{tech440RateError}</div>
+                           )}
+
+                           {tech440Rates.length > 0 && (
+                             <div className="grid grid-cols-1 md:grid-cols-2 gap-3 mt-4">
+                               {tech440Rates.map((rate, idx) => {
+                                 const isRateSelected = selectedService?.serviceCode === rate.serviceCode
+                                 return (
+                                   <div 
+                                     key={idx} 
+                                     onClick={() => handleTech440RateSelect(rate)}
+                                     className={`cursor-pointer border rounded-lg p-3 flex justify-between items-center transition-all ${
+                                       isRateSelected ? "border-purple-500 bg-purple-50 ring-1 ring-purple-500" : "border-gray-200 bg-white hover:border-purple-300"
+                                     }`}
+                                   >
+                                     <div>
+                                       <p className="font-bold text-gray-800">{rate.serviceName}</p>
+                                       <p className="text-xs text-gray-500">Code: {rate.serviceCode} | Branch: {rate.branchName}</p>
+                                     </div>
+                                     <div className="text-right">
+                                       <p className="text-lg font-bold text-green-600">₹{rate.totalPrice}</p>
+                                       {isRateSelected && <CheckCircle className="h-4 w-4 text-purple-600 ml-auto" />}
+                                     </div>
+                                   </div>
+                                 )
+                               })}
+                             </div>
+                           )}
+                        </div>
+                      ) : (
+                        // --- STANDARD VENDOR SERVICES ---
+                        <div className="grid grid-cols-1 lg:grid-cols-12 gap-4 items-end">
+                          <div className="lg:col-span-4">
                             <label className="block text-sm font-medium text-gray-700 mb-2">
-                              Custom Service
+                              Select Service
                             </label>
-                            <input
-                              type="text"
-                              value={customService}
-                              onChange={(e) => setCustomService(e.target.value)}
-                              placeholder="Enter service name"
+                            <select
+                              value={selectedService?.serviceName || ""}
+                              onChange={(e) => {
+                                if (e.target.value === "other") {
+                                  handleServiceSelect("other")
+                                } else {
+                                  const service = selectedVendor.services.find(
+                                    (s) => s.serviceName === e.target.value
+                                  )
+                                  handleServiceSelect(service)
+                                }
+                              }}
                               className="w-full px-4 py-2.5 rounded-lg border border-gray-200 bg-white"
-                            />
+                            >
+                              <option value="">Choose service...</option>
+                              {selectedVendor.services?.map((service, idx) => (
+                                <option key={idx} value={service.serviceName}>
+                                  {service.serviceName}
+                                </option>
+                              ))}
+                              <option value="other">Other (Custom)</option>
+                            </select>
                           </div>
-                        )}
 
-                        <div className={selectedService?.serviceName === "other" ? "lg:col-span-2" : "lg:col-span-5"}>
+                          {selectedService?.serviceName === "other" && (
+                            <div className="lg:col-span-3">
+                              <label className="block text-sm font-medium text-gray-700 mb-2">
+                                Custom Service
+                              </label>
+                              <input
+                                type="text"
+                                value={customService}
+                                onChange={(e) => setCustomService(e.target.value)}
+                                placeholder="Enter service name"
+                                className="w-full px-4 py-2.5 rounded-lg border border-gray-200 bg-white"
+                              />
+                            </div>
+                          )}
+                        </div>
+                      )}
+
+                      {/* Common Footer: Edit Sender & Create Label */}
+                      <div className="mt-6 pt-4 border-t border-gray-200 flex flex-col md:flex-row justify-between gap-4">
+                        <div className="text-sm text-gray-600 self-center">
+                          <span className="font-medium">Sender:</span> {customSenderDetails?.name || awbData?.sender?.name}
+                        </div>
+                        <div className="flex gap-2 w-full md:w-auto">
+                          <Button 
+                            variant="outline" 
+                            size="sm" 
+                            onClick={() => setShowEditSenderModal(true)}
+                            className="text-gray-600 border-gray-300 hover:bg-gray-50"
+                          >
+                            <Pencil className="w-3.5 h-3.5 mr-2" />
+                            Edit Sender Details for Vendor
+                          </Button>
                           <Button
                             onClick={handleIntegration}
                             disabled={integrating || !isIntegrationValid()}
-                            className={`w-full text-white py-2.5 ${getButtonColor(selectedVendor.softwareType)} disabled:bg-gray-300`}
+                            className={`flex-1 md:flex-none ${getButtonColor(selectedVendor.softwareType)} text-white disabled:bg-gray-300`}
                           >
                             {integrating ? (
                               <>
@@ -798,7 +1057,7 @@ export default function AWBTrackingPage({ params }) {
                               </>
                             ) : (
                               <>
-                                Send to {selectedVendor.vendorName}
+                                {selectedVendor.softwareType === 'tech440' ? 'Generate Label' : `Send to ${selectedVendor.vendorName}`}
                                 <ArrowRight className="ml-2 h-4 w-4" />
                               </>
                             )}

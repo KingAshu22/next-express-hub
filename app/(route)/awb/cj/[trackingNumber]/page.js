@@ -34,10 +34,13 @@ import {
   ChevronUp,
   Pencil,
   Banknote,
+  MapPinned,
 } from "lucide-react"
 import axios from "axios"
 
-// ... [LabelCard Component remains the same] ...
+// ============================================
+// LabelCard Component
+// ============================================
 function LabelCard({ label, trackingNumber }) {
   const [showPreview, setShowPreview] = useState(false)
 
@@ -166,7 +169,9 @@ function LabelCard({ label, trackingNumber }) {
   )
 }
 
-// ... [IntegrationSuccessModal Component remains the same] ...
+// ============================================
+// IntegrationSuccessModal Component
+// ============================================
 function IntegrationSuccessModal({ isOpen, onClose, result, trackingNumber }) {
   const [expandedLabels, setExpandedLabels] = useState({})
 
@@ -385,6 +390,195 @@ function EditSenderModal({ isOpen, onClose, senderData, onSave }) {
 }
 
 // ============================================
+// Manual Service Input Modal for Tech440
+// ============================================
+function ManualServiceInputModal({ isOpen, onClose, onSubmit, loading, originalReceiverZip }) {
+  const [serviceCode, setServiceCode] = useState("")
+  const [branchName, setBranchName] = useState("")
+  const [serviceName, setServiceName] = useState("")
+  const [receiverZipCode, setReceiverZipCode] = useState("")
+  const [zipcodeId, setZipcodeId] = useState("")
+
+  // Reset form when modal opens
+  useEffect(() => {
+    if (isOpen) {
+      setServiceCode("")
+      setBranchName("")
+      setServiceName("")
+      setReceiverZipCode(originalReceiverZip || "")
+      setZipcodeId("")
+    }
+  }, [isOpen, originalReceiverZip])
+
+  const handleSubmit = (e) => {
+    e.preventDefault()
+    if (serviceCode.trim() && branchName.trim() && zipcodeId.trim()) {
+      onSubmit({
+        serviceCode: serviceCode.trim(),
+        branchName: branchName.trim(),
+        serviceName: serviceName.trim() || serviceCode.trim(),
+        receiverZipCode: receiverZipCode.trim() || originalReceiverZip,
+        zipcodeId: zipcodeId.trim()
+      })
+    }
+  }
+
+  if (!isOpen) return null
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+      <div className="absolute inset-0 bg-black/50 backdrop-blur-sm" onClick={onClose} />
+      <div className="relative bg-white rounded-xl shadow-xl w-full max-w-lg max-h-[90vh] overflow-y-auto">
+        <div className="bg-gradient-to-r from-purple-500 to-purple-600 px-6 py-4 rounded-t-xl">
+          <div className="flex items-center justify-between">
+            <h2 className="text-lg font-bold text-white">Manual Service Entry</h2>
+            <button onClick={onClose} className="p-1 hover:bg-white/20 rounded-full transition-colors">
+              <X className="h-5 w-5 text-white" />
+            </button>
+          </div>
+          <p className="text-purple-100 text-sm mt-1">
+            Enter service details manually for Tech440
+          </p>
+        </div>
+        
+        <form onSubmit={handleSubmit} className="p-6 space-y-4">
+          {/* Service Details Section */}
+          <div className="space-y-4">
+            <div className="flex items-center gap-2 text-sm font-medium text-gray-700 border-b pb-2">
+              <Zap className="h-4 w-4 text-purple-600" />
+              Service Details
+            </div>
+            
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label htmlFor="serviceCode" className="text-sm font-medium text-gray-700">
+                  Service Code <span className="text-red-500">*</span>
+                </Label>
+                <Input
+                  id="serviceCode"
+                  value={serviceCode}
+                  onChange={(e) => setServiceCode(e.target.value)}
+                  placeholder="e.g., AIR, SURFACE"
+                  required
+                  className="w-full"
+                />
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="branchName" className="text-sm font-medium text-gray-700">
+                  Branch Name <span className="text-red-500">*</span>
+                </Label>
+                <Input
+                  id="branchName"
+                  value={branchName}
+                  onChange={(e) => setBranchName(e.target.value)}
+                  placeholder="e.g., DELHI, MUMBAI"
+                  required
+                  className="w-full"
+                />
+              </div>
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="serviceName" className="text-sm font-medium text-gray-700">
+                Service Name (Optional)
+              </Label>
+              <Input
+                id="serviceName"
+                value={serviceName}
+                onChange={(e) => setServiceName(e.target.value)}
+                placeholder="Display name (defaults to service code)"
+                className="w-full"
+              />
+            </div>
+          </div>
+
+          {/* Location Details Section */}
+          <div className="space-y-4 pt-2">
+            <div className="flex items-center gap-2 text-sm font-medium text-gray-700 border-b pb-2">
+              <MapPinned className="h-4 w-4 text-purple-600" />
+              Receiver Location Details
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label htmlFor="receiverZipCode" className="text-sm font-medium text-gray-700">
+                  Receiver Postal Code <span className="text-red-500">*</span>
+                </Label>
+                <Input
+                  id="receiverZipCode"
+                  value={receiverZipCode}
+                  onChange={(e) => setReceiverZipCode(e.target.value)}
+                  placeholder="e.g., 10001, W1A 1AA"
+                  required
+                  className="w-full"
+                />
+                {originalReceiverZip && (
+                  <p className="text-xs text-gray-500">
+                    Original: <span className="font-mono bg-gray-100 px-1 rounded">{originalReceiverZip}</span>
+                  </p>
+                )}
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="zipcodeId" className="text-sm font-medium text-gray-700">
+                  Zipcode ID <span className="text-red-500">*</span>
+                </Label>
+                <Input
+                  id="zipcodeId"
+                  value={zipcodeId}
+                  onChange={(e) => setZipcodeId(e.target.value)}
+                  placeholder="e.g., 12345, ABC123"
+                  required
+                  className="w-full"
+                />
+                <p className="text-xs text-gray-500">
+                  Tech440 mapped zipcode ID from rate sheet
+                </p>
+              </div>
+            </div>
+
+            {/* Help Box */}
+            <div className="bg-amber-50 border border-amber-200 rounded-lg p-3 mt-2">
+              <div className="flex gap-2">
+                <AlertTriangle className="h-4 w-4 text-amber-600 flex-shrink-0 mt-0.5" />
+                <div className="text-xs text-amber-800">
+                  <p className="font-medium mb-1">How to find Zipcode ID?</p>
+                  <p>Contact Tech440 support or check your rate sheet for the correct zipcode_id mapping for the destination postal code.</p>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div className="pt-4 flex justify-end gap-3 border-t">
+            <Button type="button" variant="outline" onClick={onClose} disabled={loading}>
+              Cancel
+            </Button>
+            <Button 
+              type="submit" 
+              className="bg-purple-600 hover:bg-purple-700 text-white"
+              disabled={loading || !serviceCode.trim() || !branchName.trim() || !zipcodeId.trim()}
+            >
+              {loading ? (
+                <>
+                  <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                  Processing...
+                </>
+              ) : (
+                <>
+                  <CheckCircle className="h-4 w-4 mr-2" />
+                  Confirm & Generate
+                </>
+              )}
+            </Button>
+          </div>
+        </form>
+      </div>
+    </div>
+  )
+}
+
+// ============================================
 // Main Page Component
 // ============================================
 export default function AWBTrackingPage({ params }) {
@@ -409,6 +603,14 @@ export default function AWBTrackingPage({ params }) {
   const [tech440Rates, setTech440Rates] = useState([])
   const [tech440Loading, setTech440Loading] = useState(false)
   const [tech440RateError, setTech440RateError] = useState(null)
+
+  // Manual Service Input State (for Tech440)
+  const [showManualInputModal, setShowManualInputModal] = useState(false)
+  const [manualServiceCode, setManualServiceCode] = useState("")
+  const [manualBranchName, setManualBranchName] = useState("")
+  const [manualServiceName, setManualServiceName] = useState("")
+  const [manualReceiverZipCode, setManualReceiverZipCode] = useState("")
+  const [manualZipcodeId, setManualZipcodeId] = useState("")
 
   // Custom Sender Details State
   const [customSenderDetails, setCustomSenderDetails] = useState(null)
@@ -480,6 +682,11 @@ export default function AWBTrackingPage({ params }) {
     setCustomService("")
     setTech440Rates([])
     setTech440RateError(null)
+    setManualServiceCode("")
+    setManualBranchName("")
+    setManualServiceName("")
+    setManualReceiverZipCode("")
+    setManualZipcodeId("")
     
     // Set default product code
     if (vendor.softwareType === "tech440") {
@@ -500,7 +707,7 @@ export default function AWBTrackingPage({ params }) {
     setCustomService("")
   }
 
-  // Tech440 Logic
+  // Tech440 Logic - Fetch Rates
   const handleFetchTech440Rates = async () => {
     if (!selectedVendor || selectedVendor.softwareType !== "tech440") return
     
@@ -524,13 +731,13 @@ export default function AWBTrackingPage({ params }) {
       if (result.success) {
         setTech440Rates(result.rates)
         if (result.rates.length === 0) {
-          setTech440RateError("No rates found for this shipment configuration.")
+          setTech440RateError("No rates found for this shipment configuration. You can enter service details manually.")
         }
       } else {
-        setTech440RateError(result.error || "Failed to fetch rates")
+        setTech440RateError(result.error || "Failed to fetch rates. You can enter service details manually.")
       }
     } catch (err) {
-      setTech440RateError(err.message || "Error connecting to rate server")
+      setTech440RateError("Error connecting to rate server. You can enter service details manually.")
     } finally {
       setTech440Loading(false)
     }
@@ -539,10 +746,44 @@ export default function AWBTrackingPage({ params }) {
   const handleTech440RateSelect = (rate) => {
     setSelectedService({
       serviceName: rate.serviceName,
-      serviceCode: rate.serviceCode, // Vital for API
-      branchName: rate.branchName,   // Vital for API
-      packageCode: selectedProductCode
+      serviceCode: rate.serviceCode,
+      branchName: rate.branchName,
+      packageCode: selectedProductCode,
+      zipcodeId: rate.zipcodeId || null, // Include if available from rate
+      isManual: false
     })
+  }
+
+  // Handle Manual Service Submission for Tech440
+  const handleManualServiceSubmit = async (manualData) => {
+    setManualServiceCode(manualData.serviceCode)
+    setManualBranchName(manualData.branchName)
+    setManualServiceName(manualData.serviceName)
+    setManualReceiverZipCode(manualData.receiverZipCode)
+    setManualZipcodeId(manualData.zipcodeId)
+    
+    // Set the selected service with manual data including receiver zip and zipcode ID
+    setSelectedService({
+      serviceName: manualData.serviceName || manualData.serviceCode,
+      serviceCode: manualData.serviceCode,
+      branchName: manualData.branchName,
+      packageCode: selectedProductCode,
+      receiverZipCode: manualData.receiverZipCode,
+      zipcodeId: manualData.zipcodeId,
+      isManual: true
+    })
+    
+    setShowManualInputModal(false)
+  }
+
+  // Clear manual service selection
+  const handleClearManualService = () => {
+    setSelectedService(null)
+    setManualServiceCode("")
+    setManualBranchName("")
+    setManualServiceName("")
+    setManualReceiverZipCode("")
+    setManualZipcodeId("")
   }
 
   const isIntegrationValid = () => {
@@ -550,7 +791,7 @@ export default function AWBTrackingPage({ params }) {
     
     // Tech440 Validation
     if (selectedVendor.softwareType === "tech440") {
-      return !!selectedService // Must have selected a rate
+      return !!selectedService
     }
 
     // Standard Validation
@@ -569,14 +810,37 @@ export default function AWBTrackingPage({ params }) {
       setIntegrating(true)
       setError(null)
 
-      const serviceData =
-        selectedService.serviceName === "other"
-          ? {
-              serviceName: customService.trim(),
-              serviceCode: customService.trim(),
-              apiServiceCode: customService.trim(),
-            }
-          : selectedService
+      let serviceData
+
+      // Handle Tech440 (both rate-selected and manual)
+      if (selectedVendor.softwareType === "tech440") {
+        serviceData = {
+          serviceName: selectedService.serviceName,
+          serviceCode: selectedService.serviceCode,
+          branchName: selectedService.branchName,
+          packageCode: selectedProductCode,
+          isManual: selectedService.isManual || false,
+          // Include receiver zip code and zipcode ID if manual entry
+          ...(selectedService.isManual && {
+            receiverZipCode: selectedService.receiverZipCode,
+            zipcodeId: selectedService.zipcodeId
+          }),
+          // Include zipcodeId even if from rate selection (if available)
+          ...(!selectedService.isManual && selectedService.zipcodeId && {
+            zipcodeId: selectedService.zipcodeId
+          })
+        }
+      } else {
+        // Standard vendors
+        serviceData =
+          selectedService.serviceName === "other"
+            ? {
+                serviceName: customService.trim(),
+                serviceCode: customService.trim(),
+                apiServiceCode: customService.trim(),
+              }
+            : selectedService
+      }
 
       const response = await fetch("/api/vendor-integrations/send-awb", {
         method: "POST",
@@ -586,7 +850,7 @@ export default function AWBTrackingPage({ params }) {
           vendorId: selectedVendor._id,
           serviceData: serviceData,
           productCode: selectedProductCode,
-          customSenderDetails: customSenderDetails, // Send custom sender details
+          customSenderDetails: customSenderDetails,
         }),
       })
 
@@ -613,6 +877,11 @@ export default function AWBTrackingPage({ params }) {
       setSelectedVendor(null)
       setSelectedService(null)
       setTech440Rates([])
+      setManualServiceCode("")
+      setManualBranchName("")
+      setManualServiceName("")
+      setManualReceiverZipCode("")
+      setManualZipcodeId("")
       setError(null)
     } catch (err) {
       setError(err.message || "An unexpected error occurred")
@@ -705,6 +974,15 @@ export default function AWBTrackingPage({ params }) {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-gray-50 via-white to-gray-50">
+      {/* Manual Service Input Modal */}
+      <ManualServiceInputModal
+        isOpen={showManualInputModal}
+        onClose={() => setShowManualInputModal(false)}
+        onSubmit={handleManualServiceSubmit}
+        loading={integrating}
+        originalReceiverZip={awbData?.receiver?.zip || ""}
+      />
+
       {/* Integration Success Modal */}
       <IntegrationSuccessModal
         isOpen={showResultModal}
@@ -944,44 +1222,107 @@ export default function AWBTrackingPage({ params }) {
                       {/* --- TECH440 SPECIFIC: FETCH RATES --- */}
                       {selectedVendor.softwareType === "tech440" ? (
                         <div className="space-y-4">
-                           <Button 
-                             onClick={handleFetchTech440Rates} 
-                             disabled={tech440Loading}
-                             className="bg-purple-600 hover:bg-purple-700 text-white w-full md:w-auto"
-                           >
-                             {tech440Loading ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <Banknote className="h-4 w-4 mr-2" />}
-                             Fetch Available Rates & Services
-                           </Button>
+                          <div className="flex flex-wrap gap-2">
+                            <Button 
+                              onClick={handleFetchTech440Rates} 
+                              disabled={tech440Loading}
+                              className="bg-purple-600 hover:bg-purple-700 text-white"
+                            >
+                              {tech440Loading ? (
+                                <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                              ) : (
+                                <Banknote className="h-4 w-4 mr-2" />
+                              )}
+                              Fetch Available Rates
+                            </Button>
+                            
+                            <Button 
+                              onClick={() => setShowManualInputModal(true)} 
+                              variant="outline"
+                              className="border-purple-300 text-purple-700 hover:bg-purple-100"
+                            >
+                              <Pencil className="h-4 w-4 mr-2" />
+                              Manual Entry
+                            </Button>
+                          </div>
 
-                           {tech440RateError && (
-                             <div className="p-3 bg-red-100 text-red-700 rounded-md text-sm">{tech440RateError}</div>
-                           )}
+                          {/* Error with manual entry option */}
+                          {tech440RateError && (
+                            <div className="p-4 bg-amber-50 border border-amber-200 rounded-lg">
+                              <div className="flex gap-3">
+                                <AlertTriangle className="h-5 w-5 text-amber-600 flex-shrink-0 mt-0.5" />
+                                <div className="flex-1">
+                                  <p className="text-sm text-amber-800 font-medium">{tech440RateError}</p>
+                                  <button
+                                    onClick={() => setShowManualInputModal(true)}
+                                    className="text-sm text-purple-700 underline hover:text-purple-900 mt-2 font-medium inline-flex items-center gap-1"
+                                  >
+                                    <Pencil className="h-3 w-3" />
+                                    Click here to enter service details manually →
+                                  </button>
+                                </div>
+                              </div>
+                            </div>
+                          )}
 
-                           {tech440Rates.length > 0 && (
-                             <div className="grid grid-cols-1 md:grid-cols-2 gap-3 mt-4">
-                               {tech440Rates.map((rate, idx) => {
-                                 const isRateSelected = selectedService?.serviceCode === rate.serviceCode
-                                 return (
-                                   <div 
-                                     key={idx} 
-                                     onClick={() => handleTech440RateSelect(rate)}
-                                     className={`cursor-pointer border rounded-lg p-3 flex justify-between items-center transition-all ${
-                                       isRateSelected ? "border-purple-500 bg-purple-50 ring-1 ring-purple-500" : "border-gray-200 bg-white hover:border-purple-300"
-                                     }`}
-                                   >
-                                     <div>
-                                       <p className="font-bold text-gray-800">{rate.serviceName}</p>
-                                       <p className="text-xs text-gray-500">Code: {rate.serviceCode} | Branch: {rate.branchName}</p>
-                                     </div>
-                                     <div className="text-right">
-                                       <p className="text-lg font-bold text-green-600">₹{rate.totalPrice}</p>
-                                       {isRateSelected && <CheckCircle className="h-4 w-4 text-purple-600 ml-auto" />}
-                                     </div>
-                                   </div>
-                                 )
-                               })}
-                             </div>
-                           )}
+                          {/* Manual Service Selected Display */}
+                          {selectedService?.isManual && (
+                            <div className="p-4 bg-purple-50 border border-purple-200 rounded-lg">
+                              <div className="flex items-start gap-3">
+                                <CheckCircle className="h-5 w-5 text-purple-600 flex-shrink-0 mt-0.5" />
+                                <div className="flex-1">
+                                  <p className="text-sm font-medium text-purple-900">Manual Service Selected</p>
+                                  <div className="mt-2 grid grid-cols-2 gap-x-4 gap-y-1 text-sm text-purple-700">
+                                    <p><span className="font-medium">Service Code:</span> {selectedService.serviceCode}</p>
+                                    <p><span className="font-medium">Branch Name:</span> {selectedService.branchName}</p>
+                                    <p><span className="font-medium">Service Name:</span> {selectedService.serviceName}</p>
+                                    <p><span className="font-medium">Zipcode ID:</span> <span className="font-mono">{selectedService.zipcodeId}</span></p>
+                                    {selectedService.receiverZipCode && (
+                                      <p className="col-span-2"><span className="font-medium">Receiver Postal Code:</span> <span className="font-mono">{selectedService.receiverZipCode}</span></p>
+                                    )}
+                                  </div>
+                                </div>
+                                <button
+                                  onClick={handleClearManualService}
+                                  className="p-1 hover:bg-purple-100 rounded transition-colors"
+                                  title="Clear selection"
+                                >
+                                  <X className="h-4 w-4 text-purple-600" />
+                                </button>
+                              </div>
+                            </div>
+                          )}
+
+                          {/* Rates Grid */}
+                          {tech440Rates.length > 0 && (
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                              {tech440Rates.map((rate, idx) => {
+                                const isRateSelected = selectedService?.serviceCode === rate.serviceCode && !selectedService?.isManual
+                                return (
+                                  <div 
+                                    key={idx} 
+                                    onClick={() => handleTech440RateSelect(rate)}
+                                    className={`cursor-pointer border rounded-lg p-3 flex justify-between items-center transition-all ${
+                                      isRateSelected 
+                                        ? "border-purple-500 bg-purple-50 ring-1 ring-purple-500" 
+                                        : "border-gray-200 bg-white hover:border-purple-300"
+                                    }`}
+                                  >
+                                    <div>
+                                      <p className="font-bold text-gray-800">{rate.serviceName}</p>
+                                      <p className="text-xs text-gray-500">
+                                        Code: {rate.serviceCode} | Branch: {rate.branchName}
+                                      </p>
+                                    </div>
+                                    <div className="text-right">
+                                      <p className="text-lg font-bold text-green-600">₹{rate.totalPrice}</p>
+                                      {isRateSelected && <CheckCircle className="h-4 w-4 text-purple-600 ml-auto mt-1" />}
+                                    </div>
+                                  </div>
+                                )
+                              })}
+                            </div>
+                          )}
                         </div>
                       ) : (
                         // --- STANDARD VENDOR SERVICES ---

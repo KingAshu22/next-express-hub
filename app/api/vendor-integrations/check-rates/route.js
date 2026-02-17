@@ -7,149 +7,177 @@ export async function POST(request) {
     await connectToDB()
     const { vendorId, awbData, packageCode } = await request.json()
 
+    // 1. Fetch Vendor
     const vendor = await VendorIntegration.findById(vendorId)
-    if (!vendor || vendor.softwareType !== "tech440") {
-      return new Response(JSON.stringify({ success: false, error: "Invalid vendor" }), { status: 400 })
+    if (!vendor) {
+      return new Response(JSON.stringify({ success: false, error: "Vendor not found" }), { status: 404 })
     }
 
-    const creds = vendor.tech440Credentials
-    
-    // 1. Sanitize API URL (Remove trailing slash if present)
-    const baseUrl = creds.apiUrl.replace(/\/$/, "")
-    const rateEndpoint = `${baseUrl}/rates/check`
-    const zipLookupEndpoint = `${baseUrl}/location/zipcode`
-
-    // 2. Generate Auth Header
-    const authHeader = `Basic ${Buffer.from(`${creds.username}:${creds.password}`).toString('base64')}`
-
-    // 3. Prepare Common Data
+    // 2. Prepare Common Data
     const destCountry = iso.getCode(awbData.receiver.country) || "US"
+    const originCountry = iso.getCode(awbData.sender?.country) || "IN" // Default to IN if not provided
     
-    // --- START: ZIPCODE LOOKUP LOGIC ---
-    const rawZip = awbData.receiver.zip || ""
-    
-    // 1. Remove spaces, 2. Take first 3 characters
-    const searchZip = rawZip.replace(/\s+/g, '').substring(0, 3)
+    // Calculate total weight
+    const totalWeight = awbData.boxes?.reduce((sum, box) => sum + Number(box.actualWeight || 0), 0) || 0.5
+    const totalPcs = awbData.boxes?.length || 1
 
-    let finalZipcodeId = rawZip // Default fallback to full zip if lookup fails or returns empty
-    
-    try {
-      console.log(`Looking up zipcode ID for search term: "${searchZip}" (Original: "${rawZip}")`)
+    let rates = []
+
+    // ==========================================
+    // LOGIC FOR TECH440
+    // ==========================================
+    if (vendor.softwareType === "tech440") {
+      const creds = vendor.tech440Credentials
       
-      const lookupPayload = {
-        api_key: creds.apiKey,
-        country: destCountry,
-        search: searchZip
+      const baseUrl = creds.apiUrl.replace(/\/$/, "")
+      const rateEndpoint = `${baseUrl}/rates/check`
+      const zipLookupEndpoint = `${baseUrl}/location/zipcode`
+      const authHeader = `Basic ${Buffer.from(`${creds.username}:${creds.password}`).toString('base64')}`
+
+      // --- TECH440 ZIPCODE LOOKUP ---
+      const rawZip = awbData.receiver.zip || ""
+      const searchZip = rawZip.replace(/\s+/g, '').substring(0, 3)
+      let finalZipcodeId = rawZip 
+      
+      try {
+        const lookupPayload = { api_key: creds.apiKey, country: destCountry, search: searchZip }
+        const lookupResponse = await fetch(zipLookupEndpoint, {
+          method: "POST", 
+          headers: { "Content-Type": "application/json", "Authorization": authHeader, "Accept": "application/json" },
+          body: JSON.stringify(lookupPayload)
+        })
+
+        if (lookupResponse.ok) {
+          const lookupData = await lookupResponse.json()
+          if (lookupData.status === "success" && Array.isArray(lookupData.data) && lookupData.data.length > 0) {
+            finalZipcodeId = lookupData.data[0].zipcode_id
+          }
+        }
+      } catch (zipError) {
+        console.error("Tech440 Zip lookup failed:", zipError)
       }
 
-      // Using POST because we are sending a JSON body
-      const lookupResponse = await fetch(zipLookupEndpoint, {
-        method: "POST", 
-        headers: { 
-          "Content-Type": "application/json",
-          "Authorization": authHeader,
-          "Accept": "application/json"
-        },
-        body: JSON.stringify(lookupPayload)
+      // Format Date for Tech440 (DD-MM-YYYY)
+      const today = new Date()
+      const t_dd = String(today.getDate()).padStart(2, '0')
+      const t_mm = String(today.getMonth() + 1).padStart(2, '0')
+      const t_yyyy = today.getFullYear()
+      const shipDate = `${t_dd}-${t_mm}-${t_yyyy}`
+
+      const dimensions = awbData.boxes?.map(box => ({
+        units: "cm", length: Number(box.length) || 1, width: Number(box.breadth) || 1, height: Number(box.height) || 1, weightb: Number(box.actualWeight) || 1
+      })) || []
+
+      const payload = {
+        api_key: creds.apiKey,
+        rate_request: {
+          ship_date: shipDate,
+          package_code: packageCode || "NDX",
+          to_country: destCountry,
+          zipcode_id: finalZipcodeId,
+          weight: { value: totalWeight, units: "kg" },
+          dimensions: dimensions
+        }
+      }
+
+      const response = await fetch(rateEndpoint, {
+        method: "POST",
+        headers: { "Content-Type": "application/json", "Authorization": authHeader },
+        body: JSON.stringify(payload)
       })
 
-      if (lookupResponse.ok) {
-        const lookupData = await lookupResponse.json()
-        
-        // Check if data array exists and has items
-        if (lookupData.status === "success" && Array.isArray(lookupData.data) && lookupData.data.length > 0) {
-          // Use the zipcode_id from the first result
-          finalZipcodeId = lookupData.data[0].zipcode_id
-          console.log(`Zipcode Lookup Success. Mapped "${searchZip}" to ID: ${finalZipcodeId}`)
-        } else {
-          console.log("Zipcode Lookup: No data found for search term, using original zip.")
-        }
-      } else {
-        console.warn(`Zipcode Lookup API returned status: ${lookupResponse.status}`)
-      }
-    } catch (zipError) {
-      console.error("Zipcode Lookup Failed (falling back to original zip):", zipError)
+      const responseText = await response.text()
+      if (!response.ok) throw new Error(`Tech440 API Error: ${responseText}`)
+      
+      const result = JSON.parse(responseText)
+      if (result.status !== "success") throw new Error(result.message || "Tech440 Error")
+
+      rates = (result.data || []).map(item => ({
+        serviceName: item.company.name,
+        serviceCode: item.company.service_code,
+        branchName: item.company.branch_name,
+        totalPrice: item.rate["Grand Total"] || item.rate.Total || item.company.total,
+        breakdown: item.rate
+      }))
     }
-    // --- END: ZIPCODE LOOKUP LOGIC ---
 
-    // Calculate total weight (default to 0.5 if 0 to avoid API errors)
-    const totalWeight = awbData.boxes?.reduce((sum, box) => sum + Number(box.actualWeight || 0), 0) || 0.5
-    
-    // Map dimensions
-    const dimensions = awbData.boxes?.map(box => ({
-      units: "cm",
-      length: Number(box.length) || 1,
-      width: Number(box.breadth) || 1,
-      height: Number(box.height) || 1,
-      weightb: Number(box.actualWeight) || 1
-    })) || []
+    // ==========================================
+    // LOGIC FOR ITD SOFTWARE
+    // ==========================================
+    else if (vendor.softwareType === "itd") {
+      // Assuming you have an 'itdCredentials' object in your Schema
+      const creds = vendor.itdCredentials 
+      
+      // Clean URL
+      const baseUrl = creds.apiUrl.replace(/\/$/, "")
+      const companyId = creds.companyId || "2" // Default to 2 if not in DB, or require it
+      const endpoint = `${baseUrl}/docket_api/customer_rate_cals?api_company_id=${companyId}`
 
-    // Format Date DD-MM-YYYY
-    const today = new Date()
-    const dd = String(today.getDate()).padStart(2, '0')
-    const mm = String(today.getMonth() + 1).padStart(2, '0')
-    const yyyy = today.getFullYear()
-    const shipDate = `${dd}-${mm}-${yyyy}`
+      // Format Date for ITD (YYYY-MM-DD)
+      const today = new Date()
+      const i_yyyy = today.getFullYear()
+      const i_mm = String(today.getMonth() + 1).padStart(2, '0')
+      const i_dd = String(today.getDate()).padStart(2, '0')
+      const bookingDate = `${i_yyyy}-${i_mm}-${i_dd}`
 
-    const payload = {
-      api_key: creds.apiKey,
-      rate_request: {
-        ship_date: shipDate,
-        package_code: packageCode || "NDX",
-        to_country: destCountry,
-        zipcode_id: finalZipcodeId, // This now holds the ID from API or the Original Zip
-        weight: {
-          value: totalWeight,
-          units: "kg"
+      // Base64 Encode Credentials (as per docs)
+      const encodedUser = Buffer.from(creds.email).toString('base64')
+      const encodedPass = Buffer.from(creds.password).toString('base64')
+
+      // Prepare Form Data (application/x-www-form-urlencoded)
+      const formData = new URLSearchParams()
+      formData.append("product_code", packageCode || "DOX") // Default DOX or SPX
+      formData.append("destination_code", destCountry)
+      formData.append("booking_date", bookingDate)
+      formData.append("origin_code", originCountry)
+      formData.append("pcs", totalPcs)
+      formData.append("actual_weight", totalWeight)
+      formData.append("customer_code", creds.customerCode) // e.g., T001
+      formData.append("username", encodedUser)
+      formData.append("password", encodedPass)
+
+      console.log("ITD Payload:", formData.toString())
+
+      const response = await fetch(endpoint, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/x-www-form-urlencoded" // Standard for form data
         },
-        dimensions: dimensions
+        body: formData
+      })
+
+      const responseText = await response.text()
+      console.log("ITD Response:", responseText)
+
+      let result
+      try {
+        result = JSON.parse(responseText)
+      } catch (e) {
+        throw new Error(`Invalid JSON from ITD: ${responseText}`)
       }
+
+      if (result.success === false) {
+        // Handle ITD specific error array
+        const errorMsg = Array.isArray(result.error) ? result.error.join(", ") : "Unknown ITD Error"
+        throw new Error(errorMsg)
+      }
+
+      // Map ITD response to unified format
+      rates = (result.data || []).map(item => ({
+        serviceName: item.code, // ITD returns 'code' like 'UPS'
+        serviceCode: item.code,
+        branchName: "", // ITD doesn't seem to return branch name in this endpoint
+        totalPrice: item.total,
+        breakdown: item // Store full object as breakdown (has igst, fsc, etc)
+      }))
+
+    } else {
+      return new Response(JSON.stringify({ success: false, error: "Unsupported vendor software type" }), { status: 400 })
     }
 
-    console.log("Tech440 Rate Endpoint:", rateEndpoint)
-    console.log("Tech440 Rate Payload:", JSON.stringify(payload))
-
-    // 4. Make the Rate Request
-    const response = await fetch(rateEndpoint, {
-      method: "POST",
-      headers: { 
-        "Content-Type": "application/json",
-        "Authorization": authHeader,
-        "Accept": "application/json"
-      },
-      body: JSON.stringify(payload)
-    })
-
-    // 5. READ RAW TEXT FIRST
-    const responseText = await response.text()
-    console.log(`Tech440 Status: ${response.status}`)
-    
-    // 6. Check HTTP Status
-    if (!response.ok) {
-      throw new Error(`API Error (${response.status}): ${responseText || response.statusText}`)
-    }
-
-    // 7. Safe Parse
-    let result
-    try {
-      result = JSON.parse(responseText)
-    } catch (e) {
-      throw new Error(`Invalid JSON received from Tech440. Raw: ${responseText}`)
-    }
-
-    if (result.status !== "success") {
-      throw new Error(result.message || "Failed to fetch rates (API returned error)")
-    }
-
-    // Transform response for frontend
-    const rates = (result.data || []).map(item => ({
-      serviceName: item.company.name,
-      serviceCode: item.company.service_code,
-      branchName: item.company.branch_name,
-      totalPrice: item.rate["Grand Total"] || item.rate.Total || item.company.total,
-      breakdown: item.rate
-    }))
-
+    // ==========================================
+    // FINAL RESPONSE
+    // ==========================================
     return new Response(JSON.stringify({ success: true, rates }), { status: 200 })
 
   } catch (error) {

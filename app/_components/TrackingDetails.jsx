@@ -33,6 +33,8 @@ import {
   CalendarCheck,
   Timer,
   Route,
+  Building2,
+  Layers,
 } from "lucide-react";
 
 import { FaWhatsapp } from "react-icons/fa";
@@ -229,6 +231,19 @@ const detectCarrierFromLink = (link) => {
   return null;
 };
 
+const getSourceLabel = (source) => {
+  switch (source) {
+    case "vendor":
+      return { label: "Primary Carrier", color: "bg-blue-100 text-blue-700 border-blue-200" };
+    case "forwarding":
+      return { label: "Partner Carrier", color: "bg-orange-100 text-orange-700 border-orange-200" };
+    case "database":
+      return { label: "System Update", color: "bg-gray-100 text-gray-700 border-gray-200" };
+    default:
+      return { label: "Update", color: "bg-gray-100 text-gray-700 border-gray-200" };
+  }
+};
+
 // ------------------- MAIN COMPONENT -------------------
 
 export default function TrackingDetails({ parcelDetails }) {
@@ -241,6 +256,7 @@ export default function TrackingDetails({ parcelDetails }) {
   const [mergedTimeline, setMergedTimeline] = useState([]);
   const [copied, setCopied] = useState(false);
   const [copiedForwarding, setCopiedForwarding] = useState(false);
+  const [activeFilter, setActiveFilter] = useState("all"); // "all", "vendor", "forwarding"
 
   // --- 1. IDENTIFY TRACKING SOURCE ---
 
@@ -257,20 +273,19 @@ export default function TrackingDetails({ parcelDetails }) {
   // Check specifically for DHL in forwarding link + existence of forwarding number
   const isDHLForwarding =
     forwardingNumber &&
-    forwardingLink.includes("dhl") &&
+    forwardingLink.toLowerCase().includes("dhl") &&
     forwardingCarrier === "dhl";
 
-  // Check specifically for UPS in forwarding link + existence of forwarding number
-  const isUPSForwarding =
-    forwardingNumber &&
-    forwardingLink &&
-    !isDHLForwarding
-
-  // Determine if we should attempt to track via standard vendor API
-  const shouldTrack = (hasVendorIntegration || isDHLForwarding) && !isUPSForwarding;
+  // ===== UPDATED LOGIC: Track from BOTH APIs when applicable =====
   
-  // Should track forwarding (UPS via ParcelsApp)
-  const shouldTrackForwarding = !isDHLForwarding && isUPSForwarding && forwardingNumber;
+  // Should track via vendor API:
+  // 1. If has standard vendor integration (cNoteNumber + vendorName)
+  // 2. OR if DHL forwarding (DHL is handled via vendor API)
+  const shouldTrackVendor = hasVendorIntegration || isDHLForwarding;
+
+  // Should track via forwarding API (ParcelsApp):
+  // If has forwarding number AND it's NOT DHL (DHL is handled by vendor API)
+  const shouldTrackForwarding = forwardingNumber && !isDHLForwarding;
 
   // Variables for display
   const trackingNumber = parcelDetails?.trackingNumber;
@@ -318,7 +333,7 @@ export default function TrackingDetails({ parcelDetails }) {
 
   // Fetch standard vendor tracking
   const fetchVendorTracking = async () => {
-    if (!shouldTrack) return;
+    if (!shouldTrackVendor) return;
 
     setIsLoading(true);
     setError(null);
@@ -331,13 +346,14 @@ export default function TrackingDetails({ parcelDetails }) {
           awbNumber: forwardingNumber,
           forceSoftwareType: "dhl",
         };
-        console.log("Tracking via DHL Forwarding:", payload);
+        console.log("[Vendor Tracking] Tracking via DHL Forwarding:", payload);
       } else {
         payload = {
           awbNumber: parcelDetails?.cNoteNumber,
           vendorId: parcelDetails?.integratedVendorId,
           vendorName: parcelDetails?.cNoteVendorName,
         };
+        console.log("[Vendor Tracking] Tracking via standard vendor:", payload);
       }
 
       const response = await fetch("/api/vendor-integrations/tracking", {
@@ -349,20 +365,21 @@ export default function TrackingDetails({ parcelDetails }) {
       const result = await response.json();
 
       if (!result.success) {
-        setError(result.error || "Failed to fetch tracking data");
+        setError(result.error || "Failed to fetch vendor tracking data");
         return;
       }
 
+      console.log("[Vendor Tracking] Success:", result);
       setVendorTrackingData(result);
     } catch (err) {
-      console.error("Error fetching vendor tracking:", err);
-      setError(err.message || "Failed to fetch tracking data");
+      console.error("[Vendor Tracking] Error:", err);
+      setError(err.message || "Failed to fetch vendor tracking data");
     } finally {
       setIsLoading(false);
     }
   };
 
-  // Fetch forwarding tracking (UPS via ParcelsApp)
+  // Fetch forwarding tracking (via ParcelsApp)
   const fetchForwardingTracking = async () => {
     if (!shouldTrackForwarding) return;
 
@@ -387,6 +404,7 @@ export default function TrackingDetails({ parcelDetails }) {
         return;
       }
 
+      console.log("[Forwarding Tracking] Success:", result);
       setForwardingTrackingData(result);
     } catch (err) {
       console.error("[Forwarding Tracking] Error:", err);
@@ -396,11 +414,12 @@ export default function TrackingDetails({ parcelDetails }) {
     }
   };
 
+  // Fetch both tracking sources on mount
   useEffect(() => {
-    if (shouldTrack) {
+    if (shouldTrackVendor) {
       fetchVendorTracking();
     }
-  }, [shouldTrack, parcelDetails]);
+  }, [shouldTrackVendor, parcelDetails]);
 
   useEffect(() => {
     if (shouldTrackForwarding) {
@@ -408,68 +427,98 @@ export default function TrackingDetails({ parcelDetails }) {
     }
   }, [shouldTrackForwarding, forwardingNumber]);
 
-  // Merge events from all sources
+  // Merge events from ALL sources
   useEffect(() => {
     const allEvents = [];
 
-    const normalize = (evt, softwareType, source = "vendor") => {
+    const normalizeVendorEvent = (evt, softwareType) => {
       const timestamp = parseEventTimestamp(evt, softwareType);
       return {
         timestamp,
         status: evt.Status?.trim() || evt.status?.trim() || "Update",
         location: evt.Location?.trim() || evt.location?.trim() || "",
         comment: evt.Remark || evt.comment || "",
-        source, // Track source for debugging
+        source: "vendor",
+      };
+    };
+
+    const normalizeDatabaseEvent = (evt) => {
+      const timestamp = parseInternalDate(evt.timestamp);
+      return {
+        timestamp,
+        status: evt.status?.trim() || "Update",
+        location: evt.location?.trim() || "",
+        comment: evt.comment || "",
+        source: "database",
+      };
+    };
+
+    const normalizeForwardingEvent = (evt) => {
+      const timestamp = parseParcelsAppDate(evt.date, evt.time);
+      return {
+        timestamp,
+        status: evt.status?.trim() || "Update",
+        location: evt.location?.trim() || "",
+        comment: "",
+        source: "forwarding",
       };
     };
 
     // Add vendor tracking data
-    if (vendorTrackingData?.events) {
+    if (vendorTrackingData?.events && Array.isArray(vendorTrackingData.events)) {
       vendorTrackingData.events.forEach(e =>
-        allEvents.push(normalize(e, vendorTrackingData.softwareType, "vendor"))
+        allEvents.push(normalizeVendorEvent(e, vendorTrackingData.softwareType))
       );
     }
 
     // Add database parcel status
-    if (parcelDetails?.parcelStatus) {
-      parcelDetails.parcelStatus.forEach(e => allEvents.push(normalize(e, null, "database")));
+    if (parcelDetails?.parcelStatus && Array.isArray(parcelDetails.parcelStatus)) {
+      parcelDetails.parcelStatus.forEach(e => allEvents.push(normalizeDatabaseEvent(e)));
     }
 
     // Add forwarding tracking data (ParcelsApp)
-    if (forwardingTrackingData?.events) {
-      forwardingTrackingData.events.forEach(e => {
-        const timestamp = parseParcelsAppDate(e.date, e.time);
-        allEvents.push({
-          timestamp,
-          status: e.status?.trim() || "Update",
-          location: e.location?.trim() || "",
-          comment: "",
-          source: "forwarding",
-        });
-      });
+    if (forwardingTrackingData?.events && Array.isArray(forwardingTrackingData.events)) {
+      forwardingTrackingData.events.forEach(e => allEvents.push(normalizeForwardingEvent(e)));
     }
 
-    // Sort by timestamp descending
+    // Sort by timestamp descending (most recent first)
     allEvents.sort((a, b) => b.timestamp - a.timestamp);
 
-    // Deduplicate
+    // Deduplicate events with same status and close timestamps
     const deduped = allEvents.filter((event, index, arr) => {
       if (index === 0) return true;
       const prev = arr[index - 1];
       const isSameStatus = event.status.toLowerCase() === prev.status.toLowerCase();
-      const isTimeClose = Math.abs(event.timestamp - prev.timestamp) < 60000;
-      return !(isSameStatus && isTimeClose);
+      const isSameLocation = event.location.toLowerCase() === prev.location.toLowerCase();
+      const isTimeClose = Math.abs(event.timestamp - prev.timestamp) < 60000; // 1 minute
+      return !(isSameStatus && isSameLocation && isTimeClose);
+    });
+
+    console.log("[Timeline] Merged events count:", deduped.length, {
+      vendor: allEvents.filter(e => e.source === "vendor").length,
+      forwarding: allEvents.filter(e => e.source === "forwarding").length,
+      database: allEvents.filter(e => e.source === "database").length,
     });
 
     setMergedTimeline(deduped);
   }, [vendorTrackingData, forwardingTrackingData, parcelDetails]);
+
+  // Filter timeline based on active filter
+  const filteredTimeline = activeFilter === "all" 
+    ? mergedTimeline 
+    : mergedTimeline.filter(event => event.source === activeFilter);
 
   // Derived UI State
   const latestStatus = mergedTimeline[0]?.status || "Awaiting Updates";
   const latestLocation = mergedTimeline[0]?.location || "";
   const isDelivered = latestStatus.toLowerCase().includes("delivered");
   const progress = calculateProgress(latestStatus, mergedTimeline);
-  const groupedEvents = groupEventsByDate(mergedTimeline);
+  const groupedEvents = groupEventsByDate(filteredTimeline);
+
+  // Count events by source
+  const vendorEventCount = mergedTimeline.filter(e => e.source === "vendor").length;
+  const forwardingEventCount = mergedTimeline.filter(e => e.source === "forwarding").length;
+  const databaseEventCount = mergedTimeline.filter(e => e.source === "database").length;
 
   // Additional forwarding data
   const estimatedDelivery = forwardingTrackingData?.estimatedDelivery;
@@ -480,7 +529,6 @@ export default function TrackingDetails({ parcelDetails }) {
   if (!parcelDetails) return null;
 
   const anyLoading = isLoading || isForwardingLoading;
-  const anyError = error || forwardingError;
 
   return (
     <div className="w-full max-w-5xl mx-auto p-4 md:p-8 space-y-8 animate-in fade-in duration-500">
@@ -593,10 +641,10 @@ export default function TrackingDetails({ parcelDetails }) {
             <div className="flex items-center justify-between text-sm font-medium opacity-90 mb-4">
               <div className="flex items-center gap-2">
                 <Send className="w-4 h-4" />
-                <span>{origin}</span>
+                <span>{parcelDetails.sender.country}</span>
               </div>
               <div className="flex items-center gap-2">
-                <span>{destination}</span>
+                <span>{parcelDetails.receiver.country}</span>
                 <Flag className="w-4 h-4" />
               </div>
             </div>
@@ -633,7 +681,7 @@ export default function TrackingDetails({ parcelDetails }) {
       </Card>
 
       {/* ========== FORWARDING INFO CARD ========== */}
-      {hasForwardingInfo && (
+      {hasForwardingInfo && !isDHLForwarding && (
         <Card className="border border-orange-100 bg-orange-50/50 shadow-sm overflow-hidden relative">
           <div className="absolute top-0 left-0 w-1 h-full bg-orange-400" />
           <CardContent className="p-6">
@@ -686,12 +734,17 @@ export default function TrackingDetails({ parcelDetails }) {
       )}
 
       {/* ========== SHIPMENT DETAILS CARD (for forwarding data) ========== */}
-      {isUPSForwarding && !isForwardingLoading && forwardingTrackingData?.success && (estimatedDelivery || shippingType || daysInTransit) && (
+      {shouldTrackForwarding && !isForwardingLoading && forwardingTrackingData?.success && (estimatedDelivery || shippingType || daysInTransit) && (
         <Card className="border border-amber-100 bg-gradient-to-r from-amber-50 to-orange-50 shadow-lg overflow-hidden">
           <CardContent className="p-6">
             <h3 className="text-lg font-bold text-gray-900 mb-4 flex items-center gap-2">
               <Box className="w-5 h-5 text-amber-600" />
               Shipment Details
+              {carrier && (
+                <span className="ml-2 text-sm font-medium text-amber-700 bg-amber-100 px-2 py-0.5 rounded-full">
+                  {carrier}
+                </span>
+              )}
             </h3>
 
             <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
@@ -738,8 +791,8 @@ export default function TrackingDetails({ parcelDetails }) {
         </Card>
       )}
 
-      {/* ========== LOADING STATE (for forwarding tracking) ========== */}
-      {isForwardingLoading && (
+      {/* ========== LOADING STATE (for any tracking) ========== */}
+      {anyLoading && mergedTimeline.length === 0 && (
         <Card className="border border-blue-100 bg-blue-50/50 shadow-lg overflow-hidden">
           <CardContent className="p-8">
             <div className="flex flex-col items-center justify-center text-center">
@@ -756,7 +809,7 @@ export default function TrackingDetails({ parcelDetails }) {
                 Retrieving Shipment Information
               </h3>
               <p className="text-sm text-gray-600 max-w-md">
-                Please wait while we fetch the latest tracking updates from our partner carrier network.
+                Please wait while we fetch the latest tracking updates from all carrier networks.
                 This may take a few moments...
               </p>
 
@@ -773,23 +826,40 @@ export default function TrackingDetails({ parcelDetails }) {
         </Card>
       )}
 
-      {/* ========== ERROR MESSAGE ========== */}
-      {anyError && (
+      {/* ========== ERROR MESSAGES ========== */}
+      {error && (
         <Card className="border-red-200 bg-red-50">
           <CardContent className="p-4 flex items-center gap-4">
             <AlertCircle className="w-6 h-6 text-red-500 shrink-0" />
             <div className="flex-1">
-              <p className="font-bold text-red-800">Tracking Update Failed</p>
-              <p className="text-sm text-red-600">{error || forwardingError}</p>
+              <p className="font-bold text-red-800">Vendor Tracking Update Failed</p>
+              <p className="text-sm text-red-600">{error}</p>
             </div>
             <Button
               variant="outline"
               size="sm"
-              onClick={() => {
-                if (error) fetchVendorTracking();
-                if (forwardingError) fetchForwardingTracking();
-              }}
+              onClick={fetchVendorTracking}
               className="border-red-200 text-red-700 hover:bg-red-100"
+            >
+              <RefreshCw className="w-4 h-4 mr-2" /> Retry
+            </Button>
+          </CardContent>
+        </Card>
+      )}
+
+      {forwardingError && (
+        <Card className="border-orange-200 bg-orange-50">
+          <CardContent className="p-4 flex items-center gap-4">
+            <AlertCircle className="w-6 h-6 text-orange-500 shrink-0" />
+            <div className="flex-1">
+              <p className="font-bold text-orange-800">Partner Carrier Tracking Failed</p>
+              <p className="text-sm text-orange-600">{forwardingError}</p>
+            </div>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={fetchForwardingTracking}
+              className="border-orange-200 text-orange-700 hover:bg-orange-100"
             >
               <RefreshCw className="w-4 h-4 mr-2" /> Retry
             </Button>
@@ -800,23 +870,69 @@ export default function TrackingDetails({ parcelDetails }) {
       {/* ========== MERGED TIMELINE ========== */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
         <div className="lg:col-span-3 space-y-6">
-          <div className="flex items-center justify-between">
+          <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
             <h2 className="text-xl font-bold text-gray-900 flex items-center gap-2">
               <Clock className="w-5 h-5 text-indigo-600" /> Shipment Progress
+              <span className="text-sm font-normal text-gray-500">
+                ({mergedTimeline.length} total updates)
+              </span>
             </h2>
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={() => {
-                if (shouldTrack) fetchVendorTracking();
-                if (shouldTrackForwarding) fetchForwardingTracking();
-              }}
-              disabled={anyLoading}
-              className="text-gray-500 hover:text-indigo-600"
-            >
-              <RefreshCw className={`w-4 h-4 mr-2 ${anyLoading ? "animate-spin" : ""}`} />
-              Refresh
-            </Button>
+
+            <div className="flex items-center gap-2 flex-wrap">
+              {/* Filter Buttons */}
+              {(vendorEventCount > 0 || forwardingEventCount > 0) && (
+                <div className="flex items-center gap-1 bg-gray-100 rounded-lg p-1">
+                  <button
+                    onClick={() => setActiveFilter("all")}
+                    className={`px-3 py-1.5 text-xs font-medium rounded-md transition-all ${
+                      activeFilter === "all"
+                        ? "bg-white text-gray-900 shadow-sm"
+                        : "text-gray-600 hover:text-gray-900"
+                    }`}
+                  >
+                    All ({mergedTimeline.length})
+                  </button>
+                  {vendorEventCount > 0 && (
+                    <button
+                      onClick={() => setActiveFilter("vendor")}
+                      className={`px-3 py-1.5 text-xs font-medium rounded-md transition-all ${
+                        activeFilter === "vendor"
+                          ? "bg-blue-500 text-white shadow-sm"
+                          : "text-gray-600 hover:text-gray-900"
+                      }`}
+                    >
+                      Primary ({vendorEventCount})
+                    </button>
+                  )}
+                  {forwardingEventCount > 0 && (
+                    <button
+                      onClick={() => setActiveFilter("forwarding")}
+                      className={`px-3 py-1.5 text-xs font-medium rounded-md transition-all ${
+                        activeFilter === "forwarding"
+                          ? "bg-orange-500 text-white shadow-sm"
+                          : "text-gray-600 hover:text-gray-900"
+                      }`}
+                    >
+                      Partner ({forwardingEventCount})
+                    </button>
+                  )}
+                </div>
+              )}
+
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => {
+                  if (shouldTrackVendor) fetchVendorTracking();
+                  if (shouldTrackForwarding) fetchForwardingTracking();
+                }}
+                disabled={anyLoading}
+                className="text-gray-500 hover:text-indigo-600"
+              >
+                <RefreshCw className={`w-4 h-4 mr-2 ${anyLoading ? "animate-spin" : ""}`} />
+                Refresh
+              </Button>
+            </div>
           </div>
 
           <Card className="border-0 shadow-xl overflow-hidden bg-white/50 backdrop-blur-sm">
@@ -824,9 +940,9 @@ export default function TrackingDetails({ parcelDetails }) {
               {anyLoading && mergedTimeline.length === 0 ? (
                 <div className="py-16 text-center">
                   <Loader2 className="w-10 h-10 text-indigo-500 animate-spin mx-auto mb-4" />
-                  <p className="text-gray-500">Retrieving live status...</p>
+                  <p className="text-gray-500">Retrieving live status from all carriers...</p>
                 </div>
-              ) : mergedTimeline.length === 0 ? (
+              ) : filteredTimeline.length === 0 ? (
                 <div className="py-16 text-center">
                   <div className="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4">
                     <Package className="w-8 h-8 text-gray-400" />
@@ -846,7 +962,7 @@ export default function TrackingDetails({ parcelDetails }) {
 
                       {events.map((event, index) => {
                         const isFirst = groupIndex === 0 && index === 0;
-                        const isFromForwarding = event.source === "forwarding";
+                        const sourceInfo = getSourceLabel(event.source);
                         
                         return (
                           <div
@@ -855,17 +971,30 @@ export default function TrackingDetails({ parcelDetails }) {
                           >
                             <div className="flex flex-col items-center relative">
                               <div className={`w-0.5 grow bg-gray-200 absolute top-4 bottom-0 ${index === events.length - 1 ? "hidden" : ""}`} />
-                              <div className={`relative z-10 w-10 h-10 rounded-full flex items-center justify-center border-2 shadow-sm transition-transform group-hover:scale-110 ${isFirst ? "bg-white border-emerald-500 text-emerald-600" : "bg-white border-slate-200 text-slate-400"
-                                }`}>
+                              <div className={`relative z-10 w-10 h-10 rounded-full flex items-center justify-center border-2 shadow-sm transition-transform group-hover:scale-110 ${
+                                isFirst 
+                                  ? "bg-white border-emerald-500 text-emerald-600" 
+                                  : event.source === "forwarding"
+                                    ? "bg-white border-orange-300 text-orange-500"
+                                    : event.source === "vendor"
+                                      ? "bg-white border-blue-300 text-blue-500"
+                                      : "bg-white border-slate-200 text-slate-400"
+                              }`}>
                                 {getStatusIcon(event.status)}
                               </div>
                             </div>
 
                             <div className="flex-1 min-w-0 pt-1">
                               <div className="flex flex-wrap justify-between items-start gap-2 mb-1">
-                                <h3 className={`font-bold text-base ${isFirst ? "text-emerald-700" : "text-gray-900"}`}>
-                                  {event.status}
-                                </h3>
+                                <div className="flex items-center gap-2 flex-wrap">
+                                  <h3 className={`font-bold text-base ${isFirst ? "text-emerald-700" : "text-gray-900"}`}>
+                                    {event.status}
+                                  </h3>
+                                  {/* Source Badge */}
+                                  {/* <span className={`text-[10px] font-semibold px-2 py-0.5 rounded-full border ${sourceInfo.color}`}>
+                                    {sourceInfo.label}
+                                  </span> */}
+                                </div>
                                 <time className="text-xs font-semibold text-slate-500 bg-slate-100 px-2 py-1 rounded-md whitespace-nowrap">
                                   {formatTime(event.timestamp)}
                                 </time>
@@ -901,8 +1030,33 @@ export default function TrackingDetails({ parcelDetails }) {
         </div>
       </div>
 
-      <div className="text-center py-6 text-xs text-gray-400">
-        Tracking data updated: {new Date().toLocaleString()}
+      {/* ========== FOOTER ========== */}
+      <div className="text-center py-6 border-t border-gray-100">
+        <div className="flex flex-col items-center gap-2">
+          <p className="text-xs text-gray-400">
+            Tracking data updated: {new Date().toLocaleString()}
+          </p>
+          {/* <div className="flex items-center gap-4 text-xs text-gray-400">
+            {vendorEventCount > 0 && (
+              <span className="flex items-center gap-1">
+                <div className="w-2 h-2 rounded-full bg-blue-400" />
+                Primary: {vendorEventCount}
+              </span>
+            )}
+            {forwardingEventCount > 0 && (
+              <span className="flex items-center gap-1">
+                <div className="w-2 h-2 rounded-full bg-orange-400" />
+                Partner: {forwardingEventCount}
+              </span>
+            )}
+            {databaseEventCount > 0 && (
+              <span className="flex items-center gap-1">
+                <div className="w-2 h-2 rounded-full bg-gray-400" />
+                System: {databaseEventCount}
+              </span>
+            )}
+          </div> */}
+        </div>
       </div>
     </div>
   );

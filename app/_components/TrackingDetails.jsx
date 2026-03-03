@@ -35,6 +35,10 @@ import {
   Route,
   Building2,
   Layers,
+  User,
+  Mail,
+  Phone,
+  MapPinned,
 } from "lucide-react";
 
 import { FaWhatsapp } from "react-icons/fa";
@@ -293,6 +297,15 @@ export default function TrackingDetails({ parcelDetails }) {
   const destination = parcelDetails?.receiver?.city || parcelDetails?.receiver?.country || "Destination";
   const hasForwardingInfo = !!(forwardingNumber || forwardingLink);
 
+  // Receiver Information
+  const receiverName = parcelDetails?.receiver?.name || "";
+  const receiverAddress = parcelDetails?.receiver?.address || "";
+  const receiverCity = parcelDetails?.receiver?.city || "";
+  const receiverState = parcelDetails?.receiver?.state || "";
+  const receiverCountry = parcelDetails?.receiver?.country || "";
+  const receiverZip = parcelDetails?.receiver?.zip || "";
+  const receiverPhone = parcelDetails?.receiver?.phone || "";
+
   const copyTrackingNumber = () => {
     navigator.clipboard.writeText(trackingNumber);
     setCopied(true);
@@ -529,6 +542,15 @@ export default function TrackingDetails({ parcelDetails }) {
   if (!parcelDetails) return null;
 
   const anyLoading = isLoading || isForwardingLoading;
+
+  // Build full address string
+  const fullAddress = [
+    receiverAddress,
+    receiverCity,
+    receiverState,
+    receiverZip,
+    receiverCountry
+  ].filter(Boolean).join(", ");
 
   return (
     <div className="w-full max-w-5xl mx-auto p-4 md:p-8 space-y-8 animate-in fade-in duration-500">
@@ -990,10 +1012,6 @@ export default function TrackingDetails({ parcelDetails }) {
                                   <h3 className={`font-bold text-base ${isFirst ? "text-emerald-700" : "text-gray-900"}`}>
                                     {event.status}
                                   </h3>
-                                  {/* Source Badge */}
-                                  {/* <span className={`text-[10px] font-semibold px-2 py-0.5 rounded-full border ${sourceInfo.color}`}>
-                                    {sourceInfo.label}
-                                  </span> */}
                                 </div>
                                 <time className="text-xs font-semibold text-slate-500 bg-slate-100 px-2 py-1 rounded-md whitespace-nowrap">
                                   {formatTime(event.timestamp)}
@@ -1030,32 +1048,65 @@ export default function TrackingDetails({ parcelDetails }) {
         </div>
       </div>
 
+      {/* ========== DELIVERY DETAILS CARD ========== */}
+      {(receiverName || fullAddress) && (
+        <Card className="border border-indigo-100 bg-gradient-to-r from-indigo-50 to-purple-50 shadow-lg overflow-hidden">
+          <CardContent className="p-6">
+            <h3 className="text-lg font-bold text-gray-900 mb-4 flex items-center gap-2">
+              <MapPinned className="w-5 h-5 text-indigo-600" />
+              Delivery Details
+            </h3>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              {/* Receiver Name */}
+              {receiverName && (
+                <div className="bg-white rounded-xl p-4 border border-indigo-100 shadow-sm">
+                  <div className="flex items-center gap-2 text-indigo-600 mb-2">
+                    <User className="w-4 h-4" />
+                    <span className="text-xs font-semibold uppercase tracking-wide text-gray-500">
+                      Recipient Name
+                    </span>
+                  </div>
+                  <p className="text-base font-bold text-gray-900">{receiverName}</p>
+                </div>
+              )}
+
+              {/* Receiver Address */}
+              {fullAddress && (
+                <div className="bg-white rounded-xl p-4 border border-indigo-100 shadow-sm md:col-span-2">
+                  <div className="flex items-center gap-2 text-indigo-600 mb-2">
+                    <Building2 className="w-4 h-4" />
+                    <span className="text-xs font-semibold uppercase tracking-wide text-gray-500">
+                      Delivery Address
+                    </span>
+                  </div>
+                  <p className="text-base font-bold text-gray-900 leading-relaxed">{fullAddress}</p>
+                </div>
+              )}
+
+              {/* Receiver Phone */}
+              {receiverPhone && (
+                <div className="bg-white rounded-xl p-4 border border-indigo-100 shadow-sm">
+                  <div className="flex items-center gap-2 text-indigo-600 mb-2">
+                    <Phone className="w-4 h-4" />
+                    <span className="text-xs font-semibold uppercase tracking-wide text-gray-500">
+                      Contact Number
+                    </span>
+                  </div>
+                  <p className="text-base font-bold text-gray-900">{receiverPhone}</p>
+                </div>
+              )}
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
       {/* ========== FOOTER ========== */}
       <div className="text-center py-6 border-t border-gray-100">
         <div className="flex flex-col items-center gap-2">
           <p className="text-xs text-gray-400">
             Tracking data updated: {new Date().toLocaleString()}
           </p>
-          {/* <div className="flex items-center gap-4 text-xs text-gray-400">
-            {vendorEventCount > 0 && (
-              <span className="flex items-center gap-1">
-                <div className="w-2 h-2 rounded-full bg-blue-400" />
-                Primary: {vendorEventCount}
-              </span>
-            )}
-            {forwardingEventCount > 0 && (
-              <span className="flex items-center gap-1">
-                <div className="w-2 h-2 rounded-full bg-orange-400" />
-                Partner: {forwardingEventCount}
-              </span>
-            )}
-            {databaseEventCount > 0 && (
-              <span className="flex items-center gap-1">
-                <div className="w-2 h-2 rounded-full bg-gray-400" />
-                System: {databaseEventCount}
-              </span>
-            )}
-          </div> */}
         </div>
       </div>
     </div>

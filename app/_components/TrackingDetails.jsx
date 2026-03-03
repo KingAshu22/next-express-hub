@@ -300,6 +300,7 @@ export default function TrackingDetails({ parcelDetails }) {
   // Receiver Information
   const receiverName = parcelDetails?.receiver?.name || "";
   const receiverAddress = parcelDetails?.receiver?.address || "";
+  const receiverAddress2 = parcelDetails?.receiver?.address2 || "";
   const receiverCity = parcelDetails?.receiver?.city || "";
   const receiverState = parcelDetails?.receiver?.state || "";
   const receiverCountry = parcelDetails?.receiver?.country || "";
@@ -546,6 +547,7 @@ export default function TrackingDetails({ parcelDetails }) {
   // Build full address string
   const fullAddress = [
     receiverAddress,
+    receiverAddress2,
     receiverCity,
     receiverState,
     receiverZip,

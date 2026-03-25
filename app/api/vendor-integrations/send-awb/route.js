@@ -26,6 +26,19 @@ const ITD_KYC_TYPE_MAP = {
 }
 
 // ----------------------------------------------------------------------
+// HELPER: Validate URL
+// ----------------------------------------------------------------------
+function isValidUrl(string) {
+  if (!string || string.trim() === "") return false
+  try {
+    new URL(string)
+    return true
+  } catch (_) {
+    return false
+  }
+}
+
+// ----------------------------------------------------------------------
 // HELPER: ITD Token Management
 // ----------------------------------------------------------------------
 async function getITDToken(credentials, vendorId) {
@@ -234,7 +247,7 @@ async function sendToXpression(awb, vendor, serviceData, customSender) {
 // ----------------------------------------------------------------------
 // INTEGRATION: ITD (Express Impex)
 // ----------------------------------------------------------------------
-async function sendToITD(awb, vendor, serviceData, customSender) {
+async function sendToITD(awb, vendor, serviceData, customSender, kycDocumentData = null) {
   const creds = vendor.itdCredentials
   
   const executeITDRequest = async (retryCount = 0) => {
@@ -316,14 +329,51 @@ async function sendToITD(awb, vendor, serviceData, customSender) {
       }) || []
     ) || []
     
+    // ----------------------------------------------------------------------
+    // KYC DETAILS WITH DOCUMENT LINK SUPPORT
+    // ----------------------------------------------------------------------
     const kycDetails = []
+    
+    // Check if we have KYC document data from the frontend
+    const hasKycDocumentLink = kycDocumentData && 
+                               kycDocumentData.documentLink && 
+                               isValidUrl(kycDocumentData.documentLink)
+    
+    // Get document name from KYC data or generate default
+    const kycDocumentName = kycDocumentData?.documentName || 
+                            getDefaultDocumentName(documentType)
+    
     if (documentNumber && documentNumber !== "000000000000") {
       kycDetails.push({ 
         document_type: documentType, 
         document_no: documentNumber, 
         document_sub_type: "doc_1", 
-        document_name: "", 
-        file_path: "" 
+        document_name: hasKycDocumentLink ? kycDocumentName : "", 
+        file_path: hasKycDocumentLink ? kycDocumentData.documentLink : "" 
+      })
+      
+      console.log("[ITD KYC] Document added to kyc_details:", {
+        document_type: documentType,
+        document_no: documentNumber,
+        document_name: hasKycDocumentLink ? kycDocumentName : "(empty)",
+        file_path: hasKycDocumentLink ? kycDocumentData.documentLink : "(empty)",
+        has_file: hasKycDocumentLink
+      })
+    } else if (hasKycDocumentLink) {
+      // If no document number but we have a file link, still add it
+      // Use a default document type
+      kycDetails.push({
+        document_type: documentType || "Aadhaar Number",
+        document_no: "000000000000",
+        document_sub_type: "doc_1",
+        document_name: kycDocumentName,
+        file_path: kycDocumentData.documentLink
+      })
+      
+      console.log("[ITD KYC] Document added without document number:", {
+        document_type: documentType || "Aadhaar Number",
+        file_path: kycDocumentData.documentLink,
+        document_name: kycDocumentName
       })
     }
     
@@ -388,6 +438,13 @@ async function sendToITD(awb, vendor, serviceData, customSender) {
     }
 
     console.log("ITD Docket Payload:", JSON.stringify(payload, null, 2))
+    
+    // Log KYC details specifically for debugging
+    if (kycDetails.length > 0) {
+      console.log("[ITD KYC] Final kyc_details being sent:", JSON.stringify(kycDetails, null, 2))
+    } else {
+      console.log("[ITD KYC] No kyc_details being sent")
+    }
     
     const createDocketUrl = `${creds.apiUrl}/create_docket`
     const response = await fetch(createDocketUrl, {
@@ -467,6 +524,22 @@ async function sendToITD(awb, vendor, serviceData, customSender) {
   }
   
   return executeITDRequest()
+}
+
+// ----------------------------------------------------------------------
+// HELPER: Get Default Document Name based on Type
+// ----------------------------------------------------------------------
+function getDefaultDocumentName(documentType) {
+  const nameMap = {
+    "Aadhaar Number": "Aadhaar Card",
+    "PAN Number": "PAN Card",
+    "Passport Number": "Passport",
+    "DRIVING LICENCE": "Driving License",
+    "Driving License Number": "Driving License",
+    "Voter Id": "Voter ID Card",
+    "GSTIN (Normal)": "GST Certificate",
+  }
+  return nameMap[documentType] || "KYC Document"
 }
 
 // ----------------------------------------------------------------------
@@ -676,10 +749,25 @@ export async function POST(request) {
   try {
     await connectToDB()
     
-    const { awbId, vendorId, serviceData, productCode, customSenderDetails } = await request.json()
+    const { 
+      awbId, 
+      vendorId, 
+      serviceData, 
+      productCode, 
+      customSenderDetails,
+      kycDocumentData  // NEW: KYC Document Data from frontend
+    } = await request.json()
     
     if (!awbId || !vendorId || !serviceData) {
       return new Response(JSON.stringify({ success: false, error: "Required fields missing" }), { status: 400 })
+    }
+    
+    // Log if KYC document data is provided
+    if (kycDocumentData && kycDocumentData.documentLink) {
+      console.log("[API] KYC Document Data received:", {
+        documentName: kycDocumentData.documentName,
+        documentLink: kycDocumentData.documentLink.substring(0, 50) + "..." // Log partial URL for privacy
+      })
     }
     
     const awb = await Awb.findById(awbId)
@@ -696,7 +784,7 @@ export async function POST(request) {
     
     let result
     
-    // Pass customSenderDetails to all functions
+    // Pass customSenderDetails and kycDocumentData to appropriate functions
     if (vendor.softwareType === "xpression") {
       result = await sendToXpression(awb, vendor, {
         ...serviceData,
@@ -704,10 +792,17 @@ export async function POST(request) {
       }, customSenderDetails)
     } 
     else if (vendor.softwareType === "itd") {
-      result = await sendToITD(awb, vendor, {
-        ...serviceData,
-        productCode: vendor.vendorCode === "BOMBINO" ? "SPX" : productCode || serviceData.productCode || "NONDOX",
-      }, customSenderDetails)
+      // Pass kycDocumentData to ITD integration
+      result = await sendToITD(
+        awb, 
+        vendor, 
+        {
+          ...serviceData,
+          productCode: vendor.vendorCode === "BOMBINO" ? "SPX" : productCode || serviceData.productCode || "NONDOX",
+        }, 
+        customSenderDetails,
+        kycDocumentData  // NEW: Pass KYC document data
+      )
     } 
     else if (vendor.softwareType === "tech440") {
       // Tech440 Logic - pass all manual entry fields
@@ -730,6 +825,12 @@ export async function POST(request) {
     awb.integratedVendorId = vendor._id
     awb.integratedService = serviceData.serviceName || serviceData.serviceCode
     
+    // Optionally store KYC document info on the AWB for reference
+    if (vendor.softwareType === "itd" && kycDocumentData && kycDocumentData.documentLink) {
+      awb.kycDocumentLink = kycDocumentData.documentLink
+      awb.kycDocumentName = kycDocumentData.documentName || "KYC Document"
+    }
+    
     await awb.save()
     
     await VendorIntegration.findByIdAndUpdate(vendorId, {
@@ -746,6 +847,7 @@ export async function POST(request) {
         serviceName: serviceData.serviceName || serviceData.serviceCode,
         softwareType: vendor.softwareType,
         labels: result.labels,
+        kycDocumentAttached: !!(kycDocumentData && kycDocumentData.documentLink), // NEW: Indicate if KYC was attached
       }),
       { status: 200, headers: { "Content-Type": "application/json" } }
     )

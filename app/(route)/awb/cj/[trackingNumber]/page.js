@@ -35,6 +35,11 @@ import {
   Pencil,
   Banknote,
   MapPinned,
+  FileImage,
+  Link,
+  Upload,
+  ExternalLink,
+  Shield,
 } from "lucide-react"
 import axios from "axios"
 
@@ -579,6 +584,240 @@ function ManualServiceInputModal({ isOpen, onClose, onSubmit, loading, originalR
 }
 
 // ============================================
+// KYC Document Upload Modal for ITD
+// ============================================
+function KYCDocumentModal({ isOpen, onClose, onSave, currentData }) {
+  const [documentLink, setDocumentLink] = useState("")
+  const [documentName, setDocumentName] = useState("")
+  const [isValidUrl, setIsValidUrl] = useState(true)
+  const [previewError, setPreviewError] = useState(false)
+
+  // Reset form when modal opens
+  useEffect(() => {
+    if (isOpen) {
+      setDocumentLink(currentData?.documentLink || "")
+      setDocumentName(currentData?.documentName || "")
+      setIsValidUrl(true)
+      setPreviewError(false)
+    }
+  }, [isOpen, currentData])
+
+  // Validate URL
+  const validateUrl = (url) => {
+    if (!url) return true // Empty is allowed
+    try {
+      new URL(url)
+      // Check if it's an image URL
+      const imageExtensions = ['.jpg', '.jpeg', '.png', '.gif', '.webp', '.bmp', '.pdf']
+      const hasImageExtension = imageExtensions.some(ext => url.toLowerCase().includes(ext))
+      return hasImageExtension || url.includes('drive.google.com') || url.includes('dropbox.com') || url.includes('cloudinary') || url.includes('imgur') || url.includes('s3.amazonaws')
+    } catch {
+      return false
+    }
+  }
+
+  const handleLinkChange = (e) => {
+    const value = e.target.value
+    setDocumentLink(value)
+    setIsValidUrl(validateUrl(value))
+    setPreviewError(false)
+  }
+
+  const handleSubmit = (e) => {
+    e.preventDefault()
+    if (documentLink && !isValidUrl) return
+    
+    onSave({
+      documentLink: documentLink.trim(),
+      documentName: documentName.trim() || "KYC Document"
+    })
+    onClose()
+  }
+
+  const handleClear = () => {
+    setDocumentLink("")
+    setDocumentName("")
+    setIsValidUrl(true)
+    setPreviewError(false)
+  }
+
+  if (!isOpen) return null
+
+  const isImageUrl = documentLink && (
+    documentLink.match(/\.(jpg|jpeg|png|gif|webp|bmp)(\?|$)/i) ||
+    documentLink.includes('imgur') ||
+    documentLink.includes('cloudinary')
+  )
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+      <div className="absolute inset-0 bg-black/50 backdrop-blur-sm" onClick={onClose} />
+      <div className="relative bg-white rounded-xl shadow-xl w-full max-w-lg max-h-[90vh] overflow-y-auto">
+        {/* Header */}
+        <div className="bg-gradient-to-r from-emerald-500 to-emerald-600 px-6 py-4 rounded-t-xl">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <div className="p-2 bg-white/20 rounded-lg">
+                <Shield className="h-5 w-5 text-white" />
+              </div>
+              <div>
+                <h2 className="text-lg font-bold text-white">KYC Document</h2>
+                <p className="text-emerald-100 text-sm">Required for ITD Integration</p>
+              </div>
+            </div>
+            <button onClick={onClose} className="p-1 hover:bg-white/20 rounded-full transition-colors">
+              <X className="h-5 w-5 text-white" />
+            </button>
+          </div>
+        </div>
+        
+        <form onSubmit={handleSubmit} className="p-6 space-y-5">
+          {/* Info Box */}
+          <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+            <div className="flex gap-3">
+              <FileImage className="h-5 w-5 text-blue-600 flex-shrink-0 mt-0.5" />
+              <div className="text-sm text-blue-800">
+                <p className="font-medium mb-1">Upload KYC Document Link</p>
+                <p className="text-blue-700">
+                  ITD requires a KYC document (Aadhaar, PAN, Passport, etc.) for international shipments. 
+                  Please provide a direct link to the document image or PDF.
+                </p>
+              </div>
+            </div>
+          </div>
+
+          {/* Document Name */}
+          <div className="space-y-2">
+            <Label htmlFor="documentName" className="text-sm font-medium text-gray-700">
+              Document Name
+            </Label>
+            <Input
+              id="documentName"
+              value={documentName}
+              onChange={(e) => setDocumentName(e.target.value)}
+              placeholder="e.g., Aadhaar Card, PAN Card, Passport"
+              className="w-full"
+            />
+            <p className="text-xs text-gray-500">
+              A friendly name to identify this document
+            </p>
+          </div>
+
+          {/* Document Link */}
+          <div className="space-y-2">
+            <Label htmlFor="documentLink" className="text-sm font-medium text-gray-700">
+              Document URL / Link <span className="text-red-500">*</span>
+            </Label>
+            <div className="relative">
+              <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                <Link className="h-4 w-4 text-gray-400" />
+              </div>
+              <Input
+                id="documentLink"
+                value={documentLink}
+                onChange={handleLinkChange}
+                placeholder="https://example.com/kyc-document.jpg"
+                className={`w-full pl-10 ${!isValidUrl ? 'border-red-500 focus:ring-red-500' : ''}`}
+              />
+            </div>
+            {!isValidUrl && (
+              <p className="text-xs text-red-600 flex items-center gap-1">
+                <AlertCircle className="h-3 w-3" />
+                Please enter a valid image or PDF URL
+              </p>
+            )}
+            <p className="text-xs text-gray-500">
+              Supported formats: JPG, PNG, PDF, or cloud storage links (Google Drive, Dropbox, etc.)
+            </p>
+          </div>
+
+          {/* Preview Section */}
+          {documentLink && isValidUrl && (
+            <div className="space-y-2">
+              <Label className="text-sm font-medium text-gray-700">Preview</Label>
+              <div className="border border-gray-200 rounded-lg overflow-hidden bg-gray-50">
+                {isImageUrl ? (
+                  <div className="relative">
+                    {!previewError ? (
+                      <img 
+                        src={documentLink} 
+                        alt="KYC Document Preview"
+                        className="w-full max-h-48 object-contain"
+                        onError={() => setPreviewError(true)}
+                      />
+                    ) : (
+                      <div className="p-6 text-center text-gray-500">
+                        <FileImage className="h-10 w-10 mx-auto mb-2 text-gray-300" />
+                        <p className="text-sm">Unable to load preview</p>
+                        <p className="text-xs text-gray-400 mt-1">The link may still be valid</p>
+                      </div>
+                    )}
+                  </div>
+                ) : (
+                  <div className="p-6 text-center">
+                    <FileText className="h-10 w-10 mx-auto mb-2 text-emerald-500" />
+                    <p className="text-sm text-gray-600">Document link added</p>
+                    <a 
+                      href={documentLink} 
+                      target="_blank" 
+                      rel="noopener noreferrer"
+                      className="text-xs text-blue-600 hover:underline flex items-center justify-center gap-1 mt-2"
+                    >
+                      <ExternalLink className="h-3 w-3" />
+                      Open in new tab to verify
+                    </a>
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
+
+          {/* Supported Sources */}
+          <div className="border-t pt-4">
+            <p className="text-xs text-gray-500 mb-2">Supported document sources:</p>
+            <div className="flex flex-wrap gap-2">
+              {['Google Drive', 'Dropbox', 'OneDrive', 'Imgur', 'Cloudinary', 'AWS S3', 'Direct URL'].map((source) => (
+                <span 
+                  key={source}
+                  className="px-2 py-1 bg-gray-100 text-gray-600 rounded text-xs"
+                >
+                  {source}
+                </span>
+              ))}
+            </div>
+          </div>
+
+          {/* Actions */}
+          <div className="pt-4 flex justify-between border-t">
+            <Button 
+              type="button" 
+              variant="ghost" 
+              onClick={handleClear}
+              className="text-gray-500 hover:text-gray-700"
+            >
+              Clear
+            </Button>
+            <div className="flex gap-2">
+              <Button type="button" variant="outline" onClick={onClose}>
+                Cancel
+              </Button>
+              <Button 
+                type="submit" 
+                className="bg-emerald-600 hover:bg-emerald-700 text-white"
+                disabled={documentLink && !isValidUrl}
+              >
+                <CheckCircle className="h-4 w-4 mr-2" />
+                {documentLink ? 'Save Document' : 'Skip for Now'}
+              </Button>
+            </div>
+          </div>
+        </form>
+      </div>
+    </div>
+  )
+}
+
+// ============================================
 // Main Page Component
 // ============================================
 export default function AWBTrackingPage({ params }) {
@@ -615,6 +854,13 @@ export default function AWBTrackingPage({ params }) {
   // Custom Sender Details State
   const [customSenderDetails, setCustomSenderDetails] = useState(null)
   const [showEditSenderModal, setShowEditSenderModal] = useState(false)
+
+  // KYC Document State (for ITD)
+  const [showKYCModal, setShowKYCModal] = useState(false)
+  const [kycDocumentData, setKycDocumentData] = useState({
+    documentLink: "",
+    documentName: ""
+  })
 
   // Integration result modal
   const [showResultModal, setShowResultModal] = useState(false)
@@ -687,6 +933,9 @@ export default function AWBTrackingPage({ params }) {
     setManualServiceName("")
     setManualReceiverZipCode("")
     setManualZipcodeId("")
+    
+    // Reset KYC document data when changing vendor
+    setKycDocumentData({ documentLink: "", documentName: "" })
     
     // Set default product code
     if (vendor.softwareType === "tech440") {
@@ -786,6 +1035,11 @@ export default function AWBTrackingPage({ params }) {
     setManualZipcodeId("")
   }
 
+  // Handle KYC Document Save
+  const handleKYCDocumentSave = (data) => {
+    setKycDocumentData(data)
+  }
+
   const isIntegrationValid = () => {
     if (!selectedVendor) return false
     
@@ -851,6 +1105,8 @@ export default function AWBTrackingPage({ params }) {
           serviceData: serviceData,
           productCode: selectedProductCode,
           customSenderDetails: customSenderDetails,
+          // Include KYC document data for ITD
+          kycDocumentData: selectedVendor.softwareType === "itd" ? kycDocumentData : null,
         }),
       })
 
@@ -882,6 +1138,7 @@ export default function AWBTrackingPage({ params }) {
       setManualServiceName("")
       setManualReceiverZipCode("")
       setManualZipcodeId("")
+      setKycDocumentData({ documentLink: "", documentName: "" })
       setError(null)
     } catch (err) {
       setError(err.message || "An unexpected error occurred")
@@ -901,6 +1158,7 @@ export default function AWBTrackingPage({ params }) {
         ? "border-blue-500 bg-blue-50 text-blue-700 shadow-md"
         : "border-gray-200 bg-white text-gray-700 hover:border-blue-300 hover:bg-blue-50/50"
     }
+    // ITD
     return isSelected
       ? "border-emerald-500 bg-emerald-50 text-emerald-700 shadow-md"
       : "border-gray-200 bg-white text-gray-700 hover:border-emerald-300 hover:bg-emerald-50/50"
@@ -908,6 +1166,7 @@ export default function AWBTrackingPage({ params }) {
 
   const getVendorIconBg = (softwareType, isSelected) => {
     if (softwareType === "tech440") return isSelected ? "bg-purple-100" : "bg-gray-100"
+    if (softwareType === "itd") return isSelected ? "bg-emerald-100" : "bg-gray-100"
     return softwareType === "xpression"
       ? isSelected ? "bg-blue-100" : "bg-gray-100"
       : isSelected ? "bg-emerald-100" : "bg-gray-100"
@@ -915,6 +1174,7 @@ export default function AWBTrackingPage({ params }) {
 
   const getServiceBgColor = (softwareType) => {
     if (softwareType === "tech440") return "bg-purple-50 border-purple-100"
+    if (softwareType === "itd") return "bg-emerald-50 border-emerald-100"
     return softwareType === "xpression"
       ? "bg-blue-50 border-blue-100"
       : "bg-emerald-50 border-emerald-100"
@@ -922,6 +1182,7 @@ export default function AWBTrackingPage({ params }) {
 
   const getButtonColor = (softwareType) => {
     if (softwareType === "tech440") return "bg-purple-600 hover:bg-purple-700"
+    if (softwareType === "itd") return "bg-emerald-600 hover:bg-emerald-700"
     return softwareType === "xpression"
       ? "bg-blue-600 hover:bg-blue-700"
       : "bg-emerald-600 hover:bg-emerald-700"
@@ -997,6 +1258,14 @@ export default function AWBTrackingPage({ params }) {
         onClose={() => setShowEditSenderModal(false)}
         senderData={customSenderDetails}
         onSave={(newData) => setCustomSenderDetails(newData)}
+      />
+
+      {/* KYC Document Modal */}
+      <KYCDocumentModal
+        isOpen={showKYCModal}
+        onClose={() => setShowKYCModal(false)}
+        onSave={handleKYCDocumentSave}
+        currentData={kycDocumentData}
       />
 
       {/* Header */}
@@ -1325,48 +1594,146 @@ export default function AWBTrackingPage({ params }) {
                           )}
                         </div>
                       ) : (
-                        // --- STANDARD VENDOR SERVICES ---
-                        <div className="grid grid-cols-1 lg:grid-cols-12 gap-4 items-end">
-                          <div className="lg:col-span-4">
-                            <label className="block text-sm font-medium text-gray-700 mb-2">
-                              Select Service
-                            </label>
-                            <select
-                              value={selectedService?.serviceName || ""}
-                              onChange={(e) => {
-                                if (e.target.value === "other") {
-                                  handleServiceSelect("other")
-                                } else {
-                                  const service = selectedVendor.services.find(
-                                    (s) => s.serviceName === e.target.value
-                                  )
-                                  handleServiceSelect(service)
-                                }
-                              }}
-                              className="w-full px-4 py-2.5 rounded-lg border border-gray-200 bg-white"
-                            >
-                              <option value="">Choose service...</option>
-                              {selectedVendor.services?.map((service, idx) => (
-                                <option key={idx} value={service.serviceName}>
-                                  {service.serviceName}
-                                </option>
-                              ))}
-                              <option value="other">Other (Custom)</option>
-                            </select>
+                        // --- STANDARD VENDOR SERVICES (ITD & XPRESSION) ---
+                        <div className="space-y-4">
+                          <div className="grid grid-cols-1 lg:grid-cols-12 gap-4 items-end">
+                            <div className="lg:col-span-4">
+                              <label className="block text-sm font-medium text-gray-700 mb-2">
+                                Select Service
+                              </label>
+                              <select
+                                value={selectedService?.serviceName || ""}
+                                onChange={(e) => {
+                                  if (e.target.value === "other") {
+                                    handleServiceSelect("other")
+                                  } else {
+                                    const service = selectedVendor.services.find(
+                                      (s) => s.serviceName === e.target.value
+                                    )
+                                    handleServiceSelect(service)
+                                  }
+                                }}
+                                className="w-full px-4 py-2.5 rounded-lg border border-gray-200 bg-white"
+                              >
+                                <option value="">Choose service...</option>
+                                {selectedVendor.services?.map((service, idx) => (
+                                  <option key={idx} value={service.serviceName}>
+                                    {service.serviceName}
+                                  </option>
+                                ))}
+                                <option value="other">Other (Custom)</option>
+                              </select>
+                            </div>
+
+                            {selectedService?.serviceName === "other" && (
+                              <div className="lg:col-span-3">
+                                <label className="block text-sm font-medium text-gray-700 mb-2">
+                                  Custom Service
+                                </label>
+                                <input
+                                  type="text"
+                                  value={customService}
+                                  onChange={(e) => setCustomService(e.target.value)}
+                                  placeholder="Enter service name"
+                                  className="w-full px-4 py-2.5 rounded-lg border border-gray-200 bg-white"
+                                />
+                              </div>
+                            )}
                           </div>
 
-                          {selectedService?.serviceName === "other" && (
-                            <div className="lg:col-span-3">
-                              <label className="block text-sm font-medium text-gray-700 mb-2">
-                                Custom Service
-                              </label>
-                              <input
-                                type="text"
-                                value={customService}
-                                onChange={(e) => setCustomService(e.target.value)}
-                                placeholder="Enter service name"
-                                className="w-full px-4 py-2.5 rounded-lg border border-gray-200 bg-white"
-                              />
+                          {/* ITD KYC Document Section */}
+                          {selectedVendor.softwareType === "itd" && (
+                            <div className="mt-4 pt-4 border-t border-emerald-200">
+                              <div className="flex items-center justify-between mb-3">
+                                <div className="flex items-center gap-2">
+                                  <Shield className="h-4 w-4 text-emerald-600" />
+                                  <span className="text-sm font-medium text-gray-700">KYC Document (Optional)</span>
+                                </div>
+                                <Button
+                                  type="button"
+                                  variant="outline"
+                                  size="sm"
+                                  onClick={() => setShowKYCModal(true)}
+                                  className="border-emerald-300 text-emerald-700 hover:bg-emerald-100"
+                                >
+                                  {kycDocumentData.documentLink ? (
+                                    <>
+                                      <Pencil className="h-3.5 w-3.5 mr-1.5" />
+                                      Edit Document
+                                    </>
+                                  ) : (
+                                    <>
+                                      <Upload className="h-3.5 w-3.5 mr-1.5" />
+                                      Add Document Link
+                                    </>
+                                  )}
+                                </Button>
+                              </div>
+
+                              {/* Show KYC Document Status */}
+                              {kycDocumentData.documentLink ? (
+                                <div className="bg-emerald-50 border border-emerald-200 rounded-lg p-3">
+                                  <div className="flex items-center justify-between">
+                                    <div className="flex items-center gap-3">
+                                      <div className="p-2 bg-emerald-100 rounded-lg">
+                                        <FileImage className="h-5 w-5 text-emerald-600" />
+                                      </div>
+                                      <div>
+                                        <p className="text-sm font-medium text-emerald-900">
+                                          {kycDocumentData.documentName || "KYC Document"}
+                                        </p>
+                                        <p className="text-xs text-emerald-600 truncate max-w-[300px]">
+                                          {kycDocumentData.documentLink}
+                                        </p>
+                                      </div>
+                                    </div>
+                                    <div className="flex items-center gap-2">
+                                      <a
+                                        href={kycDocumentData.documentLink}
+                                        target="_blank"
+                                        rel="noopener noreferrer"
+                                        className="p-1.5 hover:bg-emerald-100 rounded transition-colors"
+                                        title="Open document"
+                                      >
+                                        <ExternalLink className="h-4 w-4 text-emerald-600" />
+                                      </a>
+                                      <button
+                                        onClick={() => setKycDocumentData({ documentLink: "", documentName: "" })}
+                                        className="p-1.5 hover:bg-red-100 rounded transition-colors"
+                                        title="Remove document"
+                                      >
+                                        <X className="h-4 w-4 text-red-500" />
+                                      </button>
+                                    </div>
+                                  </div>
+                                </div>
+                              ) : (
+                                <div className="bg-gray-50 border border-gray-200 rounded-lg p-3">
+                                  <div className="flex items-center gap-3 text-gray-500">
+                                    <FileImage className="h-5 w-5" />
+                                    <div>
+                                      <p className="text-sm">No KYC document attached</p>
+                                      <p className="text-xs text-gray-400">Click "Add Document Link" to attach a KYC document for ITD integration</p>
+                                    </div>
+                                  </div>
+                                </div>
+                              )}
+
+                              {/* KYC Info Box */}
+                              <div className="mt-3 bg-blue-50 border border-blue-200 rounded-lg p-3">
+                                <div className="flex gap-2">
+                                  <AlertCircle className="h-4 w-4 text-blue-600 flex-shrink-0 mt-0.5" />
+                                  <div className="text-xs text-blue-800">
+                                    <p className="font-medium mb-1">When is KYC Document Required?</p>
+                                    <ul className="list-disc list-inside space-y-0.5 text-blue-700">
+                                      <li>International shipments with value above threshold</li>
+                                      <li>First-time shippers</li>
+                                      <li>Certain destination countries</li>
+                                    </ul>
+                                    <p className="mt-1">Accepted documents: Aadhaar Card, PAN Card, Passport, GST Certificate</p>
+                                  </div>
+                                </div>
+                              </div>
                             </div>
                           )}
                         </div>
@@ -1376,8 +1743,14 @@ export default function AWBTrackingPage({ params }) {
                       <div className="mt-6 pt-4 border-t border-gray-200 flex flex-col md:flex-row justify-between gap-4">
                         <div className="text-sm text-gray-600 self-center">
                           <span className="font-medium">Sender:</span> {customSenderDetails?.name || awbData?.sender?.name}
+                          {selectedVendor.softwareType === "itd" && kycDocumentData.documentLink && (
+                            <span className="ml-3 inline-flex items-center gap-1 text-emerald-600">
+                              <CheckCircle className="h-3 w-3" />
+                              KYC Attached
+                            </span>
+                          )}
                         </div>
-                        <div className="flex gap-2 w-full md:w-auto">
+                        <div className="flex gap-2 w-full md:w-auto flex-wrap">
                           <Button 
                             variant="outline" 
                             size="sm" 
@@ -1385,7 +1758,7 @@ export default function AWBTrackingPage({ params }) {
                             className="text-gray-600 border-gray-300 hover:bg-gray-50"
                           >
                             <Pencil className="w-3.5 h-3.5 mr-2" />
-                            Edit Sender Details for Vendor
+                            Edit Sender Details
                           </Button>
                           <Button
                             onClick={handleIntegration}

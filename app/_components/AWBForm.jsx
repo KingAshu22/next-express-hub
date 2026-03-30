@@ -21,7 +21,9 @@ import {
   ArrowLeft,
   Info,
   AlertCircle,
-  X
+  X,
+  MapPin,
+  Loader2
 } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { Button } from "@/components/ui/button"
@@ -246,6 +248,7 @@ export default function AWBForm({ isEdit = false, awb }) {
 
   const [senderCountryOpen, setSenderCountryOpen] = useState(false)
   const [receiverCountryOpen, setReceiverCountryOpen] = useState(false)
+  const [receiverCountryOpenBasic, setReceiverCountryOpenBasic] = useState(false)
 
   // Rate fetching state
   const [fetchingRates, setFetchingRates] = useState(false)
@@ -253,6 +256,12 @@ export default function AWBForm({ isEdit = false, awb }) {
   const [selectedRate, setSelectedRate] = useState(null)
   const [selectedCourier, setSelectedCourier] = useState(null)
   const [includeGST, setIncludeGST] = useState(true)
+
+  // Postal data fetching state
+  const [fetchingReceiverPostal, setFetchingReceiverPostal] = useState(false)
+  const [fetchingSenderPostal, setFetchingSenderPostal] = useState(false)
+  const [receiverPostalAutoFilled, setReceiverPostalAutoFilled] = useState(false)
+  const [senderPostalAutoFilled, setSenderPostalAutoFilled] = useState(false)
 
   // Form state
   const [date, setDate] = useState(awb?.date ? new Date(awb.date) : new Date())
@@ -435,6 +444,14 @@ export default function AWBForm({ isEdit = false, awb }) {
         if (!receiverCountry) {
           errors.receiverCountry = "Destination country is required"
           allValid = false
+        }
+        // Zip code validation for basic details is optional but if provided, validate
+        if (receiverZipCode) {
+          const zipValid = validateZipCode(receiverZipCode, receiverCountry)
+          if (!zipValid.valid) {
+            errors.receiverZipCode = zipValid.message
+            allValid = false
+          }
         }
         break
 
@@ -825,38 +842,62 @@ export default function AWBForm({ isEdit = false, awb }) {
       if (senderZipCode && senderZipCode.length >= 4 && senderCountry) {
         const countryCode = getCountryCode(senderCountry)
         if (!countryCode) return
+        
+        setFetchingSenderPostal(true)
         const postalData = await fetchPostalData(senderZipCode, countryCode)
+        setFetchingSenderPostal(false)
+        
         if (postalData) {
           const { postalLocation, province, district, state } = postalData
           const formattedAddress = [postalLocation, province].filter(Boolean).join(", ")
           setSenderCity(district || "")
           setSenderState(state || "")
           if (!senderAddress2) setSenderAddress2(formattedAddress)
+          setSenderPostalAutoFilled(true)
           senderPostalFetched.current = true
+        } else {
+          setSenderPostalAutoFilled(false)
         }
       }
     }
-    updateSenderAddress()
+    
+    const debounceTimer = setTimeout(() => {
+      updateSenderAddress()
+    }, 500)
+    
+    return () => clearTimeout(debounceTimer)
   }, [senderZipCode, senderCountry])
 
   // Receiver postal code auto-fill
   useEffect(() => {
     const updateReceiverAddress = async () => {
-      if (receiverZipCode && receiverZipCode.length >= 4 && receiverCountry) {
+      if (receiverZipCode && receiverZipCode.length >= 3 && receiverCountry) {
         const countryCode = getCountryCode(receiverCountry)
         if (!countryCode) return
+        
+        setFetchingReceiverPostal(true)
         const postalData = await fetchPostalData(receiverZipCode, countryCode)
+        setFetchingReceiverPostal(false)
+        
         if (postalData) {
           const { postalLocation, province, district, state } = postalData
           const formattedAddress = [postalLocation, province].filter(Boolean).join(", ")
           setReceiverCity(district || "")
           setReceiverState(state || "")
           if (!receiverAddress2) setReceiverAddress2(formattedAddress)
+          setReceiverPostalAutoFilled(true)
           receiverPostalFetched.current = true
+        } else {
+          setReceiverPostalAutoFilled(false)
         }
       }
     }
-    updateReceiverAddress()
+    
+    const debounceTimer = setTimeout(() => {
+      updateReceiverAddress()
+    }, 500)
+    
+    return () => clearTimeout(debounceTimer)
   }, [receiverZipCode, receiverCountry])
 
   useEffect(() => {
@@ -1563,6 +1604,16 @@ export default function AWBForm({ isEdit = false, awb }) {
     }
   }
 
+  // Handle receiver zip code change with validation
+  const handleReceiverZipCodeChange = (value) => {
+    const cleanValue = value.replace(/\s/g, "")
+    setReceiverZipCode(cleanValue)
+    setReceiverPostalAutoFilled(false) // Reset auto-fill status when manually changing
+    if (touchedFields.receiverZipCode) {
+      validateField("receiverZipCode", cleanValue)
+    }
+  }
+
   // Validation for each step
   const validateStep = (stepIndex) => {
     return validateAllFieldsForStep(stepIndex)
@@ -1596,11 +1647,11 @@ export default function AWBForm({ isEdit = false, awb }) {
 
   const renderStepContent = () => {
     switch (currentStep) {
-      case 0: // Basic Details
+      case 0: // Basic Details with Destination Info
         return (
           <FormSection
             title="Basic Details"
-            description="Provide the core information for this shipment."
+            description="Provide the core information for this shipment including destination details."
             icon={<FileText className="h-5 w-5" />}
           >
             <div className="space-y-6">
@@ -1671,18 +1722,6 @@ export default function AWBForm({ isEdit = false, awb }) {
                       <Calendar mode="single" selected={date} onSelect={setDate} initialFocus />
                     </PopoverContent>
                   </Popover>
-                </FormInput>
-
-                <FormInput label="Destination Country" required error={validationErrors.receiverCountry}>
-                  <CountryCombobox
-                    value={receiverCountry}
-                    onSelect={(country) => {
-                      setReceiverCountry(country)
-                      setValidationErrors(prev => ({ ...prev, receiverCountry: "" }))
-                    }}
-                    open={receiverCountryOpen}
-                    onOpenChange={setReceiverCountryOpen}
-                  />
                 </FormInput>
 
                 <FormInput label="Via">
@@ -1770,6 +1809,137 @@ export default function AWBForm({ isEdit = false, awb }) {
                       <Input id="forwardingLink" value={forwardingLink} onChange={(e) => setForwardingLink(e.target.value)} />
                     </FormInput>
                   </>
+                )}
+              </div>
+
+              {/* Destination Details Section */}
+              <div className="mt-6 p-4 bg-gradient-to-r from-blue-50 to-indigo-50 rounded-lg border border-blue-200">
+                <div className="flex items-center gap-2 mb-4">
+                  <MapPin className="h-5 w-5 text-blue-600" />
+                  <h3 className="font-semibold text-blue-800">Destination Details</h3>
+                  <Badge variant="outline" className="bg-blue-100 text-blue-700 border-blue-300">
+                    Auto-fill enabled
+                  </Badge>
+                </div>
+                
+                <Alert className="bg-white border-blue-200 mb-4">
+                  <Info className="h-4 w-4 text-blue-600" />
+                  <AlertDescription className="text-sm text-blue-800">
+                    Enter the destination country and pin code to auto-fill city and state. You can also edit these fields manually.
+                  </AlertDescription>
+                </Alert>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+                  <FormInput label="Destination Country" required error={validationErrors.receiverCountry}>
+                    <CountryCombobox
+                      value={receiverCountry}
+                      onSelect={(country) => {
+                        setReceiverCountry(country)
+                        setValidationErrors(prev => ({ ...prev, receiverCountry: "" }))
+                        // Reset postal data when country changes
+                        setReceiverPostalAutoFilled(false)
+                      }}
+                      open={receiverCountryOpenBasic}
+                      onOpenChange={setReceiverCountryOpenBasic}
+                    />
+                  </FormInput>
+
+                  <FormInput 
+                    label="Destination Pin Code" 
+                    id="receiverZipCodeBasic"
+                    error={validationErrors.receiverZipCode}
+                    hint={receiverCountry === "India" ? "6-digit PIN code" : "Enter postal code"}
+                  >
+                    <div className="relative">
+                      <Input
+                        id="receiverZipCodeBasic"
+                        value={receiverZipCode}
+                        onChange={(e) => handleReceiverZipCodeChange(e.target.value)}
+                        onBlur={() => {
+                          markFieldTouched("receiverZipCode")
+                          if (receiverZipCode) {
+                            validateField("receiverZipCode", receiverZipCode)
+                          }
+                        }}
+                        placeholder={receiverCountry === "India" ? "e.g., 400001" : "Enter postal code"}
+                        className={cn(
+                          validationErrors.receiverZipCode && "border-destructive",
+                          "pr-10"
+                        )}
+                        disabled={!receiverCountry}
+                      />
+                      {fetchingReceiverPostal && (
+                        <div className="absolute right-3 top-1/2 -translate-y-1/2">
+                          <Loader2 className="h-4 w-4 animate-spin text-blue-500" />
+                        </div>
+                      )}
+                      {!fetchingReceiverPostal && receiverPostalAutoFilled && receiverZipCode && (
+                        <div className="absolute right-3 top-1/2 -translate-y-1/2">
+                          <CheckCircle className="h-4 w-4 text-green-500" />
+                        </div>
+                      )}
+                    </div>
+                  </FormInput>
+
+                  <FormInput 
+                    label="Destination City" 
+                    id="receiverCityBasic"
+                    hint={receiverPostalAutoFilled ? "Auto-filled" : "Enter manually"}
+                  >
+                    <div className="relative">
+                      <Input
+                        id="receiverCityBasic"
+                        value={receiverCity}
+                        onChange={(e) => setReceiverCity(e.target.value)}
+                        placeholder="City name"
+                        className={cn(
+                          receiverPostalAutoFilled && receiverCity && "border-green-300 bg-green-50"
+                        )}
+                      />
+                      {receiverPostalAutoFilled && receiverCity && (
+                        <div className="absolute right-3 top-1/2 -translate-y-1/2">
+                          <CheckCircle className="h-4 w-4 text-green-500" />
+                        </div>
+                      )}
+                    </div>
+                  </FormInput>
+
+                  <FormInput 
+                    label="Destination State" 
+                    id="receiverStateBasic"
+                    hint={receiverPostalAutoFilled ? "Auto-filled" : "Enter manually"}
+                  >
+                    <div className="relative">
+                      <Input
+                        id="receiverStateBasic"
+                        value={receiverState}
+                        onChange={(e) => setReceiverState(e.target.value)}
+                        placeholder="State/Province"
+                        className={cn(
+                          receiverPostalAutoFilled && receiverState && "border-green-300 bg-green-50"
+                        )}
+                      />
+                      {receiverPostalAutoFilled && receiverState && (
+                        <div className="absolute right-3 top-1/2 -translate-y-1/2">
+                          <CheckCircle className="h-4 w-4 text-green-500" />
+                        </div>
+                      )}
+                    </div>
+                  </FormInput>
+                </div>
+
+                {receiverPostalAutoFilled && (receiverCity || receiverState) && (
+                  <div className="mt-3 flex items-center gap-2 text-sm text-green-700">
+                    <CheckCircle className="h-4 w-4" />
+                    <span>City and state auto-filled from postal code. You can edit if needed.</span>
+                  </div>
+                )}
+
+                {receiverZipCode && !fetchingReceiverPostal && !receiverPostalAutoFilled && receiverCountry && (
+                  <div className="mt-3 flex items-center gap-2 text-sm text-amber-700">
+                    <AlertCircle className="h-4 w-4" />
+                    <span>Could not auto-fill location data. Please enter city and state manually.</span>
+                  </div>
                 )}
               </div>
             </div>
@@ -1945,6 +2115,20 @@ export default function AWBForm({ isEdit = false, awb }) {
                 icon={<TruckIcon className="h-5 w-5" />}
               >
                 <div className="space-y-4">
+                  {/* Show destination summary */}
+                  {receiverCountry && (
+                    <div className="p-3 bg-blue-50 rounded-lg border border-blue-200">
+                      <div className="flex items-center gap-2 text-sm">
+                        <MapPin className="h-4 w-4 text-blue-600" />
+                        <span className="font-medium text-blue-800">Shipping to:</span>
+                      </div>
+                      <div className="mt-1 text-sm text-blue-700">
+                        {[receiverCity, receiverState, receiverCountry].filter(Boolean).join(", ")}
+                        {receiverZipCode && <span className="ml-1">({receiverZipCode})</span>}
+                      </div>
+                    </div>
+                  )}
+
                   <div className="flex items-center justify-between p-3 bg-gray-50 rounded-lg border">
                     <div className="flex items-center space-x-2">
                       <Switch id="gst-toggle" checked={includeGST} onCheckedChange={setIncludeGST} />
@@ -2080,7 +2264,7 @@ export default function AWBForm({ isEdit = false, awb }) {
           </div>
         )
 
-      case 2: // Sender & Receiver - Receiver Zip First
+      case 2: // Sender & Receiver - With editable destination fields
         return (
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
             <FormSection title="Sender Details" icon={<Users className="h-5 w-5" />}>
@@ -2140,27 +2324,48 @@ export default function AWBForm({ isEdit = false, awb }) {
                 
                 {/* Then Zip Code for auto-fill */}
                 <FormInput label="Zip Code" id="senderZipCode" required error={validationErrors.senderZipCode} hint="Enter zip to auto-fill city & state">
-                  <Input
-                    value={senderZipCode}
-                    onChange={(e) => {
-                      setSenderZipCode(e.target.value.replace(/\s/g, ""))
-                      if (touchedFields.senderZipCode) validateField("senderZipCode", e.target.value.replace(/\s/g, ""))
-                    }}
-                    onBlur={() => {
-                      markFieldTouched("senderZipCode")
-                      validateField("senderZipCode", senderZipCode)
-                    }}
-                    disabled={isClient}
-                    className={cn(validationErrors.senderZipCode && "border-destructive")}
-                    placeholder={senderCountry === "India" ? "e.g., 400001" : "Enter postal code"}
-                  />
+                  <div className="relative">
+                    <Input
+                      value={senderZipCode}
+                      onChange={(e) => {
+                        setSenderZipCode(e.target.value.replace(/\s/g, ""))
+                        setSenderPostalAutoFilled(false)
+                        if (touchedFields.senderZipCode) validateField("senderZipCode", e.target.value.replace(/\s/g, ""))
+                      }}
+                      onBlur={() => {
+                        markFieldTouched("senderZipCode")
+                        validateField("senderZipCode", senderZipCode)
+                      }}
+                      disabled={isClient}
+                      className={cn(validationErrors.senderZipCode && "border-destructive", "pr-10")}
+                      placeholder={senderCountry === "India" ? "e.g., 400001" : "Enter postal code"}
+                    />
+                    {fetchingSenderPostal && (
+                      <div className="absolute right-3 top-1/2 -translate-y-1/2">
+                        <Loader2 className="h-4 w-4 animate-spin text-blue-500" />
+                      </div>
+                    )}
+                    {!fetchingSenderPostal && senderPostalAutoFilled && senderZipCode && (
+                      <div className="absolute right-3 top-1/2 -translate-y-1/2">
+                        <CheckCircle className="h-4 w-4 text-green-500" />
+                      </div>
+                    )}
+                  </div>
                 </FormInput>
                 
-                <FormInput label="City" id="senderCity">
-                  <Input value={senderCity} onChange={(e) => setSenderCity(e.target.value)} />
+                <FormInput label="City" id="senderCity" hint={senderPostalAutoFilled ? "Auto-filled" : ""}>
+                  <Input 
+                    value={senderCity} 
+                    onChange={(e) => setSenderCity(e.target.value)}
+                    className={cn(senderPostalAutoFilled && senderCity && "border-green-300 bg-green-50")}
+                  />
                 </FormInput>
-                <FormInput label="State" id="senderState">
-                  <Input value={senderState} onChange={(e) => setSenderState(e.target.value)} />
+                <FormInput label="State" id="senderState" hint={senderPostalAutoFilled ? "Auto-filled" : ""}>
+                  <Input 
+                    value={senderState} 
+                    onChange={(e) => setSenderState(e.target.value)}
+                    className={cn(senderPostalAutoFilled && senderState && "border-green-300 bg-green-50")}
+                  />
                 </FormInput>
                 
                 <div className="sm:col-span-2">
@@ -2184,8 +2389,14 @@ export default function AWBForm({ isEdit = false, awb }) {
                   </FormInput>
                 </div>
                 <div className="sm:col-span-2">
-                  <FormInput label="Address Line 2" id="senderAddress2">
-                    <Textarea rows={2} value={senderAddress2} onChange={(e) => setSenderAddress2(e.target.value)} disabled={isClient} />
+                  <FormInput label="Address Line 2" id="senderAddress2" hint={senderPostalAutoFilled ? "Auto-filled from postal data" : ""}>
+                    <Textarea 
+                      rows={2} 
+                      value={senderAddress2} 
+                      onChange={(e) => setSenderAddress2(e.target.value)} 
+                      disabled={isClient}
+                      className={cn(senderPostalAutoFilled && senderAddress2 && "border-green-300 bg-green-50")}
+                    />
                   </FormInput>
                 </div>
                 
@@ -2286,27 +2497,31 @@ export default function AWBForm({ isEdit = false, awb }) {
 
             <FormSection title="Receiver Details" icon={<Users className="h-5 w-5" />}>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                {/* Note about Zip Code first */}
+                {/* Note about data from Basic Details */}
                 <div className="sm:col-span-2">
                   <Alert className="bg-blue-50 border-blue-200 mb-4">
                     <Info className="h-4 w-4 text-blue-600" />
                     <AlertDescription className="text-sm text-blue-800">
-                      <strong>Tip:</strong> Enter the destination country and zip code first to auto-fill city and state.
+                      <strong>Note:</strong> Destination country, pin code, city, and state were set in Basic Details. You can edit them here if needed.
                     </AlertDescription>
                   </Alert>
                 </div>
 
-                {/* Destination country is already set in Step 1, show it here for reference */}
-                <FormInput label="Country" required>
+                {/* Destination country - editable */}
+                <FormInput label="Country" required error={validationErrors.receiverCountry}>
                   <CountryCombobox
                     value={receiverCountry}
-                    onSelect={setReceiverCountry}
+                    onSelect={(country) => {
+                      setReceiverCountry(country)
+                      setReceiverPostalAutoFilled(false)
+                      setValidationErrors(prev => ({ ...prev, receiverCountry: "" }))
+                    }}
                     open={receiverCountryOpen}
                     onOpenChange={setReceiverCountryOpen}
                   />
                 </FormInput>
                 
-                {/* Zip Code FIRST for auto-fill */}
+                {/* Zip Code - editable */}
                 <FormInput 
                   label="Zip Code" 
                   id="receiverZipCode" 
@@ -2314,26 +2529,46 @@ export default function AWBForm({ isEdit = false, awb }) {
                   error={validationErrors.receiverZipCode}
                   hint="Enter to auto-fill city & state"
                 >
+                  <div className="relative">
+                    <Input 
+                      value={receiverZipCode} 
+                      onChange={(e) => handleReceiverZipCodeChange(e.target.value)}
+                      onBlur={() => {
+                        markFieldTouched("receiverZipCode")
+                        validateField("receiverZipCode", receiverZipCode)
+                      }}
+                      className={cn(validationErrors.receiverZipCode && "border-destructive", "pr-10")}
+                      placeholder="Enter postal code"
+                    />
+                    {fetchingReceiverPostal && (
+                      <div className="absolute right-3 top-1/2 -translate-y-1/2">
+                        <Loader2 className="h-4 w-4 animate-spin text-blue-500" />
+                      </div>
+                    )}
+                    {!fetchingReceiverPostal && receiverPostalAutoFilled && receiverZipCode && (
+                      <div className="absolute right-3 top-1/2 -translate-y-1/2">
+                        <CheckCircle className="h-4 w-4 text-green-500" />
+                      </div>
+                    )}
+                  </div>
+                </FormInput>
+                
+                {/* City - editable */}
+                <FormInput label="City" id="receiverCity" hint={receiverPostalAutoFilled ? "Auto-filled" : ""}>
                   <Input 
-                    value={receiverZipCode} 
-                    onChange={(e) => {
-                      setReceiverZipCode(e.target.value.replace(/\s/g, ""))
-                      if (touchedFields.receiverZipCode) validateField("receiverZipCode", e.target.value.replace(/\s/g, ""))
-                    }}
-                    onBlur={() => {
-                      markFieldTouched("receiverZipCode")
-                      validateField("receiverZipCode", receiverZipCode)
-                    }}
-                    className={cn(validationErrors.receiverZipCode && "border-destructive")}
-                    placeholder="Enter postal code"
+                    value={receiverCity} 
+                    onChange={(e) => setReceiverCity(e.target.value)}
+                    className={cn(receiverPostalAutoFilled && receiverCity && "border-green-300 bg-green-50")}
                   />
                 </FormInput>
                 
-                <FormInput label="City" id="receiverCity">
-                  <Input value={receiverCity} onChange={(e) => setReceiverCity(e.target.value)} />
-                </FormInput>
-                <FormInput label="State" id="receiverState">
-                  <Input value={receiverState} onChange={(e) => setReceiverState(e.target.value)} />
+                {/* State - editable */}
+                <FormInput label="State" id="receiverState" hint={receiverPostalAutoFilled ? "Auto-filled" : ""}>
+                  <Input 
+                    value={receiverState} 
+                    onChange={(e) => setReceiverState(e.target.value)}
+                    className={cn(receiverPostalAutoFilled && receiverState && "border-green-300 bg-green-50")}
+                  />
                 </FormInput>
 
                 <div className="sm:col-span-2">
@@ -2397,8 +2632,13 @@ export default function AWBForm({ isEdit = false, awb }) {
                   </FormInput>
                 </div>
                 <div className="sm:col-span-2">
-                  <FormInput label="Address Line 2" id="receiverAddress2">
-                    <Textarea rows={2} value={receiverAddress2} onChange={(e) => setReceiverAddress2(e.target.value)} />
+                  <FormInput label="Address Line 2" id="receiverAddress2" hint={receiverPostalAutoFilled ? "Auto-filled from postal data" : ""}>
+                    <Textarea 
+                      rows={2} 
+                      value={receiverAddress2} 
+                      onChange={(e) => setReceiverAddress2(e.target.value)}
+                      className={cn(receiverPostalAutoFilled && receiverAddress2 && "border-green-300 bg-green-50")}
+                    />
                   </FormInput>
                 </div>
                 

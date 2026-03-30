@@ -1612,8 +1612,6 @@ export default function AWBForm({ isEdit = false, awb }) {
                 <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                   {[
                     { value: "International", label: "International", icon: Globe, description: "Cross-border shipments" },
-                    { value: "Domestic", label: "Domestic", icon: TruckIcon, description: "Within country" },
-                    { value: "Ecommerce", label: "E-commerce", icon: Package, description: "Online store orders" },
                   ].map((option) => (
                     <div
                       key={option.value}

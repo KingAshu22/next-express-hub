@@ -14,16 +14,8 @@ import {
   Users,
   Check,
   ChevronsUpDown,
-  Globe,
-  Scale,
-  Landmark,
-  ArrowRight,
-  ArrowLeft,
-  Info,
   AlertCircle,
-  X,
-  MapPin,
-  Loader2
+  Loader2,
 } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { Button } from "@/components/ui/button"
@@ -53,9 +45,6 @@ import { Checkbox } from "@/components/ui/checkbox"
 import ItemNameAutocomplete from "./ItemNameAutoComplete"
 import { Badge } from "@/components/ui/badge"
 import { Switch } from "@/components/ui/switch"
-import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group"
-import { Progress } from "@/components/ui/progress"
-import { Alert, AlertDescription } from "@/components/ui/alert"
 
 const mockHsnData = [
   { code: "482030", item: "Document" },
@@ -63,177 +52,159 @@ const mockHsnData = [
 ]
 
 // --- Validation Helper Functions ---
+
 const validateEmail = (email) => {
-  if (!email) return true // Email is optional
+  if (!email) return true // Optional field
   const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
   return emailRegex.test(email)
 }
 
-const validatePhone = (phone, isSender = true, country = "India") => {
-  if (!phone) return { valid: false, message: "Phone number is required" }
-  
-  // Remove all non-digit characters for validation
-  const digitsOnly = phone.replace(/\D/g, "")
-  
-  if (isSender) {
-    // Sender must have exactly 10 digits
-    if (digitsOnly.length !== 10) {
-      return { valid: false, message: "Sender phone must be exactly 10 digits" }
-    }
-  } else {
-    // Receiver can have 5-15 digits (international numbers vary)
-    if (digitsOnly.length < 5) {
-      return { valid: false, message: "Receiver phone must be at least 5 digits" }
-    }
-    if (digitsOnly.length > 15) {
-      return { valid: false, message: "Receiver phone must be at most 15 digits" }
-    }
-  }
-  
-  return { valid: true, message: "" }
+const validateSenderMobile = (mobile) => {
+  if (!mobile) return false
+  const cleanMobile = mobile.replace(/[^\d]/g, "")
+  return cleanMobile.length === 10
 }
 
-const validateZipCode = (zipCode, country) => {
-  if (!zipCode) return { valid: false, message: "Zip code is required" }
-  
-  // Remove spaces for validation
-  const cleanZip = zipCode.replace(/\s/g, "")
-  
-  // Country-specific validation
-  const zipPatterns = {
-    "India": { pattern: /^\d{6}$/, message: "Indian PIN code must be 6 digits" },
-    "United States": { pattern: /^\d{5}(-\d{4})?$/, message: "US ZIP code must be 5 digits (or 5+4 format)" },
-    "United Kingdom": { pattern: /^[A-Z]{1,2}\d[A-Z\d]?\s?\d[A-Z]{2}$/i, message: "Invalid UK postcode format" },
-    "Canada": { pattern: /^[A-Z]\d[A-Z]\s?\d[A-Z]\d$/i, message: "Invalid Canadian postal code format" },
-    "Australia": { pattern: /^\d{4}$/, message: "Australian postcode must be 4 digits" },
-  }
-  
-  if (zipPatterns[country]) {
-    if (!zipPatterns[country].pattern.test(cleanZip)) {
-      return { valid: false, message: zipPatterns[country].message }
-    }
-  } else {
-    // Generic validation for other countries - at least 3 characters
-    if (cleanZip.length < 3) {
-      return { valid: false, message: "Zip code must be at least 3 characters" }
-    }
-  }
-  
-  return { valid: true, message: "" }
+const validateReceiverMobile = (mobile) => {
+  if (!mobile) return false
+  const cleanMobile = mobile.replace(/[^\d]/g, "")
+  return cleanMobile.length >= 5 && cleanMobile.length <= 15
 }
 
-const validateRequired = (value, fieldName) => {
-  if (!value || (typeof value === "string" && !value.trim())) {
-    return { valid: false, message: `${fieldName} is required` }
+const validateZipCode = (zipCode) => {
+  if (!zipCode) return false
+  return zipCode.length >= 3 && zipCode.length <= 10
+}
+
+const validateRequired = (value) => {
+  if (typeof value === "string") return value.trim().length > 0
+  return value !== null && value !== undefined
+}
+
+const validateName = (name) => {
+  if (!name) return false
+  return name.trim().length >= 2 && name.trim().length <= 100
+}
+
+const validateAddress = (address) => {
+  if (!address) return false
+  return address.trim().length >= 5 && address.trim().length <= 200
+}
+
+const validateKYC = (kycType, kyc) => {
+  if (!kyc) return false
+  const cleanKyc = kyc.replace(/[^\w]/g, "")
+
+  switch (kycType) {
+    case "Aadhaar No -":
+      return /^\d{12}$/.test(cleanKyc)
+    case "Pan No -":
+      return /^[A-Z]{5}[0-9]{4}[A-Z]{1}$/i.test(cleanKyc)
+    case "Passport No -":
+      return cleanKyc.length >= 6 && cleanKyc.length <= 20
+    case "Driving License No -":
+      return cleanKyc.length >= 10 && cleanKyc.length <= 20
+    case "Voter ID Card No -":
+      return cleanKyc.length >= 10 && cleanKyc.length <= 20
+    case "GST No -":
+      return /^[0-9]{2}[A-Z]{5}[0-9]{4}[A-Z]{1}[1-9A-Z]{1}Z[0-9A-Z]{1}$/i.test(cleanKyc)
+    default:
+      return cleanKyc.length >= 5
   }
-  return { valid: true, message: "" }
 }
 
 const validateGST = (gst) => {
-  if (!gst) return { valid: true, message: "" } // GST is optional
-  const gstRegex = /^[0-9]{2}[A-Z]{5}[0-9]{4}[A-Z]{1}[1-9A-Z]{1}Z[0-9A-Z]{1}$/
-  if (!gstRegex.test(gst.toUpperCase())) {
-    return { valid: false, message: "Invalid GST format (e.g., 22AAAAA0000A1Z5)" }
-  }
-  return { valid: true, message: "" }
+  if (!gst) return true // Optional field
+  return /^[0-9]{2}[A-Z]{5}[0-9]{4}[A-Z]{1}[1-9A-Z]{1}Z[0-9A-Z]{1}$/i.test(gst)
 }
 
-const validateKYC = (kycType, kycValue) => {
-  if (!kycValue) return { valid: false, message: "KYC number is required" }
-  
-  const patterns = {
-    "Aadhaar No -": { pattern: /^\d{12}$/, message: "Aadhaar must be 12 digits" },
-    "Pan No -": { pattern: /^[A-Z]{5}[0-9]{4}[A-Z]{1}$/, message: "Invalid PAN format (e.g., ABCDE1234F)" },
-    "Passport No -": { pattern: /^[A-Z]\d{7}$/, message: "Invalid Passport format (e.g., A1234567)" },
-    "Driving License No -": { pattern: /^[A-Z]{2}\d{13}$/, message: "Invalid DL format" },
-    "Voter ID Card No -": { pattern: /^[A-Z]{3}\d{7}$/, message: "Invalid Voter ID format" },
-    "GST No -": { pattern: /^[0-9]{2}[A-Z]{5}[0-9]{4}[A-Z]{1}[1-9A-Z]{1}Z[0-9A-Z]{1}$/, message: "Invalid GST format" },
+const validateBoxDimensions = (box) => {
+  const errors = []
+  if (!box.actualWeight || Number(box.actualWeight) <= 0) {
+    errors.push("Actual weight is required and must be greater than 0")
   }
-  
-  if (patterns[kycType]) {
-    if (!patterns[kycType].pattern.test(kycValue.toUpperCase())) {
-      return { valid: false, message: patterns[kycType].message }
+  if (!box.length || Number(box.length) <= 0) {
+    errors.push("Length is required and must be greater than 0")
+  }
+  if (!box.breadth || Number(box.breadth) <= 0) {
+    errors.push("Breadth is required and must be greater than 0")
+  }
+  if (!box.height || Number(box.height) <= 0) {
+    errors.push("Height is required and must be greater than 0")
+  }
+  return errors
+}
+
+const validateItem = (item, showItemDetails) => {
+  if (!showItemDetails) return []
+  const errors = []
+  if (!item.name || item.name.trim().length === 0) {
+    errors.push("Item name is required")
+  }
+  if (!item.quantity || Number(item.quantity) <= 0) {
+    errors.push("Quantity is required and must be greater than 0")
+  }
+  if (!item.price || Number(item.price) <= 0) {
+    errors.push("Price is required and must be greater than 0")
+  }
+  return errors
+}
+
+// --- Debounce Hook ---
+const useDebounce = (value, delay) => {
+  const [debouncedValue, setDebouncedValue] = useState(value)
+
+  useEffect(() => {
+    const handler = setTimeout(() => {
+      setDebouncedValue(value)
+    }, delay)
+
+    return () => {
+      clearTimeout(handler)
     }
-  }
-  
-  return { valid: true, message: "" }
+  }, [value, delay])
+
+  return debouncedValue
 }
 
 // --- Helper Components ---
+
 const FormSection = ({ title, description, icon, children, className }) => (
-  <Card className={cn("overflow-hidden shadow-sm h-full", className)}>
-    <CardHeader className="bg-gradient-to-r from-primary/5 to-primary/10 pb-4">
-      <div className="flex items-start gap-3">
-        {icon && <div className="bg-primary/10 text-primary p-2.5 rounded-lg">{icon}</div>}
-        <div className="flex-1">
+  <Card className={cn("overflow-hidden", className)}>
+    <CardHeader>
+      <div className="flex items-start gap-4">
+        {icon && <div className="bg-primary/10 text-primary p-2 rounded-lg">{icon}</div>}
+        <div>
           <CardTitle className="text-lg text-primary">{title}</CardTitle>
-          {description && <CardDescription className="mt-1 text-sm">{description}</CardDescription>}
+          {description && <CardDescription className="mt-1">{description}</CardDescription>}
         </div>
       </div>
     </CardHeader>
-    <CardContent className="pt-5">{children}</CardContent>
+    <CardContent>{children}</CardContent>
   </Card>
 )
 
-const FormInput = ({ id, label, children, required, hint, error }) => (
-  <div className="space-y-1.5">
-    <Label htmlFor={id} className="font-medium text-sm">
+const FormInput = ({ id, label, children, required, error, helperText, isLoading }) => (
+  <div className="space-y-2">
+    <Label htmlFor={id} className="font-medium flex items-center gap-2">
       {label} {required && <span className="text-destructive">*</span>}
+      {isLoading && <Loader2 className="h-3 w-3 animate-spin text-muted-foreground" />}
     </Label>
     {children}
-    {hint && !error && (
-      <p className="text-xs text-muted-foreground flex items-center gap-1">
-        <Info className="h-3 w-3" />
-        {hint}
-      </p>
-    )}
     {error && (
-      <p className="text-xs text-destructive flex items-center gap-1">
+      <div className="flex items-center gap-1 text-destructive text-xs">
         <AlertCircle className="h-3 w-3" />
-        {error}
-      </p>
+        <span>{error}</span>
+      </div>
     )}
+    {helperText && !error && <div className="text-muted-foreground text-xs">{helperText}</div>}
   </div>
 )
 
-const StepIndicator = ({ steps, currentStep }) => {
-  const progress = ((currentStep + 1) / steps.length) * 100
-
-  return (
-    <div className="mb-8">
-      <div className="flex justify-between mb-3">
-        {steps.map((step, index) => (
-          <div key={index} className="flex flex-col items-center flex-1">
-            <div
-              className={cn(
-                "w-10 h-10 rounded-full flex items-center justify-center font-semibold transition-all duration-300 text-sm",
-                index < currentStep && "bg-green-500 text-white shadow-md",
-                index === currentStep && "bg-primary text-white ring-4 ring-primary/20 shadow-lg scale-110",
-                index > currentStep && "bg-gray-200 text-gray-400"
-              )}
-            >
-              {index < currentStep ? <Check className="h-5 w-5" /> : index + 1}
-            </div>
-            <span
-              className={cn(
-                "text-xs mt-2 text-center font-medium hidden sm:block transition-colors",
-                index === currentStep ? "text-primary" : "text-muted-foreground"
-              )}
-            >
-              {step.title}
-            </span>
-          </div>
-        ))}
-      </div>
-      <Progress value={progress} className="h-2" />
-    </div>
-  )
-}
-
 // --- Main Form Component ---
+
 export default function AWBForm({ isEdit = false, awb }) {
   const router = useRouter()
-  const [currentStep, setCurrentStep] = useState(0)
 
   // State
   const [success, setSuccess] = useState(false)
@@ -245,23 +216,23 @@ export default function AWBForm({ isEdit = false, awb }) {
   const [showHsnSearchDialog, setShowHsnSearchDialog] = useState(false)
   const [currentItemIndex, setCurrentItemIndex] = useState({ boxIndex: 0, itemIndex: 0 })
   const [boxCount, setBoxCount] = useState("")
+  const [showItemDetails, setShowItemDetails] = useState(false)
 
+  // Separate state for each country dropdown
   const [senderCountryOpen, setSenderCountryOpen] = useState(false)
   const [receiverCountryOpen, setReceiverCountryOpen] = useState(false)
-  const [receiverCountryOpenBasic, setReceiverCountryOpenBasic] = useState(false)
+  const [destinationCountryOpen, setDestinationCountryOpen] = useState(false)
+
+  // Validation errors state
+  const [errors, setErrors] = useState({})
+  const [touched, setTouched] = useState({})
 
   // Rate fetching state
   const [fetchingRates, setFetchingRates] = useState(false)
   const [rates, setRates] = useState(null)
   const [selectedRate, setSelectedRate] = useState(null)
   const [selectedCourier, setSelectedCourier] = useState(null)
-  const [includeGST, setIncludeGST] = useState(true)
-
-  // Postal data fetching state
-  const [fetchingReceiverPostal, setFetchingReceiverPostal] = useState(false)
-  const [fetchingSenderPostal, setFetchingSenderPostal] = useState(false)
-  const [receiverPostalAutoFilled, setReceiverPostalAutoFilled] = useState(false)
-  const [senderPostalAutoFilled, setSenderPostalAutoFilled] = useState(false)
+  const [includeGST, setIncludeGST] = useState(false)
 
   // Form state
   const [date, setDate] = useState(awb?.date ? new Date(awb.date) : new Date())
@@ -278,6 +249,7 @@ export default function AWBForm({ isEdit = false, awb }) {
   const [isRefDropdownOpen, setIsRefDropdownOpen] = useState(false)
   const [selectedRefOption, setSelectedRefOption] = useState(null)
 
+  // Forwarding Details
   const [forwardingNumber, setForwardingNumber] = useState(awb?.forwardingNumber || "")
   const [forwardingLink, setForwardingLink] = useState(awb?.forwardingLink || "")
   const [cNoteNumber, setCNoteNumber] = useState(awb?.cNoteNumber || "")
@@ -286,22 +258,6 @@ export default function AWBForm({ isEdit = false, awb }) {
 
   const [shippingCurrency, setShippingCurrency] = useState(awb?.shippingCurrency || "₹")
   const [totalShippingValue, setTotalShippingValue] = useState(awb?.totalShippingValue || 0)
-
-  // Export Details
-  const [bankADCode, setBankADCode] = useState(awb?.exportDetails?.bankADCode || "")
-  const [bankAccount, setBankAccount] = useState(awb?.exportDetails?.bankAccount || "")
-  const [bankIFSC, setBankIFSC] = useState(awb?.exportDetails?.bankIFSC || "")
-  const [consignorGSTIN, setConsignorGSTIN] = useState(awb?.exportDetails?.consignorGSTIN || "")
-  const [consignorIEC, setConsignorIEC] = useState(awb?.exportDetails?.consignorIEC || "")
-  const [csbSelection, setCsbSelection] = useState(awb?.exportDetails?.csbSelection || "CSB V")
-  const [termOfInvoice, setTermOfInvoice] = useState(awb?.exportDetails?.termOfInvoice || "FOB")
-  const [underMEISScheme, setUnderMEISScheme] = useState(awb?.exportDetails?.underMEISScheme || false)
-  const [gstInvoiceNo, setGstInvoiceNo] = useState(awb?.exportDetails?.gstInvoiceNo || "")
-  const [gstInvoiceDate, setGstInvoiceDate] = useState(
-    awb?.exportDetails?.gstInvoiceDate ? new Date(awb.exportDetails.gstInvoiceDate) : new Date()
-  )
-  const [againstBondOrLUT, setAgainstBondOrLUT] = useState(awb?.exportDetails?.againstBondOrLUT || false)
-  const [igstPaymentStatus, setIgstPaymentStatus] = useState(awb?.exportDetails?.igstPaymentStatus || false)
 
   // Sender details
   const [senderName, setSenderName] = useState(awb?.sender?.name || "")
@@ -331,274 +287,271 @@ export default function AWBForm({ isEdit = false, awb }) {
   const [receiverZipCode, setReceiverZipCode] = useState(awb?.receiver?.zip || "")
   const [receiverContact, setReceiverContact] = useState(awb?.receiver?.contact || "")
 
+  // Loading state for postal API
+  const [loadingReceiverPostal, setLoadingReceiverPostal] = useState(false)
+  const [loadingSenderPostal, setLoadingSenderPostal] = useState(false)
+
+  // Track if postal data was fetched to avoid overwriting manual edits
+  const [receiverPostalFetched, setReceiverPostalFetched] = useState(false)
+  const [senderPostalFetched, setSenderPostalFetched] = useState(false)
+
   // Box details
   const [boxes, setBoxes] = useState(awb?.boxes || [])
   const [availableTypes, setAvailableTypes] = useState([])
   const userType = typeof window !== "undefined" ? localStorage.getItem("userType") : ""
   const [isClient, setIsClient] = useState(userType === "client")
 
+  // Derived state
   const [totalChargeableWeight, setTotalChargeableWeight] = useState("")
   const [error, setError] = useState(null)
 
-  // Validation errors state
-  const [validationErrors, setValidationErrors] = useState({})
-  const [touchedFields, setTouchedFields] = useState({})
+  // Debounced values for postal lookup
+  const debouncedReceiverZipCode = useDebounce(receiverZipCode, 500)
+  const debouncedSenderZipCode = useDebounce(senderZipCode, 500)
 
-  // Refs to track if postal data was fetched
-  const senderPostalFetched = useRef(false)
-  const receiverPostalFetched = useRef(false)
+  // Refs to track previous values and avoid unnecessary API calls
+  const prevReceiverZipRef = useRef("")
+  const prevReceiverCountryRef = useRef("")
+  const prevSenderZipRef = useRef("")
+  const prevSenderCountryRef = useRef("")
 
-  // Define steps - Combined Box & Weight with Shipping Rates
-  const steps = useMemo(() => {
-    const baseSteps = [
-      { id: "basic", title: "Basic Details", icon: FileText },
-      { id: "boxes-rates", title: "Box & Rates", icon: Package },
-      { id: "parties", title: "Sender & Receiver", icon: Users },
-      { id: "items", title: "Shipping Items", icon: FileText },
-    ]
-
-    if (parcelType === "Ecommerce") {
-      baseSteps.push({ id: "export", title: "Export Details", icon: Globe })
-    }
-
-    return baseSteps
-  }, [parcelType])
-
-  // Check if current step is the last step
-  const isLastStep = currentStep === steps.length - 1
-
+  // Get calling code
   const getCallingCode = (countryName) => countryCodeMap[countryName]?.callingCode || ""
 
-  // Mark field as touched
-  const markFieldTouched = (fieldName) => {
-    setTouchedFields(prev => ({ ...prev, [fieldName]: true }))
+  // Get country code (ISO 2-letter code)
+  const getCountryCode = (countryName) => {
+    const mapping = countryCodeMap[countryName]
+    if (mapping) {
+      return mapping.code || ""
+    }
+    // Fallback: try to find by partial match
+    const keys = Object.keys(countryCodeMap)
+    const found = keys.find(key => key.toLowerCase() === countryName?.toLowerCase())
+    return found ? countryCodeMap[found].code : ""
   }
 
-  // Validate a single field
-  const validateField = useCallback((fieldName, value, extraParams = {}) => {
-    let result = { valid: true, message: "" }
+  // Fetch postal data from API
+  const fetchPostalData = async (postalCode, countryCode, countryName) => {
+    console.log("Fetching postal data for:", { postalCode, countryCode, countryName })
+    
+    try {
+      const postalApiKey = process.env.NEXT_PUBLIC_POSTAL_API_KEY
+      
+      if (!postalApiKey) {
+        console.warn("Postal API key not found. Please set NEXT_PUBLIC_POSTAL_API_KEY in your environment.")
+        return null
+      }
+
+      if (!postalCode || !countryCode) {
+        console.warn("Missing postal code or country code")
+        return null
+      }
+
+      const response = await axios.get(`https://api.worldpostallocations.com/pincode`, {
+        params: { 
+          apikey: postalApiKey, 
+          postalcode: postalCode, 
+          countrycode: countryCode 
+        },
+        timeout: 10000, // 10 second timeout
+      })
+
+      console.log("Postal API response:", response.data)
+
+      if (response.data?.status === true && response.data?.result?.length > 0) {
+        const result = response.data.result[0]
+        return {
+          city: result.district || result.city || result.postalLocation || "",
+          state: result.state || result.province || result.region || "",
+          address: [result.postalLocation, result.province].filter(Boolean).join(", "),
+          raw: result
+        }
+      }
+      
+      console.log("No postal data found for:", postalCode)
+      return null
+    } catch (error) {
+      console.error("Error fetching postal data:", error.message)
+      if (error.response) {
+        console.error("Response error:", error.response.data)
+      }
+      return null
+    }
+  }
+
+  // Alternative postal lookup using a backup API (India specific)
+  const fetchIndiaPostalData = async (pincode) => {
+    try {
+      const response = await axios.get(`https://api.postalpincode.in/pincode/${pincode}`, {
+        timeout: 10000,
+      })
+      
+      console.log("India Postal API response:", response.data)
+      
+      if (response.data?.[0]?.Status === "Success" && response.data?.[0]?.PostOffice?.length > 0) {
+        const postOffice = response.data[0].PostOffice[0]
+        return {
+          city: postOffice.District || postOffice.Name || "",
+          state: postOffice.State || "",
+          address: postOffice.Name || "",
+          raw: postOffice
+        }
+      }
+      return null
+    } catch (error) {
+      console.error("Error fetching India postal data:", error.message)
+      return null
+    }
+  }
+
+  // Combined postal lookup function
+  const lookupPostalData = async (postalCode, countryCode, countryName) => {
+    // First try the world postal locations API
+    let result = await fetchPostalData(postalCode, countryCode, countryName)
+    
+    // If no result and it's India, try the India-specific API
+    if (!result && (countryCode === "IN" || countryName === "India")) {
+      console.log("Trying India-specific postal API...")
+      result = await fetchIndiaPostalData(postalCode)
+    }
+    
+    return result
+  }
+
+  // Mark field as touched
+  const handleBlur = (fieldName) => {
+    setTouched((prev) => ({ ...prev, [fieldName]: true }))
+    validateField(fieldName)
+  }
+
+  // Validate single field
+  const validateField = (fieldName) => {
+    let error = ""
 
     switch (fieldName) {
       case "senderName":
-        result = validateRequired(value, "Sender name")
-        break
-      case "senderAddress":
-        result = validateRequired(value, "Sender address")
-        break
-      case "senderZipCode":
-        result = validateZipCode(value, senderCountry)
-        break
-      case "senderContact":
-        result = validatePhone(value, true, senderCountry)
+        if (!validateName(senderName)) error = "Name must be between 2 and 100 characters"
         break
       case "senderEmail":
-        if (value && !validateEmail(value)) {
-          result = { valid: false, message: "Invalid email format" }
-        }
+        if (!validateEmail(senderEmail)) error = "Please enter a valid email address"
+        break
+      case "senderAddress":
+        if (!validateAddress(senderAddress)) error = "Address must be between 5 and 200 characters"
+        break
+      case "senderZipCode":
+        if (!validateZipCode(senderZipCode)) error = "Please enter a valid zip code"
+        break
+      case "senderContact":
+        if (!validateSenderMobile(senderContact)) error = "Sender mobile number must be exactly 10 digits"
+        break
+      case "senderCountry":
+        if (!validateRequired(senderCountry)) error = "Please select a country"
         break
       case "kyc":
-        result = validateKYC(kycType, value)
+        if (!validateKYC(kycType, kyc)) error = `Please enter a valid ${kycType.replace(" -", "")}`
         break
       case "gst":
-        result = validateGST(value)
+        if (!validateGST(gst)) error = "Please enter a valid GST number"
         break
       case "receiverName":
-        result = validateRequired(value, "Receiver name")
-        break
-      case "receiverAddress":
-        result = validateRequired(value, "Receiver address")
-        break
-      case "receiverZipCode":
-        result = validateZipCode(value, receiverCountry)
-        break
-      case "receiverContact":
-        result = validatePhone(value, false, receiverCountry)
+        if (!validateName(receiverName)) error = "Name must be between 2 and 100 characters"
         break
       case "receiverEmail":
-        if (value && !validateEmail(value)) {
-          result = { valid: false, message: "Invalid email format" }
-        }
+        if (!validateEmail(receiverEmail)) error = "Please enter a valid email address"
+        break
+      case "receiverAddress":
+        if (!validateAddress(receiverAddress)) error = "Address must be between 5 and 200 characters"
+        break
+      case "receiverZipCode":
+        if (!validateZipCode(receiverZipCode)) error = "Please enter a valid zip code"
+        break
+      case "receiverContact":
+        if (!validateReceiverMobile(receiverContact)) error = "Receiver mobile number must be between 5 and 15 digits"
         break
       case "receiverCountry":
-        result = validateRequired(value, "Destination country")
+        if (!validateRequired(receiverCountry)) error = "Please select a country"
+        break
+      case "receiverCity":
+        if (!validateRequired(receiverCity)) error = "City is required"
+        break
+      case "receiverState":
+        if (!validateRequired(receiverState)) error = "State is required"
         break
       default:
         break
     }
 
-    setValidationErrors(prev => ({
-      ...prev,
-      [fieldName]: result.valid ? "" : result.message
-    }))
+    setErrors((prev) => ({ ...prev, [fieldName]: error }))
+    return error === ""
+  }
 
-    return result.valid
-  }, [senderCountry, receiverCountry, kycType])
+  // Validate all fields before submit
+  const validateAllFields = () => {
+    const fieldsToValidate = [
+      "senderName",
+      "senderAddress",
+      "senderZipCode",
+      "senderContact",
+      "senderCountry",
+      "kyc",
+      "receiverName",
+      "receiverAddress",
+      "receiverZipCode",
+      "receiverContact",
+      "receiverCountry",
+      "receiverCity",
+      "receiverState",
+    ]
 
-  // Validate all fields for a step
-  const validateAllFieldsForStep = useCallback((stepIndex) => {
+    // Mark all fields as touched
+    const newTouched = {}
+    fieldsToValidate.forEach((field) => {
+      newTouched[field] = true
+    })
+    setTouched(newTouched)
+
+    // Validate all fields
     let allValid = true
-    const errors = {}
+    fieldsToValidate.forEach((field) => {
+      if (!validateField(field)) {
+        allValid = false
+      }
+    })
 
-    switch (stepIndex) {
-      case 0: // Basic Details
-        if (!receiverCountry) {
-          errors.receiverCountry = "Destination country is required"
+    // Validate boxes
+    if (boxes.length === 0) {
+      toast.error("Please add at least one box")
+      allValid = false
+    } else {
+      boxes.forEach((box, boxIndex) => {
+        const boxErrors = validateBoxDimensions(box)
+        if (boxErrors.length > 0) {
+          toast.error(`Box ${boxIndex + 1}: ${boxErrors[0]}`)
           allValid = false
         }
-        // Zip code validation for basic details is optional but if provided, validate
-        if (receiverZipCode) {
-          const zipValid = validateZipCode(receiverZipCode, receiverCountry)
-          if (!zipValid.valid) {
-            errors.receiverZipCode = zipValid.message
-            allValid = false
-          }
-        }
-        break
 
-      case 1: // Box & Weight + Rates
-        if (boxes.length === 0) {
-          toast.error("Please add at least one box")
-          allValid = false
-        } else {
-          for (let i = 0; i < boxes.length; i++) {
-            const box = boxes[i]
-            if (!box.actualWeight || Number(box.actualWeight) <= 0) {
-              toast.error(`Box ${i + 1}: Actual weight is required and must be greater than 0`)
+        if (showItemDetails) {
+          box.items.forEach((item, itemIndex) => {
+            const itemErrors = validateItem(item, showItemDetails)
+            if (itemErrors.length > 0) {
+              toast.error(`Box ${boxIndex + 1}, Item ${itemIndex + 1}: ${itemErrors[0]}`)
               allValid = false
-              break
             }
-            if (!box.length || Number(box.length) <= 0) {
-              toast.error(`Box ${i + 1}: Length is required and must be greater than 0`)
-              allValid = false
-              break
-            }
-            if (!box.breadth || Number(box.breadth) <= 0) {
-              toast.error(`Box ${i + 1}: Breadth is required and must be greater than 0`)
-              allValid = false
-              break
-            }
-            if (!box.height || Number(box.height) <= 0) {
-              toast.error(`Box ${i + 1}: Height is required and must be greater than 0`)
-              allValid = false
-              break
-            }
-          }
+          })
         }
-        break
-
-      case 2: // Sender & Receiver
-        // Sender validations
-        const senderNameValid = validateRequired(senderName, "Sender name")
-        if (!senderNameValid.valid) {
-          errors.senderName = senderNameValid.message
-          allValid = false
-        }
-
-        const senderAddressValid = validateRequired(senderAddress, "Sender address")
-        if (!senderAddressValid.valid) {
-          errors.senderAddress = senderAddressValid.message
-          allValid = false
-        }
-
-        const senderZipValid = validateZipCode(senderZipCode, senderCountry)
-        if (!senderZipValid.valid) {
-          errors.senderZipCode = senderZipValid.message
-          allValid = false
-        }
-
-        const senderPhoneValid = validatePhone(senderContact, true, senderCountry)
-        if (!senderPhoneValid.valid) {
-          errors.senderContact = senderPhoneValid.message
-          allValid = false
-        }
-
-        if (senderEmail && !validateEmail(senderEmail)) {
-          errors.senderEmail = "Invalid email format"
-          allValid = false
-        }
-
-        const kycValid = validateKYC(kycType, kyc)
-        if (!kycValid.valid) {
-          errors.kyc = kycValid.message
-          allValid = false
-        }
-
-        if (gst) {
-          const gstValid = validateGST(gst)
-          if (!gstValid.valid) {
-            errors.gst = gstValid.message
-            allValid = false
-          }
-        }
-
-        // Receiver validations
-        const receiverNameValid = validateRequired(receiverName, "Receiver name")
-        if (!receiverNameValid.valid) {
-          errors.receiverName = receiverNameValid.message
-          allValid = false
-        }
-
-        const receiverAddressValid = validateRequired(receiverAddress, "Receiver address")
-        if (!receiverAddressValid.valid) {
-          errors.receiverAddress = receiverAddressValid.message
-          allValid = false
-        }
-
-        const receiverZipValid = validateZipCode(receiverZipCode, receiverCountry)
-        if (!receiverZipValid.valid) {
-          errors.receiverZipCode = receiverZipValid.message
-          allValid = false
-        }
-
-        const receiverPhoneValid = validatePhone(receiverContact, false, receiverCountry)
-        if (!receiverPhoneValid.valid) {
-          errors.receiverContact = receiverPhoneValid.message
-          allValid = false
-        }
-
-        if (receiverEmail && !validateEmail(receiverEmail)) {
-          errors.receiverEmail = "Invalid email format"
-          allValid = false
-        }
-        break
-
-      case 3: // Items
-        for (let boxIdx = 0; boxIdx < boxes.length; boxIdx++) {
-          const box = boxes[boxIdx]
-          for (let itemIdx = 0; itemIdx < box.items.length; itemIdx++) {
-            const item = box.items[itemIdx]
-            if (!item.name || !item.name.trim()) {
-              toast.error(`Box ${boxIdx + 1}, Item ${itemIdx + 1}: Item name is required`)
-              allValid = false
-              break
-            }
-            if (!item.quantity || Number(item.quantity) <= 0) {
-              toast.error(`Box ${boxIdx + 1}, Item ${itemIdx + 1}: Quantity must be greater than 0`)
-              allValid = false
-              break
-            }
-            if (!item.price || Number(item.price) < 0) {
-              toast.error(`Box ${boxIdx + 1}, Item ${itemIdx + 1}: Price is required`)
-              allValid = false
-              break
-            }
-          }
-          if (!allValid) break
-        }
-        break
-
-      case 4: // Export Details (Ecommerce only)
-        // Export details are mostly optional, but we can add specific validations if needed
-        break
-
-      default:
-        break
+      })
     }
 
-    setValidationErrors(prev => ({ ...prev, ...errors }))
-    return allValid
-  }, [boxes, senderName, senderAddress, senderZipCode, senderContact, senderEmail, senderCountry, kyc, kycType, gst, receiverName, receiverAddress, receiverZipCode, receiverContact, receiverEmail, receiverCountry])
+    // Validate rate selection
+    if (!selectedRate && !isEdit) {
+      toast.error("Please select a shipping rate")
+      allValid = false
+    }
 
+    return allValid
+  }
+
+  // Clean contact on edit
   useEffect(() => {
     if (isEdit && awb) {
       const cleanContact = (contact, country) => {
@@ -614,6 +567,7 @@ export default function AWBForm({ isEdit = false, awb }) {
     }
   }, [isEdit, awb])
 
+  // Weights
   const totalWeights = useMemo(() => {
     const totalActual = boxes.reduce((acc, box) => acc + (Number.parseFloat(box.actualWeight) || 0), 0)
     const totalDimensional = boxes.reduce((acc, box) => acc + (Number.parseFloat(box.dimensionalWeight) || 0), 0)
@@ -629,12 +583,13 @@ export default function AWBForm({ isEdit = false, awb }) {
     return boxes.length > 0 && totalChargeableWeight && Number(totalChargeableWeight) > 0 && receiverCountry
   }, [boxes, totalChargeableWeight, receiverCountry])
 
+  // Filtered customers for search
   const filteredCustomers = useMemo(() => {
     if (!searchTerm) return customers
     return customers.filter((customer) => customer.name.toLowerCase().includes(searchTerm.toLowerCase()))
   }, [customers, searchTerm])
 
-  // Fixed generateBoxes function - preserves existing boxes
+  // Box Logic - Fixed to preserve existing data
   const generateBoxes = () => {
     const count = Number.parseInt(boxCount, 10)
     if (isNaN(count) || count <= 0) {
@@ -642,36 +597,33 @@ export default function AWBForm({ isEdit = false, awb }) {
       return
     }
 
-    if (count > 50) {
-      toast.error("Maximum 50 boxes allowed")
-      return
-    }
+    setBoxes((prevBoxes) => {
+      const newBoxes = [...prevBoxes]
+      const currentCount = newBoxes.length
 
-    setBoxes(prevBoxes => {
-      const currentCount = prevBoxes.length
-      
       if (count > currentCount) {
-        // Add new boxes while preserving existing ones
-        const newBoxes = Array.from({ length: count - currentCount }, () => ({
-          length: "",
-          breadth: "",
-          height: "",
-          actualWeight: "",
-          dimensionalWeight: "",
-          chargeableWeight: "",
-          items: [{ name: "", quantity: "", price: "", hsnCode: "" }],
-        }))
-        return [...prevBoxes, ...newBoxes]
+        // Add new boxes without affecting existing ones
+        for (let i = currentCount; i < count; i++) {
+          newBoxes.push({
+            length: "",
+            breadth: "",
+            height: "",
+            actualWeight: "",
+            dimensionalWeight: "",
+            chargeableWeight: "",
+            items: [{ name: "", quantity: "", price: "", hsnCode: "" }],
+          })
+        }
       } else if (count < currentCount) {
-        // Remove extra boxes from the end
-        return prevBoxes.slice(0, count)
+        // Remove boxes from the end
+        newBoxes.splice(count)
       }
-      return prevBoxes
+
+      return newBoxes
     })
-    
-    toast.success(`Box count set to ${count}`)
   }
 
+  // Ref Code Fetching
   useEffect(() => {
     fetchServices()
     const fetchRefOptions = async () => {
@@ -719,6 +671,7 @@ export default function AWBForm({ isEdit = false, awb }) {
     fetchRefOptions()
   }, [])
 
+  // Auto-fill client sender info
   useEffect(() => {
     const userType = localStorage.getItem("userType")
     const code = localStorage.getItem("code")
@@ -763,6 +716,7 @@ export default function AWBForm({ isEdit = false, awb }) {
     setIsRefDropdownOpen(false)
   }
 
+  // Invoice Number
   const getInvoiceNumber = async () => {
     try {
       const response = await axios.get("/api/get-last-awb")
@@ -775,11 +729,13 @@ export default function AWBForm({ isEdit = false, awb }) {
     }
   }
 
+  // Init
   useEffect(() => {
     fetchCustomers()
     if (!isEdit) getInvoiceNumber()
   }, [isEdit])
 
+  // Sender/Receiver Auto-fill from Customers
   useEffect(() => {
     if (senderName && !isEdit) {
       const customer = customers.find((c) => c.name === senderName)
@@ -818,88 +774,203 @@ export default function AWBForm({ isEdit = false, awb }) {
     }
   }, [receiverName, customers, isEdit])
 
-  const getCountryCode = (countryName) => countryCodeMap[countryName]?.code || ""
-
-  const fetchPostalData = async (postalCode, countryCode) => {
-    try {
-      const postalApiKey = process.env.NEXT_PUBLIC_POSTAL_API_KEY
-      if (!postalApiKey) return null
-      const response = await axios.get(`https://api.worldpostallocations.com/pincode`, {
-        params: { apikey: postalApiKey, postalcode: postalCode, countrycode: countryCode },
-      })
-      if (response.data?.status === true && response.data?.result?.length > 0) {
-        return response.data.result[0]
+  // Auto-fill SENDER address from zip - using debounced value
+  useEffect(() => {
+    const updateSenderAddress = async () => {
+      // Check if we should fetch - minimum length and country selected
+      if (!debouncedSenderZipCode || debouncedSenderZipCode.length < 4 || !senderCountry) {
+        return
       }
-      return null
-    } catch (error) {
-      return null
+
+      // Check if values actually changed to avoid duplicate calls
+      if (
+        debouncedSenderZipCode === prevSenderZipRef.current &&
+        senderCountry === prevSenderCountryRef.current
+      ) {
+        return
+      }
+
+      // Update refs
+      prevSenderZipRef.current = debouncedSenderZipCode
+      prevSenderCountryRef.current = senderCountry
+
+      const countryCode = getCountryCode(senderCountry)
+      console.log("Sender postal lookup:", { zip: debouncedSenderZipCode, countryCode, country: senderCountry })
+
+      if (!countryCode) {
+        console.warn("No country code found for:", senderCountry)
+        return
+      }
+
+      setLoadingSenderPostal(true)
+
+      try {
+        const postalData = await lookupPostalData(debouncedSenderZipCode, countryCode, senderCountry)
+        
+        if (postalData) {
+          console.log("Sender postal data found:", postalData)
+          
+          // Only update if fields are empty or if postal data was previously fetched
+          if (!senderCity || senderPostalFetched) {
+            setSenderCity(postalData.city)
+          }
+          if (!senderState || senderPostalFetched) {
+            setSenderState(postalData.state)
+          }
+          if (!senderAddress2 && postalData.address) {
+            setSenderAddress2(postalData.address)
+          }
+          
+          setSenderPostalFetched(true)
+          toast.success("Sender address auto-filled from pin code")
+        } else {
+          console.log("No postal data found for sender zip code")
+        }
+      } catch (error) {
+        console.error("Error in sender postal lookup:", error)
+      } finally {
+        setLoadingSenderPostal(false)
+      }
+    }
+
+    updateSenderAddress()
+  }, [debouncedSenderZipCode, senderCountry])
+
+  // Auto-fill RECEIVER address from zip - using debounced value
+  useEffect(() => {
+    const updateReceiverAddress = async () => {
+      // Check if we should fetch - minimum length and country selected
+      if (!debouncedReceiverZipCode || debouncedReceiverZipCode.length < 4 || !receiverCountry) {
+        return
+      }
+
+      // Check if values actually changed to avoid duplicate calls
+      if (
+        debouncedReceiverZipCode === prevReceiverZipRef.current &&
+        receiverCountry === prevReceiverCountryRef.current
+      ) {
+        return
+      }
+
+      // Update refs
+      prevReceiverZipRef.current = debouncedReceiverZipCode
+      prevReceiverCountryRef.current = receiverCountry
+
+      const countryCode = getCountryCode(receiverCountry)
+      console.log("Receiver postal lookup:", { zip: debouncedReceiverZipCode, countryCode, country: receiverCountry })
+
+      if (!countryCode) {
+        console.warn("No country code found for:", receiverCountry)
+        return
+      }
+
+      setLoadingReceiverPostal(true)
+
+      try {
+        const postalData = await lookupPostalData(debouncedReceiverZipCode, countryCode, receiverCountry)
+        
+        if (postalData) {
+          console.log("Receiver postal data found:", postalData)
+          
+          // Only update if fields are empty or if postal data was previously fetched
+          if (!receiverCity || receiverPostalFetched) {
+            setReceiverCity(postalData.city)
+          }
+          if (!receiverState || receiverPostalFetched) {
+            setReceiverState(postalData.state)
+          }
+          if (!receiverAddress2 && postalData.address) {
+            setReceiverAddress2(postalData.address)
+          }
+          
+          setReceiverPostalFetched(true)
+          toast.success("Receiver address auto-filled from pin code")
+        } else {
+          console.log("No postal data found for receiver zip code")
+          // Don't show error toast - user can fill manually
+        }
+      } catch (error) {
+        console.error("Error in receiver postal lookup:", error)
+      } finally {
+        setLoadingReceiverPostal(false)
+      }
+    }
+
+    updateReceiverAddress()
+  }, [debouncedReceiverZipCode, receiverCountry])
+
+  // Manual trigger for postal lookup
+  const handleManualPostalLookup = async (type) => {
+    if (type === "sender") {
+      if (!senderZipCode || senderZipCode.length < 4) {
+        toast.error("Please enter a valid pin code (minimum 4 characters)")
+        return
+      }
+      if (!senderCountry) {
+        toast.error("Please select a country first")
+        return
+      }
+
+      const countryCode = getCountryCode(senderCountry)
+      if (!countryCode) {
+        toast.error("Country code not found. Please select a valid country.")
+        return
+      }
+
+      setLoadingSenderPostal(true)
+      try {
+        const postalData = await lookupPostalData(senderZipCode, countryCode, senderCountry)
+        if (postalData) {
+          setSenderCity(postalData.city)
+          setSenderState(postalData.state)
+          if (postalData.address) setSenderAddress2(postalData.address)
+          setSenderPostalFetched(true)
+          toast.success("Address auto-filled successfully!")
+        } else {
+          toast.error("Could not find address for this pin code. Please enter manually.")
+        }
+      } catch (error) {
+        toast.error("Failed to lookup address. Please enter manually.")
+      } finally {
+        setLoadingSenderPostal(false)
+      }
+    } else if (type === "receiver") {
+      if (!receiverZipCode || receiverZipCode.length < 4) {
+        toast.error("Please enter a valid pin code (minimum 4 characters)")
+        return
+      }
+      if (!receiverCountry) {
+        toast.error("Please select a country first")
+        return
+      }
+
+      const countryCode = getCountryCode(receiverCountry)
+      if (!countryCode) {
+        toast.error("Country code not found. Please select a valid country.")
+        return
+      }
+
+      setLoadingReceiverPostal(true)
+      try {
+        const postalData = await lookupPostalData(receiverZipCode, countryCode, receiverCountry)
+        if (postalData) {
+          setReceiverCity(postalData.city)
+          setReceiverState(postalData.state)
+          if (postalData.address) setReceiverAddress2(postalData.address)
+          setReceiverPostalFetched(true)
+          toast.success("Address auto-filled successfully!")
+        } else {
+          toast.error("Could not find address for this pin code. Please enter manually.")
+        }
+      } catch (error) {
+        toast.error("Failed to lookup address. Please enter manually.")
+      } finally {
+        setLoadingReceiverPostal(false)
+      }
     }
   }
 
-  // Sender postal code auto-fill
-  useEffect(() => {
-    const updateSenderAddress = async () => {
-      if (senderZipCode && senderZipCode.length >= 4 && senderCountry) {
-        const countryCode = getCountryCode(senderCountry)
-        if (!countryCode) return
-        
-        setFetchingSenderPostal(true)
-        const postalData = await fetchPostalData(senderZipCode, countryCode)
-        setFetchingSenderPostal(false)
-        
-        if (postalData) {
-          const { postalLocation, province, district, state } = postalData
-          const formattedAddress = [postalLocation, province].filter(Boolean).join(", ")
-          setSenderCity(district || "")
-          setSenderState(state || "")
-          if (!senderAddress2) setSenderAddress2(formattedAddress)
-          setSenderPostalAutoFilled(true)
-          senderPostalFetched.current = true
-        } else {
-          setSenderPostalAutoFilled(false)
-        }
-      }
-    }
-    
-    const debounceTimer = setTimeout(() => {
-      updateSenderAddress()
-    }, 500)
-    
-    return () => clearTimeout(debounceTimer)
-  }, [senderZipCode, senderCountry])
-
-  // Receiver postal code auto-fill
-  useEffect(() => {
-    const updateReceiverAddress = async () => {
-      if (receiverZipCode && receiverZipCode.length >= 3 && receiverCountry) {
-        const countryCode = getCountryCode(receiverCountry)
-        if (!countryCode) return
-        
-        setFetchingReceiverPostal(true)
-        const postalData = await fetchPostalData(receiverZipCode, countryCode)
-        setFetchingReceiverPostal(false)
-        
-        if (postalData) {
-          const { postalLocation, province, district, state } = postalData
-          const formattedAddress = [postalLocation, province].filter(Boolean).join(", ")
-          setReceiverCity(district || "")
-          setReceiverState(state || "")
-          if (!receiverAddress2) setReceiverAddress2(formattedAddress)
-          setReceiverPostalAutoFilled(true)
-          receiverPostalFetched.current = true
-        } else {
-          setReceiverPostalAutoFilled(false)
-        }
-      }
-    }
-    
-    const debounceTimer = setTimeout(() => {
-      updateReceiverAddress()
-    }, 500)
-    
-    return () => clearTimeout(debounceTimer)
-  }, [receiverZipCode, receiverCountry])
-
+  // Update totals
   useEffect(() => {
     const totalWeight = boxes.reduce((acc, box) => acc + (Number.parseFloat(box.chargeableWeight) || 0), 0)
     setTotalChargeableWeight(totalWeight.toFixed(2).toString())
@@ -916,6 +987,7 @@ export default function AWBForm({ isEdit = false, awb }) {
     setTotalShippingValue(Number.parseFloat(totalShippingValue))
   }, [boxes])
 
+  // Reset rate if inputs change
   useEffect(() => {
     setSelectedRate(null)
     setSelectedCourier(null)
@@ -936,6 +1008,15 @@ export default function AWBForm({ isEdit = false, awb }) {
     }
   }, [isEdit, awb])
 
+  useEffect(() => {
+    if (boxes.length > 0) {
+      const hasItems = boxes.some(
+        (box) => box.items && box.items.some((item) => item.name && item.quantity && item.price)
+      )
+      if (hasItems) setShowItemDetails(true)
+    }
+  }, [boxes])
+
   const fetchCustomers = async () => {
     try {
       const userType = localStorage.getItem("userType")
@@ -950,7 +1031,7 @@ export default function AWBForm({ isEdit = false, awb }) {
     }
   }
 
-  // Fixed addBox function - creates a deep copy of new box
+  // Box/Item Handlers - Fixed to preserve data
   const addBox = useCallback(() => {
     setBoxes((prevBoxes) => [
       ...prevBoxes,
@@ -964,40 +1045,30 @@ export default function AWBForm({ isEdit = false, awb }) {
         items: [{ name: "", quantity: "", price: "", hsnCode: "" }],
       },
     ])
-    toast.success("New box added")
   }, [])
 
-  // Fixed removeBox function - properly removes only the specified box
   const removeBox = useCallback((boxIndex) => {
     setBoxes((prevBoxes) => {
       if (prevBoxes.length <= 1) {
         toast.error("At least one box is required")
         return prevBoxes
       }
-      
       // Create a new array without the removed box
-      const newBoxes = prevBoxes.filter((_, index) => index !== boxIndex)
-      toast.success(`Box ${boxIndex + 1} removed`)
-      return newBoxes
+      // This preserves all other boxes' data
+      return prevBoxes.filter((_, index) => index !== boxIndex)
     })
   }, [])
 
-  // Fixed handleBoxChange function - uses proper immutable update
   const handleBoxChange = useCallback(
     (index, field, value) => {
       setBoxes((prevBoxes) => {
-        // Create a deep copy of the boxes array
         const updatedBoxes = prevBoxes.map((box, i) => {
           if (i !== index) return box
-          
-          let newValue = value
 
+          let newValue = value
           if (field === "actualWeight" && shipmentType === "Document") {
-            const limit = parcelType === "Ecommerce" ? 3000 : 3
-            if (Number.parseFloat(value) > limit) {
-              toast.error(
-                `For Document shipment, actual weight cannot exceed ${limit} ${parcelType === "Ecommerce" ? "g" : "kg"}.`
-              )
+            if (Number.parseFloat(value) > 3) {
+              toast.error("For Document shipment, actual weight cannot exceed 3 kg.")
               newValue = ""
             }
           }
@@ -1009,49 +1080,30 @@ export default function AWBForm({ isEdit = false, awb }) {
             const breadth = Number(updatedBox.breadth) || 0
             const height = Number(updatedBox.height) || 0
             const actualWeight = Number(updatedBox.actualWeight) || 0
-
-            let dimensionalWeight = ""
-            let chargeableWeight = ""
-
-            if (parcelType === "Ecommerce") {
-              const volInGrams = ((length * breadth * height) / 5000) * 1000
-              dimensionalWeight = volInGrams.toFixed(0)
-
-              const chargeableRaw = Math.max(actualWeight, volInGrams)
-              chargeableWeight = Math.ceil(chargeableRaw).toString()
+            const dimensionalWeight = ((length * breadth * height) / 5000).toFixed(3)
+            const chargeableWeightRaw = Math.max(actualWeight, Number(dimensionalWeight))
+            let chargeableWeight
+            if (chargeableWeightRaw < 20) {
+              chargeableWeight = Math.ceil(chargeableWeightRaw * 2) / 2
             } else {
-              const volInKg = (length * breadth * height) / 5000
-              dimensionalWeight = volInKg.toFixed(3)
-
-              const chargeableRaw = Math.max(actualWeight, volInKg)
-
-              let chg = 0
-              if (chargeableRaw < 20) {
-                chg = Math.ceil(chargeableRaw * 2) / 2
-              } else {
-                chg = Math.ceil(chargeableRaw)
-              }
-              chargeableWeight = chg.toString()
+              chargeableWeight = Math.ceil(chargeableWeightRaw)
             }
-
             updatedBox.dimensionalWeight = dimensionalWeight
             updatedBox.chargeableWeight = chargeableWeight
           }
 
           return updatedBox
         })
-
         return updatedBoxes
       })
     },
-    [shipmentType, parcelType]
+    [shipmentType]
   )
 
-  // Fixed addItem function - properly adds item to specific box
   const addItem = useCallback((boxIndex) => {
     setBoxes((prevBoxes) => {
-      return prevBoxes.map((box, index) => {
-        if (index !== boxIndex) return box
+      return prevBoxes.map((box, i) => {
+        if (i !== boxIndex) return box
         return {
           ...box,
           items: [...box.items, { name: "", quantity: "", price: "", hsnCode: "" }],
@@ -1060,11 +1112,10 @@ export default function AWBForm({ isEdit = false, awb }) {
     })
   }, [])
 
-  // Fixed removeItem function - properly removes item from specific box
   const removeItem = useCallback((boxIndex, itemIndex) => {
     setBoxes((prevBoxes) => {
-      return prevBoxes.map((box, index) => {
-        if (index !== boxIndex) return box
+      return prevBoxes.map((box, i) => {
+        if (i !== boxIndex) return box
         if (box.items.length <= 1) {
           toast.error("At least one item is required per box")
           return box
@@ -1077,22 +1128,19 @@ export default function AWBForm({ isEdit = false, awb }) {
     })
   }, [])
 
-  // Fixed handleItemChange function - properly updates item in specific box
   const handleItemChange = useCallback((boxIndex, itemIndex, field, value) => {
     setBoxes((prevBoxes) => {
-      return prevBoxes.map((box, bIndex) => {
-        if (bIndex !== boxIndex) return box
+      return prevBoxes.map((box, i) => {
+        if (i !== boxIndex) return box
         return {
           ...box,
-          items: box.items.map((item, iIndex) => {
-            if (iIndex !== itemIndex) return item
-            return { ...item, [field]: value }
-          }),
+          items: box.items.map((item, idx) => (idx === itemIndex ? { ...item, [field]: value } : item)),
         }
       })
     })
   }, [])
 
+  // HSN
   const openHsnSearch = (boxIndex, itemIndex) => {
     setCurrentItemIndex({ boxIndex, itemIndex })
     setShowHsnSearchDialog(true)
@@ -1101,23 +1149,24 @@ export default function AWBForm({ isEdit = false, awb }) {
   const handleSelectHsn = (hsnItem) => {
     const { boxIndex, itemIndex } = currentItemIndex
     setBoxes((prevBoxes) => {
-      return prevBoxes.map((box, bIndex) => {
-        if (bIndex !== boxIndex) return box
+      return prevBoxes.map((box, i) => {
+        if (i !== boxIndex) return box
         return {
           ...box,
-          items: box.items.map((item, iIndex) => {
-            if (iIndex !== itemIndex) return item
-            const updatedItem = { ...item, hsnCode: hsnItem.code }
-            if (!item.name) {
-              updatedItem.name = hsnItem.item
+          items: box.items.map((item, idx) => {
+            if (idx !== itemIndex) return item
+            return {
+              ...item,
+              hsnCode: hsnItem.code,
+              name: item.name || hsnItem.item,
             }
-            return updatedItem
           }),
         }
       })
     })
   }
 
+  // Customer Search
   const openSearch = (type) => {
     setSearchType(type)
     setSearchTerm("")
@@ -1170,6 +1219,7 @@ export default function AWBForm({ isEdit = false, awb }) {
     }
   }
 
+  // --- MAIN RATE FETCHING ---
   const fetchRates = async () => {
     if (!canFetchRates) {
       toast.error("Please fill in all required fields to fetch rates")
@@ -1177,19 +1227,7 @@ export default function AWBForm({ isEdit = false, awb }) {
     }
     setFetchingRates(true)
     try {
-      // Filter available types based on parcelType
-      const relevantTypes =
-        parcelType === "Ecommerce"
-          ? availableTypes.filter((service) => service.type === "ecommerce")
-          : availableTypes.filter((service) => service.type !== "ecommerce")
-
-      if (relevantTypes.length === 0) {
-        toast.error(`No ${parcelType === "Ecommerce" ? "ecommerce" : "standard"} rates available`)
-        setFetchingRates(false)
-        return
-      }
-
-      const ratePromises = relevantTypes.map((serviceObj) =>
+      const ratePromises = availableTypes.map((serviceObj) =>
         axios
           .get("/api/rate", {
             params: {
@@ -1198,8 +1236,6 @@ export default function AWBForm({ isEdit = false, awb }) {
               country: receiverCountry,
               zipCode: receiverZipCode,
               rateCategory: "sales",
-              parcelType: parcelType,
-              weightUnit: parcelType === "Ecommerce" ? "grams" : "kg",
             },
             headers: {
               userType: localStorage.getItem("userType"),
@@ -1219,9 +1255,8 @@ export default function AWBForm({ isEdit = false, awb }) {
                 volume: 0,
                 chargeable: salesData.calculatedWeight,
               },
-              weightUnit: salesData.weightUnit || "kg",
               rates: {
-                ratePerUnit: salesData.perUnitRate || (salesData.baseRate / salesData.calculatedWeight),
+                ratePerKg: salesData.baseRate / salesData.calculatedWeight,
                 baseTotal: salesData.baseRate,
               },
               charges: {
@@ -1252,8 +1287,6 @@ export default function AWBForm({ isEdit = false, awb }) {
                     country: receiverCountry,
                     zipCode: receiverZipCode,
                     rateCategory: "purchase",
-                    parcelType: parcelType,
-                    weightUnit: parcelType === "Ecommerce" ? "grams" : "kg",
                   },
                   headers: {
                     userType: localStorage.getItem("userType"),
@@ -1262,6 +1295,7 @@ export default function AWBForm({ isEdit = false, awb }) {
                 })
 
                 const purchaseData = purchaseRateResponse.data
+
                 const purchaseGST = applyGST(purchaseData, includeGST)
 
                 purchaseFinancials = {
@@ -1272,9 +1306,8 @@ export default function AWBForm({ isEdit = false, awb }) {
                     volume: 0,
                     chargeable: purchaseData.calculatedWeight,
                   },
-                  weightUnit: purchaseData.weightUnit || "kg",
                   rates: {
-                    ratePerUnit: purchaseData.perUnitRate || (purchaseData.baseRate / purchaseData.calculatedWeight),
+                    ratePerKg: purchaseData.baseRate / purchaseData.calculatedWeight,
                     baseTotal: purchaseData.baseRate,
                   },
                   charges: {
@@ -1306,26 +1339,16 @@ export default function AWBForm({ isEdit = false, awb }) {
               netProfit: netProfit,
             }
           })
-          .catch((error) => {
-            console.error(`Rate fetch error for ${serviceObj.originalName}:`, error.response?.data || error.message)
-            return {
-              originalName: serviceObj.originalName,
-              type: serviceObj.originalName,
-              error: error.response?.data?.error || "Failed to fetch rate",
-              success: false,
-            }
-          })
+          .catch((error) => ({
+            originalName: serviceObj.originalName,
+            type: serviceObj.originalName,
+            error: error.response?.data?.error || "Failed to fetch rate",
+            success: false,
+          }))
       )
 
       const results = await Promise.all(ratePromises)
       setRates(results)
-      const successCount = results.filter((r) => r.success).length
-      if (successCount > 0) {
-        toast.success(`Found ${successCount} available rate${successCount > 1 ? "s" : ""}`)
-      } else {
-        const errors = results.filter(r => !r.success).map(r => r.error).join("; ")
-        toast.error(`No rates available: ${errors || "Unknown error"}`)
-      }
     } catch (error) {
       console.error("Error fetching rates:", error)
       toast.error("Failed to fetch rates. Please try again.")
@@ -1338,29 +1361,18 @@ export default function AWBForm({ isEdit = false, awb }) {
     setSelectedRate(rate)
     setSelectedCourier(rate.type)
     const price = includeGST ? rate.sales.grandTotal : rate.sales.subTotal
-    toast.success(`Selected ${rate.type} rate: ₹${price.toLocaleString()}`)
+    toast.success(`Selected ${rate.type} rate: ₹${price}`)
   }
 
+  // --- SUBMIT ---
   const handleSubmit = async (e) => {
     e.preventDefault()
 
-    // Only submit if we're on the last step
-    if (!isLastStep) {
+    // Validate all fields before submitting
+    if (!validateAllFields()) {
+      toast.error("Please fix all validation errors before submitting")
       return
     }
-
-    // Final validation before submit
-    let allValid = true
-    for (let i = 0; i <= currentStep; i++) {
-      if (!validateAllFieldsForStep(i)) {
-        allValid = false
-        toast.error(`Please fix errors in step ${i + 1}`)
-        setCurrentStep(i)
-        return
-      }
-    }
-
-    if (!allValid) return
 
     setLoading(true)
 
@@ -1425,27 +1437,13 @@ export default function AWBForm({ isEdit = false, awb }) {
           owner: localStorage.getItem("id"),
         },
         boxes,
-        exportDetails: {
-          bankADCode,
-          bankAccount,
-          bankIFSC,
-          consignorGSTIN,
-          consignorIEC,
-          csbSelection,
-          termOfInvoice,
-          underMEISScheme,
-          gstInvoiceNo,
-          gstInvoiceDate,
-          againstBondOrLUT,
-          igstPaymentStatus,
-        },
         ...(isEdit
           ? {}
           : {
-            parcelStatus: [{ status: "Shipment AWB Prepared", timestamp: new Date(), comment: "" }],
-            ourBoxes: boxes,
-            vendorBoxes: boxes,
-          }),
+              parcelStatus: [{ status: "Shipment AWB Prepared", timestamp: new Date(), comment: "" }],
+              ourBoxes: boxes,
+              vendorBoxes: boxes,
+            }),
         ...(selectedRate && {
           rateInfo: {
             courier: selectedCourier,
@@ -1492,35 +1490,33 @@ export default function AWBForm({ isEdit = false, awb }) {
     return { name: type, color: "bg-blue-600", textColor: "text-blue-50" }
   }
 
+  // HSN Auto-fill
   const handleHsnCodeChange = async (boxIndex, itemIndex, hsnCode) => {
     setBoxes((prevBoxes) => {
-      return prevBoxes.map((box, bIndex) => {
-        if (bIndex !== boxIndex) return box
+      return prevBoxes.map((box, i) => {
+        if (i !== boxIndex) return box
         return {
           ...box,
-          items: box.items.map((item, iIndex) => {
-            if (iIndex !== itemIndex) return item
-            return { ...item, hsnCode: hsnCode }
-          }),
+          items: box.items.map((item, idx) => (idx === itemIndex ? { ...item, hsnCode: hsnCode } : item)),
         }
       })
     })
-    
+
     if (hsnCode && hsnCode.length >= 4) {
       try {
         const mockItem = mockHsnData.find((item) => item.code === hsnCode)
         if (mockItem) {
           setBoxes((prevBoxes) => {
-            return prevBoxes.map((box, bIndex) => {
-              if (bIndex !== boxIndex) return box
+            return prevBoxes.map((box, i) => {
+              if (i !== boxIndex) return box
               return {
                 ...box,
-                items: box.items.map((item, iIndex) => {
-                  if (iIndex !== itemIndex) return item
-                  if (!item.name) {
-                    return { ...item, name: mockItem.item }
+                items: box.items.map((item, idx) => {
+                  if (idx !== itemIndex) return item
+                  return {
+                    ...item,
+                    name: item.name || mockItem.item,
                   }
-                  return item
                 }),
               }
             })
@@ -1531,16 +1527,16 @@ export default function AWBForm({ isEdit = false, awb }) {
         if (response.data && response.data.length > 0) {
           const hsnItem = response.data[0]
           setBoxes((prevBoxes) => {
-            return prevBoxes.map((box, bIndex) => {
-              if (bIndex !== boxIndex) return box
+            return prevBoxes.map((box, i) => {
+              if (i !== boxIndex) return box
               return {
                 ...box,
-                items: box.items.map((item, iIndex) => {
-                  if (iIndex !== itemIndex) return item
-                  if (!item.name) {
-                    return { ...item, name: hsnItem.item }
+                items: box.items.map((item, idx) => {
+                  if (idx !== itemIndex) return item
+                  return {
+                    ...item,
+                    name: item.name || hsnItem.item,
                   }
-                  return item
                 }),
               }
             })
@@ -1552,204 +1548,225 @@ export default function AWBForm({ isEdit = false, awb }) {
     }
   }
 
-  const CountryCombobox = ({ value, onSelect, open, onOpenChange }) => (
-    <Popover open={open} onOpenChange={onOpenChange}>
-      <PopoverTrigger asChild>
-        <Button variant="outline" role="combobox" aria-expanded={open} className="w-full justify-between font-normal">
-          {value || "Select country..."}
-          <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
-        </Button>
-      </PopoverTrigger>
-      <PopoverContent className="w-[--radix-popover-trigger-width] p-0">
-        <Command>
-          <CommandInput placeholder="Search country..." />
-          <CommandList>
-            <CommandEmpty>No country found.</CommandEmpty>
-            <CommandGroup>
-              {Countries.map((country) => (
-                <CommandItem
-                  key={country}
-                  value={country}
-                  onSelect={() => {
-                    onSelect(country)
-                    onOpenChange(false)
-                  }}
-                >
-                  <Check className={cn("mr-2 h-4 w-4", value === country ? "opacity-100" : "opacity-0")} />
-                  {country}
-                </CommandItem>
-              ))}
-            </CommandGroup>
-          </CommandList>
-        </Command>
-      </PopoverContent>
-    </Popover>
-  )
-
-  // Handle sender phone input - only allow digits and max 10
-  const handleSenderPhoneChange = (e) => {
-    const value = e.target.value.replace(/\D/g, "").slice(0, 10)
-    setSenderContact(value)
-    if (touchedFields.senderContact) {
-      validateField("senderContact", value)
-    }
+  // Country Combobox Component
+  const CountryCombobox = ({ value, onSelect, open, onOpenChange, disabled = false }) => {
+    return (
+      <Popover open={open} onOpenChange={onOpenChange}>
+        <PopoverTrigger asChild>
+          <Button
+            type="button"
+            variant="outline"
+            role="combobox"
+            aria-expanded={open}
+            className="w-full justify-between font-normal"
+            disabled={disabled}
+            onClick={() => onOpenChange(!open)}
+          >
+            {value || "Select country..."}
+            <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+          </Button>
+        </PopoverTrigger>
+        <PopoverContent className="w-[--radix-popover-trigger-width] p-0" align="start">
+          <Command>
+            <CommandInput placeholder="Search country..." />
+            <CommandList>
+              <CommandEmpty>No country found.</CommandEmpty>
+              <CommandGroup>
+                {Countries.map((country) => (
+                  <CommandItem
+                    key={country}
+                    value={country}
+                    onSelect={() => {
+                      onSelect(country)
+                      onOpenChange(false)
+                    }}
+                  >
+                    <Check className={cn("mr-2 h-4 w-4", value === country ? "opacity-100" : "opacity-0")} />
+                    {country}
+                  </CommandItem>
+                ))}
+              </CommandGroup>
+            </CommandList>
+          </Command>
+        </PopoverContent>
+      </Popover>
+    )
   }
 
-  // Handle receiver phone input - allow digits and max 15
-  const handleReceiverPhoneChange = (e) => {
-    const value = e.target.value.replace(/\D/g, "").slice(0, 15)
-    setReceiverContact(value)
-    if (touchedFields.receiverContact) {
-      validateField("receiverContact", value)
-    }
-  }
+  return (
+    <div className="bg-slate-50/50 min-h-screen">
+      <div className="container mx-auto max-w-7xl p-4 sm:p-6 lg:p-8">
+        <header className="mb-8 text-center">
+          <h1 className="text-3xl font-bold tracking-tight text-primary sm:text-4xl">
+            {isEdit ? "Edit Booking" : "Create New Booking"}
+          </h1>
+          <p className="mt-2 text-lg text-muted-foreground">
+            Fill in the details below to {isEdit ? "update the" : "create a new"} airway bill.
+          </p>
+        </header>
 
-  // Handle receiver zip code change with validation
-  const handleReceiverZipCodeChange = (value) => {
-    const cleanValue = value.replace(/\s/g, "")
-    setReceiverZipCode(cleanValue)
-    setReceiverPostalAutoFilled(false) // Reset auto-fill status when manually changing
-    if (touchedFields.receiverZipCode) {
-      validateField("receiverZipCode", cleanValue)
-    }
-  }
-
-  // Validation for each step
-  const validateStep = (stepIndex) => {
-    return validateAllFieldsForStep(stepIndex)
-  }
-
-  const handleNext = (e) => {
-    e.preventDefault()
-    e.stopPropagation()
-
-    if (validateStep(currentStep)) {
-      setCurrentStep((prev) => Math.min(prev + 1, steps.length - 1))
-      window.scrollTo({ top: 0, behavior: "smooth" })
-    }
-  }
-
-  const handlePrevious = (e) => {
-    e.preventDefault()
-    e.stopPropagation()
-
-    setCurrentStep((prev) => Math.max(prev - 1, 0))
-    window.scrollTo({ top: 0, behavior: "smooth" })
-  }
-
-  const handleFormSubmit = (e) => {
-    e.preventDefault()
-
-    if (isLastStep) {
-      handleSubmit(e)
-    }
-  }
-
-  const renderStepContent = () => {
-    switch (currentStep) {
-      case 0: // Basic Details with Destination Info
-        return (
+        <form onSubmit={handleSubmit} className="space-y-8">
           <FormSection
             title="Basic Details"
-            description="Provide the core information for this shipment including destination details."
-            icon={<FileText className="h-5 w-5" />}
+            description="Provide the core information for this shipment."
+            icon={<FileText className="h-6 w-6" />}
           >
-            <div className="space-y-6">
-              {/* Parcel Type Selection - Card Style */}
-              <div className="space-y-3">
-                <Label className="text-sm font-medium">
-                  Parcel Type <span className="text-destructive">*</span>
-                </Label>
-                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-                  {[
-                    { value: "International", label: "International", icon: Globe, description: "Cross-border shipments" },
-                  ].map((option) => (
-                    <div
-                      key={option.value}
-                      onClick={() => setParcelType(option.value)}
-                      className={cn(
-                        "relative flex flex-col items-center p-4 rounded-xl border-2 cursor-pointer transition-all duration-200 hover:shadow-md",
-                        parcelType === option.value
-                          ? "border-primary bg-primary/5 shadow-md"
-                          : "border-gray-200 hover:border-gray-300 bg-white"
-                      )}
+            <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-4">
+              <FormInput label="Sr No:" id="invoiceNumber">
+                <Input id="invoiceNumber" value={invoiceNumber} readOnly disabled />
+              </FormInput>
+              <FormInput label="AWB No:" id="trackingNumber">
+                <Input
+                  id="trackingNumber"
+                  value={trackingNumber}
+                  onChange={(e) => {
+                    setTrackingNumber(e.target.value)
+                  }}
+                />
+              </FormInput>
+              <FormInput label="Date" id="date">
+                <Popover>
+                  <PopoverTrigger asChild>
+                    <Button
+                      type="button"
+                      variant={"outline"}
+                      className={cn("w-full justify-start text-left font-normal", !date && "text-muted-foreground")}
                     >
-                      {parcelType === option.value && (
-                        <div className="absolute top-2 right-2">
-                          <CheckCircle className="h-5 w-5 text-primary" />
-                        </div>
-                      )}
-                      <option.icon
-                        className={cn(
-                          "h-8 w-8 mb-2",
-                          parcelType === option.value ? "text-primary" : "text-gray-400"
-                        )}
-                      />
-                      <span
-                        className={cn(
-                          "font-semibold text-sm",
-                          parcelType === option.value ? "text-primary" : "text-gray-700"
-                        )}
-                      >
-                        {option.label}
-                      </span>
-                      <span className="text-xs text-muted-foreground mt-1 text-center">{option.description}</span>
-                    </div>
-                  ))}
+                      <CalendarIcon className="mr-2 h-4 w-4" />
+                      {date ? format(date, "PPP") : <span>Pick a date</span>}
+                    </Button>
+                  </PopoverTrigger>
+                  <PopoverContent className="w-auto p-0">
+                    <Calendar mode="single" selected={date} onSelect={setDate} initialFocus />
+                  </PopoverContent>
+                </Popover>
+              </FormInput>
+
+              {/* Destination Country - Using separate state */}
+              <FormInput label="Destination Country" required error={touched.receiverCountry && errors.receiverCountry}>
+                <CountryCombobox
+                  value={receiverCountry}
+                  onSelect={(country) => {
+                    setReceiverCountry(country)
+                    setReceiverPostalFetched(false) // Reset to allow new postal lookup
+                    handleBlur("receiverCountry")
+                  }}
+                  open={destinationCountryOpen}
+                  onOpenChange={setDestinationCountryOpen}
+                />
+              </FormInput>
+
+              {/* Destination Pin Code in Basic Details */}
+              <FormInput
+                label="Destination Pin Code"
+                id="destinationZipCode"
+                required
+                error={touched.receiverZipCode && errors.receiverZipCode}
+                helperText="Enter pin code to auto-fill city & state"
+                isLoading={loadingReceiverPostal}
+              >
+                <div className="flex gap-2">
+                  <Input
+                    id="destinationZipCode"
+                    placeholder="Enter destination pin code"
+                    value={receiverZipCode}
+                    onChange={(e) => {
+                      setReceiverZipCode(e.target.value.replace(/\s/g, ""))
+                      setReceiverPostalFetched(false) // Allow new lookup on change
+                    }}
+                    onBlur={() => handleBlur("receiverZipCode")}
+                    className={cn(touched.receiverZipCode && errors.receiverZipCode && "border-destructive")}
+                  />
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="icon"
+                    onClick={() => handleManualPostalLookup("receiver")}
+                    disabled={loadingReceiverPostal}
+                    title="Lookup address from pin code"
+                  >
+                    {loadingReceiverPostal ? (
+                      <Loader2 className="h-4 w-4 animate-spin" />
+                    ) : (
+                      <Search className="h-4 w-4" />
+                    )}
+                  </Button>
                 </div>
-              </div>
+              </FormInput>
 
-              <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-3">
-                <FormInput label="Sr No:" id="invoiceNumber">
-                  <Input id="invoiceNumber" value={invoiceNumber} readOnly disabled className="bg-gray-50" />
-                </FormInput>
-                <FormInput label="AWB No:" id="trackingNumber">
-                  <Input id="trackingNumber" value={trackingNumber} onChange={(e) => setTrackingNumber(e.target.value)} />
-                </FormInput>
-                <FormInput label="Date" id="date">
-                  <Popover>
-                    <PopoverTrigger asChild>
-                      <Button
-                        type="button"
-                        variant={"outline"}
-                        className={cn("w-full justify-start text-left font-normal", !date && "text-muted-foreground")}
-                      >
-                        <CalendarIcon className="mr-2 h-4 w-4" />
-                        {date ? format(date, "PPP") : <span>Pick a date</span>}
-                      </Button>
-                    </PopoverTrigger>
-                    <PopoverContent className="w-auto p-0">
-                      <Calendar mode="single" selected={date} onSelect={setDate} initialFocus />
-                    </PopoverContent>
-                  </Popover>
-                </FormInput>
+              {/* Destination City in Basic Details */}
+              <FormInput
+                label="Destination City"
+                id="destinationCity"
+                required
+                error={touched.receiverCity && errors.receiverCity}
+                isLoading={loadingReceiverPostal}
+              >
+                <Input
+                  id="destinationCity"
+                  placeholder={loadingReceiverPostal ? "Loading..." : "Enter city"}
+                  value={receiverCity}
+                  onChange={(e) => setReceiverCity(e.target.value)}
+                  onBlur={() => handleBlur("receiverCity")}
+                  className={cn(touched.receiverCity && errors.receiverCity && "border-destructive")}
+                />
+              </FormInput>
 
-                <FormInput label="Via">
-                  <Select value={via} onValueChange={setVia}>
-                    <SelectTrigger>
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="Air Shipment">Air Shipment</SelectItem>
-                      <SelectItem value="Cargo">Cargo</SelectItem>
-                      <SelectItem value="Roadways">Roadways</SelectItem>
-                      <SelectItem value="Railways">Railways</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </FormInput>
+              {/* Destination State in Basic Details */}
+              <FormInput
+                label="Destination State"
+                id="destinationState"
+                required
+                error={touched.receiverState && errors.receiverState}
+                isLoading={loadingReceiverPostal}
+              >
+                <Input
+                  id="destinationState"
+                  placeholder={loadingReceiverPostal ? "Loading..." : "Enter state"}
+                  value={receiverState}
+                  onChange={(e) => setReceiverState(e.target.value)}
+                  onBlur={() => handleBlur("receiverState")}
+                  className={cn(touched.receiverState && errors.receiverState && "border-destructive")}
+                />
+              </FormInput>
 
-                <FormInput label="Shipment Type">
-                  <Select value={shipmentType} onValueChange={setShipmentType}>
-                    <SelectTrigger>
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="Document">Document</SelectItem>
-                      <SelectItem value="Non Document">Non Document</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </FormInput>
+              <FormInput label="Parcel Type">
+                <Select value={parcelType} onValueChange={setParcelType}>
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="International">International</SelectItem>
+                    <SelectItem value="Domestic">Domestic</SelectItem>
+                  </SelectContent>
+                </Select>
+              </FormInput>
+              <FormInput label="Via">
+                <Select value={via} onValueChange={setVia}>
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="Air Shipment">Air Shipment</SelectItem>
+                    <SelectItem value="Cargo">Cargo</SelectItem>
+                    <SelectItem value="Roadways">Roadways</SelectItem>
+                    <SelectItem value="Railways">Railways</SelectItem>
+                  </SelectContent>
+                </Select>
+              </FormInput>
+              <FormInput label="Shipment Type">
+                <Select value={shipmentType} onValueChange={setShipmentType}>
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="Document">Document</SelectItem>
+                    <SelectItem value="Non Document">Non Document</SelectItem>
+                  </SelectContent>
+                </Select>
+              </FormInput>
 
+              <div className="lg:col-span-1">
                 <FormInput label="Reference Code" id="refCode">
                   {userType === "admin" || userType === "branch" || userType === "franchise" ? (
                     <Popover open={isRefDropdownOpen} onOpenChange={setIsRefDropdownOpen}>
@@ -1766,7 +1783,10 @@ export default function AWBForm({ isEdit = false, awb }) {
                           autoComplete="off"
                         />
                       </PopoverAnchor>
-                      <PopoverContent className="p-0 w-[--radix-popover-trigger-width]" onOpenAutoFocus={(e) => e.preventDefault()}>
+                      <PopoverContent
+                        className="p-0 w-[--radix-popover-trigger-width]"
+                        onOpenAutoFocus={(e) => e.preventDefault()}
+                      >
                         <Command>
                           <CommandList>
                             <CommandEmpty>No options found</CommandEmpty>
@@ -1799,375 +1819,174 @@ export default function AWBForm({ isEdit = false, awb }) {
                     />
                   )}
                 </FormInput>
-
-                {isEdit && (
-                  <>
-                    <FormInput label="Forwarding No:" id="forwardingNo">
-                      <Input id="forwardingNo" value={forwardingNumber} onChange={(e) => setForwardingNumber(e.target.value)} />
-                    </FormInput>
-                    <FormInput label="Forwarding Link:" id="forwardingLink">
-                      <Input id="forwardingLink" value={forwardingLink} onChange={(e) => setForwardingLink(e.target.value)} />
-                    </FormInput>
-                  </>
-                )}
               </div>
 
-              {/* Destination Details Section */}
-              <div className="mt-6 p-4 bg-gradient-to-r from-blue-50 to-indigo-50 rounded-lg border border-blue-200">
-                <div className="flex items-center gap-2 mb-4">
-                  <MapPin className="h-5 w-5 text-blue-600" />
-                  <h3 className="font-semibold text-blue-800">Destination Details</h3>
-                  <Badge variant="outline" className="bg-blue-100 text-blue-700 border-blue-300">
-                    Auto-fill enabled
-                  </Badge>
-                </div>
-                
-                <Alert className="bg-white border-blue-200 mb-4">
-                  <Info className="h-4 w-4 text-blue-600" />
-                  <AlertDescription className="text-sm text-blue-800">
-                    Enter the destination country and pin code to auto-fill city and state. You can also edit these fields manually.
-                  </AlertDescription>
-                </Alert>
-
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-                  <FormInput label="Destination Country" required error={validationErrors.receiverCountry}>
-                    <CountryCombobox
-                      value={receiverCountry}
-                      onSelect={(country) => {
-                        setReceiverCountry(country)
-                        setValidationErrors(prev => ({ ...prev, receiverCountry: "" }))
-                        // Reset postal data when country changes
-                        setReceiverPostalAutoFilled(false)
-                      }}
-                      open={receiverCountryOpenBasic}
-                      onOpenChange={setReceiverCountryOpenBasic}
+              {isEdit && (
+                <>
+                  <FormInput label="Forwarding No:" id="forwardingNo">
+                    <Input
+                      id="forwardingNo"
+                      value={forwardingNumber}
+                      onChange={(e) => setForwardingNumber(e.target.value)}
                     />
                   </FormInput>
-
-                  <FormInput 
-                    label="Destination Pin Code" 
-                    id="receiverZipCodeBasic"
-                    error={validationErrors.receiverZipCode}
-                    hint={receiverCountry === "India" ? "6-digit PIN code" : "Enter postal code"}
-                  >
-                    <div className="relative">
-                      <Input
-                        id="receiverZipCodeBasic"
-                        value={receiverZipCode}
-                        onChange={(e) => handleReceiverZipCodeChange(e.target.value)}
-                        onBlur={() => {
-                          markFieldTouched("receiverZipCode")
-                          if (receiverZipCode) {
-                            validateField("receiverZipCode", receiverZipCode)
-                          }
-                        }}
-                        placeholder={receiverCountry === "India" ? "e.g., 400001" : "Enter postal code"}
-                        className={cn(
-                          validationErrors.receiverZipCode && "border-destructive",
-                          "pr-10"
-                        )}
-                        disabled={!receiverCountry}
-                      />
-                      {fetchingReceiverPostal && (
-                        <div className="absolute right-3 top-1/2 -translate-y-1/2">
-                          <Loader2 className="h-4 w-4 animate-spin text-blue-500" />
-                        </div>
-                      )}
-                      {!fetchingReceiverPostal && receiverPostalAutoFilled && receiverZipCode && (
-                        <div className="absolute right-3 top-1/2 -translate-y-1/2">
-                          <CheckCircle className="h-4 w-4 text-green-500" />
-                        </div>
-                      )}
-                    </div>
+                  <FormInput label="Forwarding Link:" id="forwardingLink">
+                    <Input
+                      id="forwardingLink"
+                      value={forwardingLink}
+                      onChange={(e) => setForwardingLink(e.target.value)}
+                    />
                   </FormInput>
-
-                  <FormInput 
-                    label="Destination City" 
-                    id="receiverCityBasic"
-                    hint={receiverPostalAutoFilled ? "Auto-filled" : "Enter manually"}
-                  >
-                    <div className="relative">
-                      <Input
-                        id="receiverCityBasic"
-                        value={receiverCity}
-                        onChange={(e) => setReceiverCity(e.target.value)}
-                        placeholder="City name"
-                        className={cn(
-                          receiverPostalAutoFilled && receiverCity && "border-green-300 bg-green-50"
-                        )}
-                      />
-                      {receiverPostalAutoFilled && receiverCity && (
-                        <div className="absolute right-3 top-1/2 -translate-y-1/2">
-                          <CheckCircle className="h-4 w-4 text-green-500" />
-                        </div>
-                      )}
-                    </div>
-                  </FormInput>
-
-                  <FormInput 
-                    label="Destination State" 
-                    id="receiverStateBasic"
-                    hint={receiverPostalAutoFilled ? "Auto-filled" : "Enter manually"}
-                  >
-                    <div className="relative">
-                      <Input
-                        id="receiverStateBasic"
-                        value={receiverState}
-                        onChange={(e) => setReceiverState(e.target.value)}
-                        placeholder="State/Province"
-                        className={cn(
-                          receiverPostalAutoFilled && receiverState && "border-green-300 bg-green-50"
-                        )}
-                      />
-                      {receiverPostalAutoFilled && receiverState && (
-                        <div className="absolute right-3 top-1/2 -translate-y-1/2">
-                          <CheckCircle className="h-4 w-4 text-green-500" />
-                        </div>
-                      )}
-                    </div>
-                  </FormInput>
-                </div>
-
-                {receiverPostalAutoFilled && (receiverCity || receiverState) && (
-                  <div className="mt-3 flex items-center gap-2 text-sm text-green-700">
-                    <CheckCircle className="h-4 w-4" />
-                    <span>City and state auto-filled from postal code. You can edit if needed.</span>
-                  </div>
-                )}
-
-                {receiverZipCode && !fetchingReceiverPostal && !receiverPostalAutoFilled && receiverCountry && (
-                  <div className="mt-3 flex items-center gap-2 text-sm text-amber-700">
-                    <AlertCircle className="h-4 w-4" />
-                    <span>Could not auto-fill location data. Please enter city and state manually.</span>
-                  </div>
-                )}
-              </div>
+                </>
+              )}
             </div>
           </FormSection>
-        )
 
-      case 1: // Box & Weight + Shipping Rates (Combined - Side by Side)
-        return (
-          <div className="grid grid-cols-1 lg:grid-cols-5 gap-6">
-            {/* Left Side - Box & Weight Details (3 columns) */}
+          <div className="grid grid-cols-1 gap-8 lg:grid-cols-5">
             <div className="lg:col-span-3">
               <FormSection
                 title="Box & Weight Details"
-                description="Enter box dimensions and weight information."
-                icon={<Package className="h-5 w-5" />}
+                description="Enter box dimensions to calculate weight and fetch shipping rates."
+                icon={<Package className="h-6 w-6" />}
               >
-                <div className="space-y-5">
-                  {parcelType === "Ecommerce" && (
-                    <Alert className="bg-amber-50 border-amber-200">
-                      <Scale className="h-4 w-4 text-amber-600" />
-                      <AlertDescription className="text-amber-800 ml-2">
-                        <strong>E-commerce Mode:</strong> Enter Actual Weight in <strong>Grams</strong>.
-                      </AlertDescription>
-                    </Alert>
-                  )}
-
-                  <div className="flex flex-col sm:flex-row gap-3 p-4 bg-gradient-to-r from-blue-50 to-indigo-50 rounded-lg border border-blue-100">
-                    <div className="flex-1">
-                      <FormInput label="Number of Boxes" id="boxCount" hint="Enter total boxes needed (existing data will be preserved)">
-                        <Input
-                          id="boxCount"
-                          type="number"
-                          placeholder="e.g., 3"
-                          value={boxCount}
-                          onChange={(e) => setBoxCount(e.target.value)}
-                          min="1"
-                          max="50"
-                        />
-                      </FormInput>
-                    </div>
-                    <Button type="button" onClick={generateBoxes} className="sm:self-end" size="lg">
-                      <Package className="mr-2 h-4 w-4" />
-                      {boxes.length > 0 ? "Update Count" : "Generate"}
-                    </Button>
-                  </div>
-
-                  {boxes.length > 0 && (
-                    <div className="space-y-4">
-                      <div className="w-full overflow-x-auto rounded-lg border">
-                        <Table>
-                          <TableHeader>
-                            <TableRow className="bg-muted/50">
-                              <TableHead className="font-semibold w-16">Box</TableHead>
-                              <TableHead className="font-semibold">
-                                Wt. {parcelType === "Ecommerce" ? "(g)" : "(kg)"} *
-                              </TableHead>
-                              <TableHead className="font-semibold">L (cm) *</TableHead>
-                              <TableHead className="font-semibold">B (cm) *</TableHead>
-                              <TableHead className="font-semibold">H (cm) *</TableHead>
-                              <TableHead className="font-semibold">Vol.</TableHead>
-                              <TableHead className="font-semibold">Chg.</TableHead>
-                              <TableHead className="w-12"></TableHead>
-                            </TableRow>
-                          </TableHeader>
-                          <TableBody>
-                            {boxes.map((box, index) => (
-                              <TableRow key={`box-${index}`} className="hover:bg-muted/30">
-                                <TableCell>
-                                  <Badge variant="outline" className="font-mono">
-                                    {index + 1}
-                                  </Badge>
-                                </TableCell>
-                                <TableCell>
-                                  <Input
-                                    type="number"
-                                    value={box.actualWeight}
-                                    onChange={(e) => handleBoxChange(index, "actualWeight", e.target.value)}
-                                    className={cn("w-20", !box.actualWeight && "border-amber-300")}
-                                    placeholder="0"
-                                    min="0"
-                                    step="0.01"
-                                  />
-                                </TableCell>
-                                <TableCell>
-                                  <Input
-                                    type="number"
-                                    value={box.length}
-                                    onChange={(e) => handleBoxChange(index, "length", e.target.value)}
-                                    className={cn("w-16", !box.length && "border-amber-300")}
-                                    placeholder="0"
-                                    min="0"
-                                    step="0.1"
-                                  />
-                                </TableCell>
-                                <TableCell>
-                                  <Input
-                                    type="number"
-                                    value={box.breadth}
-                                    onChange={(e) => handleBoxChange(index, "breadth", e.target.value)}
-                                    className={cn("w-16", !box.breadth && "border-amber-300")}
-                                    placeholder="0"
-                                    min="0"
-                                    step="0.1"
-                                  />
-                                </TableCell>
-                                <TableCell>
-                                  <Input
-                                    type="number"
-                                    value={box.height}
-                                    onChange={(e) => handleBoxChange(index, "height", e.target.value)}
-                                    className={cn("w-16", !box.height && "border-amber-300")}
-                                    placeholder="0"
-                                    min="0"
-                                    step="0.1"
-                                  />
-                                </TableCell>
-                                <TableCell className="text-sm text-muted-foreground">{box.dimensionalWeight || "-"}</TableCell>
-                                <TableCell className="font-bold text-primary">{box.chargeableWeight || "-"}</TableCell>
-                                <TableCell>
-                                  <Button
-                                    type="button"
-                                    variant="ghost"
-                                    size="icon"
-                                    onClick={() => removeBox(index)}
-                                    className="h-8 w-8 text-destructive hover:bg-destructive/10"
-                                    disabled={boxes.length <= 1}
-                                  >
-                                    <X className="h-4 w-4" />
-                                  </Button>
-                                </TableCell>
-                              </TableRow>
-                            ))}
-                          </TableBody>
-                        </Table>
-                      </div>
-
-                      <div className="grid grid-cols-3 gap-3 p-4 bg-gradient-to-br from-primary/5 to-primary/10 rounded-lg border border-primary/20">
-                        <div className="text-center">
-                          <Label className="text-xs text-muted-foreground">Actual</Label>
-                          <div className="font-bold text-lg text-primary">
-                            {totalWeights.actual}
-                          </div>
-                        </div>
-                        <div className="text-center">
-                          <Label className="text-xs text-muted-foreground">Volumetric</Label>
-                          <div className="font-bold text-lg text-primary">
-                            {totalWeights.dimensional}
-                          </div>
-                        </div>
-                        <div className="text-center">
-                          <Label className="text-xs text-muted-foreground">Chargeable</Label>
-                          <div className="font-bold text-xl text-primary">
-                            {totalWeights.chargeable} {parcelType === "Ecommerce" ? "g" : "kg"}
-                          </div>
-                        </div>
-                      </div>
-
-                      <Button type="button" onClick={addBox} variant="outline" className="w-full" size="sm">
-                        <Plus className="mr-2 h-4 w-4" />
-                        Add Box
-                      </Button>
-                    </div>
-                  )}
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 items-end border-b pb-6 mb-6">
+                  <FormInput label="How many boxes?" id="boxCount">
+                    <Input
+                      id="boxCount"
+                      type="number"
+                      placeholder="e.g., 3"
+                      value={boxCount}
+                      onChange={(e) => setBoxCount(e.target.value)}
+                      min="1"
+                    />
+                  </FormInput>
+                  <Button type="button" onClick={generateBoxes} className="w-full sm:w-auto sm:self-end">
+                    Generate Boxes
+                  </Button>
+                  <Button type="button" onClick={addBox} variant="outline" className="w-full sm:w-auto sm:self-end">
+                    <Plus className="h-4 w-4 mr-2" />
+                    Add Single Box
+                  </Button>
                 </div>
+
+                {boxes.length > 0 && (
+                  <div className="space-y-4">
+                    <div className="w-full overflow-x-auto">
+                      <Table>
+                        <TableHeader>
+                          <TableRow>
+                            <TableHead>Box</TableHead>
+                            <TableHead>Actual Wt. (kg)</TableHead>
+                            <TableHead>L (cm)</TableHead>
+                            <TableHead>B (cm)</TableHead>
+                            <TableHead>H (cm)</TableHead>
+                            <TableHead>Dim. Wt.</TableHead>
+                            <TableHead>Chargeable Wt.</TableHead>
+                            <TableHead>Actions</TableHead>
+                          </TableRow>
+                        </TableHeader>
+                        <TableBody>
+                          {boxes.map((box, index) => (
+                            <TableRow key={`box-${index}`}>
+                              <TableCell className="font-medium">{index + 1}</TableCell>
+                              <TableCell>
+                                <Input
+                                  type="number"
+                                  value={box.actualWeight}
+                                  onChange={(e) => handleBoxChange(index, "actualWeight", e.target.value)}
+                                  className="min-w-[80px]"
+                                  min="0"
+                                  step="0.01"
+                                />
+                              </TableCell>
+                              <TableCell>
+                                <Input
+                                  type="number"
+                                  value={box.length}
+                                  onChange={(e) => handleBoxChange(index, "length", e.target.value)}
+                                  className="min-w-[80px]"
+                                  min="0"
+                                />
+                              </TableCell>
+                              <TableCell>
+                                <Input
+                                  type="number"
+                                  value={box.breadth}
+                                  onChange={(e) => handleBoxChange(index, "breadth", e.target.value)}
+                                  className="min-w-[80px]"
+                                  min="0"
+                                />
+                              </TableCell>
+                              <TableCell>
+                                <Input
+                                  type="number"
+                                  value={box.height}
+                                  onChange={(e) => handleBoxChange(index, "height", e.target.value)}
+                                  className="min-w-[80px]"
+                                  min="0"
+                                />
+                              </TableCell>
+                              <TableCell>{box.dimensionalWeight || "0.00"}</TableCell>
+                              <TableCell className="font-semibold">{box.chargeableWeight || "0.0"}</TableCell>
+                              <TableCell>
+                                <Button
+                                  type="button"
+                                  variant="ghost"
+                                  size="sm"
+                                  className="text-destructive hover:bg-destructive/10"
+                                  onClick={() => removeBox(index)}
+                                  disabled={boxes.length <= 1}
+                                >
+                                  <Minus className="h-4 w-4" />
+                                </Button>
+                              </TableCell>
+                            </TableRow>
+                          ))}
+                        </TableBody>
+                      </Table>
+                    </div>
+                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 pt-4 border-t">
+                      <div>
+                        <Label>Total Actual</Label>
+                        <div className="font-bold text-lg">{totalWeights.actual} kg</div>
+                      </div>
+                      <div>
+                        <Label>Total Dimensional</Label>
+                        <div className="font-bold text-lg">{totalWeights.dimensional} kg</div>
+                      </div>
+                      <div>
+                        <Label>Total Chargeable</Label>
+                        <div className="font-bold text-lg text-primary">{totalWeights.chargeable} kg</div>
+                      </div>
+                    </div>
+                  </div>
+                )}
               </FormSection>
             </div>
 
-            {/* Right Side - Shipping Rates (2 columns) */}
             <div className="lg:col-span-2">
               <FormSection
                 title="Shipping Rates"
-                description="Select a courier rate (optional)."
-                icon={<TruckIcon className="h-5 w-5" />}
+                description="Fetch and select the best courier rate for your shipment."
+                icon={<TruckIcon className="h-6 w-6" />}
               >
                 <div className="space-y-4">
-                  {/* Show destination summary */}
-                  {receiverCountry && (
-                    <div className="p-3 bg-blue-50 rounded-lg border border-blue-200">
-                      <div className="flex items-center gap-2 text-sm">
-                        <MapPin className="h-4 w-4 text-blue-600" />
-                        <span className="font-medium text-blue-800">Shipping to:</span>
-                      </div>
-                      <div className="mt-1 text-sm text-blue-700">
-                        {[receiverCity, receiverState, receiverCountry].filter(Boolean).join(", ")}
-                        {receiverZipCode && <span className="ml-1">({receiverZipCode})</span>}
-                      </div>
-                    </div>
-                  )}
-
-                  <div className="flex items-center justify-between p-3 bg-gray-50 rounded-lg border">
-                    <div className="flex items-center space-x-2">
-                      <Switch id="gst-toggle" checked={includeGST} onCheckedChange={setIncludeGST} />
-                      <Label htmlFor="gst-toggle" className="text-sm cursor-pointer">
-                        Include GST
-                      </Label>
-                    </div>
+                  <div className="flex justify-between items-center mb-2 px-1">
+                    <Label htmlFor="gst-toggle" className="text-sm font-medium">
+                      Show Price Including GST
+                    </Label>
+                    <Switch id="gst-toggle" checked={includeGST} onCheckedChange={setIncludeGST} />
                   </div>
-
                   <Button
                     type="button"
                     onClick={fetchRates}
-                    disabled={fetchingRates || !canFetchRates}
                     className="w-full"
-                    size="lg"
+                    disabled={fetchingRates || !canFetchRates}
                   >
                     <TruckIcon className="mr-2 h-4 w-4" />
-                    {fetchingRates ? "Fetching..." : "Get Rates"}
+                    {fetchingRates ? "Fetching Rates..." : "Get Available Rates"}
                   </Button>
-
-                  {!canFetchRates && boxes.length === 0 && (
-                    <Alert className="bg-gray-50">
-                      <Info className="h-4 w-4" />
-                      <AlertDescription className="text-sm">
-                        Add boxes first to fetch rates.
-                      </AlertDescription>
-                    </Alert>
-                  )}
-
-                  {!selectedRate && !rates && canFetchRates && (
-                    <Alert className="bg-blue-50 border-blue-200">
-                      <Info className="h-4 w-4 text-blue-600" />
-                      <AlertDescription className="text-sm text-blue-800">
-                        Rate selection is optional. You can proceed without selecting a rate.
-                      </AlertDescription>
-                    </Alert>
-                  )}
-
-                  <div className="space-y-2 max-h-[400px] overflow-y-auto pr-1">
+                  <div className="space-y-3">
                     {fetchingRates &&
                       Array.from({ length: 3 }).map((_, i) => (
                         <div key={i} className="p-3 border rounded-lg animate-pulse bg-slate-100">
@@ -2175,7 +1994,6 @@ export default function AWBForm({ isEdit = false, awb }) {
                           <div className="h-3 bg-slate-300 rounded w-1/2"></div>
                         </div>
                       ))}
-
                     {rates &&
                       !fetchingRates &&
                       rates
@@ -2184,108 +2002,100 @@ export default function AWBForm({ isEdit = false, awb }) {
                           const info = getCourierInfo(rate.type)
                           const salesRate = rate.sales
                           const price = includeGST ? salesRate.grandTotal : salesRate.subTotal
-                          const weightUnit = rate.weightUnit || (parcelType === "Ecommerce" ? "g" : "kg")
-                          const pricePerUnit = (price / Number.parseFloat(totalChargeableWeight || 1)).toFixed(2)
+                          const pricePerKg = (price / Number.parseFloat(totalChargeableWeight || 1)).toFixed(2)
 
                           return (
                             <Card
-                              key={`rate-${rate.type}-${index}`}
+                              key={rate.type || index}
                               onClick={() => handleSelectRate(rate)}
                               className={cn(
-                                "cursor-pointer transition-all hover:shadow-md hover:border-primary",
-                                selectedCourier === rate.type && "border-2 border-primary ring-2 ring-primary/20 shadow-md"
+                                "cursor-pointer transition-all hover:border-primary",
+                                selectedCourier === rate.type && "border-primary ring-2 ring-primary ring-offset-2"
                               )}
                             >
-                              <CardContent className="p-3 flex items-center justify-between">
+                              <CardContent className="p-4 flex items-center justify-between">
                                 <div className="flex items-center gap-3">
-                                  <div
-                                    className={cn(
-                                      "w-5 h-5 rounded-full border-2 flex items-center justify-center transition-all",
-                                      selectedCourier === rate.type
-                                        ? "border-primary bg-primary"
-                                        : "border-gray-300 bg-white"
-                                    )}
-                                  >
-                                    {selectedCourier === rate.type && <Check className="h-3 w-3 text-white" />}
-                                  </div>
+                                  {selectedCourier === rate.type ? (
+                                    <CheckCircle className="h-5 w-5 text-green-600" />
+                                  ) : (
+                                    <div className="h-5 w-5 rounded-full border-2"></div>
+                                  )}
                                   <div>
                                     <div className="flex items-center gap-2">
-                                      <span className="font-semibold text-sm">{rate.type}</span>
+                                      <Badge className={cn(info.color, info.textColor)}>{info.name}</Badge>
+                                      <span className="font-semibold">{rate.type}</span>
                                     </div>
-                                    <div className="text-xs text-muted-foreground">{rate.service}</div>
+                                    <div className="text-xs text-muted-foreground mt-1">{rate.service}</div>
                                   </div>
                                 </div>
                                 <div className="text-right">
-                                  <div className="font-bold text-lg text-primary">₹{price.toLocaleString()}</div>
+                                  <div className="font-bold text-lg">₹{price}</div>
                                   <div className="text-xs text-muted-foreground">
-                                    ₹{pricePerUnit}/{weightUnit}
+                                    ₹{pricePerKg}/kg {includeGST ? "(Inc. GST)" : "(Excl. GST)"}
                                   </div>
                                 </div>
                               </CardContent>
                             </Card>
                           )
                         })}
-
                     {selectedRate && !rates && (
-                      <Card className="border-2 border-primary ring-2 ring-primary/20">
-                        <CardContent className="p-3 flex items-center justify-between">
-                          <div className="flex items-center gap-3">
-                            <CheckCircle className="h-5 w-5 text-green-600" />
-                            <div>
-                              <span className="font-semibold text-sm">{selectedCourier}</span>
-                              <div className="text-xs text-muted-foreground">{selectedRate.service}</div>
+                      <Card className="border-primary ring-2 ring-primary ring-offset-2">
+                        <CardContent className="p-4 flex items-center justify-between">
+                          <div className="flex flex-col gap-1">
+                            <div className="flex items-center gap-3">
+                              <CheckCircle className="h-5 w-5 text-green-600" />
+                              <Badge
+                                className={cn(
+                                  getCourierInfo(selectedCourier).color,
+                                  getCourierInfo(selectedCourier).textColor
+                                )}
+                              >
+                                {getCourierInfo(selectedCourier).name}
+                              </Badge>
                             </div>
+                            <span className="text-xs text-muted-foreground ml-8">{selectedRate.service}</span>
                           </div>
                           <div className="text-right">
-                            <div className="font-bold text-lg text-primary">
+                            <div className="font-bold text-lg">
+                              ₹{includeGST ? selectedRate.sales?.grandTotal : selectedRate.sales?.subTotal}
+                            </div>
+                            <div className="text-xs text-muted-foreground">
                               ₹
-                              {(includeGST
-                                ? selectedRate.sales?.grandTotal
-                                : selectedRate.sales?.subTotal
-                              )?.toLocaleString()}
+                              {(
+                                (includeGST ? selectedRate.sales?.grandTotal : selectedRate.sales?.subTotal) /
+                                Number.parseFloat(totalChargeableWeight || 1)
+                              ).toFixed(2)}
+                              /kg {includeGST ? "(Inc. GST)" : "(Excl. GST)"}
                             </div>
                           </div>
                         </CardContent>
                       </Card>
-                    )}
-
-                    {rates && !fetchingRates && rates.filter((r) => r.success).length === 0 && (
-                      <Alert className="bg-amber-50 border-amber-200">
-                        <AlertCircle className="h-4 w-4 text-amber-600" />
-                        <AlertDescription className="text-sm text-amber-800">
-                          No rates available for this destination.
-                        </AlertDescription>
-                      </Alert>
                     )}
                   </div>
                 </div>
               </FormSection>
             </div>
           </div>
-        )
 
-      case 2: // Sender & Receiver - With editable destination fields
-        return (
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-            <FormSection title="Sender Details" icon={<Users className="h-5 w-5" />}>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+            <FormSection title="Sender Details" icon={<Users className="h-6 w-6" />}>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div className="sm:col-span-2">
-                  <FormInput label="Sender Name" id="senderName" required error={validationErrors.senderName}>
+                  <FormInput
+                    label="Sender Name"
+                    id="senderName"
+                    required
+                    error={touched.senderName && errors.senderName}
+                  >
                     <div className="flex gap-2">
                       <Input
                         id="senderName"
                         placeholder="John Doe"
                         value={senderName}
-                        onChange={(e) => {
-                          setSenderName(e.target.value)
-                          if (touchedFields.senderName) validateField("senderName", e.target.value)
-                        }}
-                        onBlur={() => {
-                          markFieldTouched("senderName")
-                          validateField("senderName", senderName)
-                        }}
+                        onChange={(e) => setSenderName(e.target.value)}
+                        onBlur={() => handleBlur("senderName")}
                         disabled={isClient}
-                        className={cn(validationErrors.senderName && "border-destructive")}
+                        className={cn(touched.senderName && errors.senderName && "border-destructive")}
                       />
                       <Button type="button" variant="outline" size="icon" onClick={() => openSearch("sender")}>
                         <Search className="h-4 w-4" />
@@ -2294,118 +2104,123 @@ export default function AWBForm({ isEdit = false, awb }) {
                   </FormInput>
                 </div>
                 <FormInput label="Company Name" id="senderCompanyName">
-                  <Input value={senderCompanyName} onChange={(e) => setSenderCompanyName(e.target.value)} disabled={isClient} />
-                </FormInput>
-                <FormInput label="Email" id="senderEmail" error={validationErrors.senderEmail}>
-                  <Input 
-                    type="email" 
-                    value={senderEmail} 
-                    onChange={(e) => {
-                      setSenderEmail(e.target.value)
-                      if (touchedFields.senderEmail) validateField("senderEmail", e.target.value)
-                    }}
-                    onBlur={() => {
-                      markFieldTouched("senderEmail")
-                      validateField("senderEmail", senderEmail)
-                    }}
-                    className={cn(validationErrors.senderEmail && "border-destructive")}
+                  <Input
+                    value={senderCompanyName}
+                    onChange={(e) => setSenderCompanyName(e.target.value)}
+                    disabled={isClient}
                   />
                 </FormInput>
-                
-                {/* Sender Country first */}
-                <FormInput label="Country" id="senderCountry" required>
-                  <CountryCombobox
-                    value={senderCountry}
-                    onSelect={setSenderCountry}
-                    open={senderCountryOpen}
-                    onOpenChange={setSenderCountryOpen}
+                <FormInput label="Email" id="senderEmail" error={touched.senderEmail && errors.senderEmail}>
+                  <Input
+                    type="email"
+                    value={senderEmail}
+                    onChange={(e) => setSenderEmail(e.target.value)}
+                    onBlur={() => handleBlur("senderEmail")}
+                    className={cn(touched.senderEmail && errors.senderEmail && "border-destructive")}
                   />
                 </FormInput>
-                
-                {/* Then Zip Code for auto-fill */}
-                <FormInput label="Zip Code" id="senderZipCode" required error={validationErrors.senderZipCode} hint="Enter zip to auto-fill city & state">
-                  <div className="relative">
+                <div className="sm:col-span-2">
+                  <FormInput
+                    label="Address Line 1"
+                    id="senderAddress"
+                    required
+                    error={touched.senderAddress && errors.senderAddress}
+                  >
+                    <Textarea
+                      rows={2}
+                      maxLength={200}
+                      value={senderAddress}
+                      onChange={(e) => setSenderAddress(e.target.value)}
+                      onBlur={() => handleBlur("senderAddress")}
+                      disabled={isClient}
+                      className={cn(touched.senderAddress && errors.senderAddress && "border-destructive")}
+                    />
+                    <div className="text-xs text-muted-foreground text-right">{senderAddress.length}/200</div>
+                  </FormInput>
+                </div>
+                <div className="sm:col-span-2">
+                  <FormInput label="Address Line 2" id="senderAddress2">
+                    <Textarea
+                      rows={2}
+                      value={senderAddress2}
+                      onChange={(e) => setSenderAddress2(e.target.value)}
+                      disabled={isClient}
+                    />
+                  </FormInput>
+                </div>
+                <FormInput
+                  label="Zip Code"
+                  id="senderZipCode"
+                  required
+                  error={touched.senderZipCode && errors.senderZipCode}
+                  helperText="Enter zip code to auto-fill city & state"
+                  isLoading={loadingSenderPostal}
+                >
+                  <div className="flex gap-2">
                     <Input
                       value={senderZipCode}
                       onChange={(e) => {
                         setSenderZipCode(e.target.value.replace(/\s/g, ""))
-                        setSenderPostalAutoFilled(false)
-                        if (touchedFields.senderZipCode) validateField("senderZipCode", e.target.value.replace(/\s/g, ""))
+                        setSenderPostalFetched(false)
                       }}
-                      onBlur={() => {
-                        markFieldTouched("senderZipCode")
-                        validateField("senderZipCode", senderZipCode)
-                      }}
+                      onBlur={() => handleBlur("senderZipCode")}
                       disabled={isClient}
-                      className={cn(validationErrors.senderZipCode && "border-destructive", "pr-10")}
-                      placeholder={senderCountry === "India" ? "e.g., 400001" : "Enter postal code"}
+                      className={cn(touched.senderZipCode && errors.senderZipCode && "border-destructive")}
                     />
-                    {fetchingSenderPostal && (
-                      <div className="absolute right-3 top-1/2 -translate-y-1/2">
-                        <Loader2 className="h-4 w-4 animate-spin text-blue-500" />
-                      </div>
-                    )}
-                    {!fetchingSenderPostal && senderPostalAutoFilled && senderZipCode && (
-                      <div className="absolute right-3 top-1/2 -translate-y-1/2">
-                        <CheckCircle className="h-4 w-4 text-green-500" />
-                      </div>
-                    )}
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="icon"
+                      onClick={() => handleManualPostalLookup("sender")}
+                      disabled={loadingSenderPostal || isClient}
+                      title="Lookup address from pin code"
+                    >
+                      {loadingSenderPostal ? (
+                        <Loader2 className="h-4 w-4 animate-spin" />
+                      ) : (
+                        <Search className="h-4 w-4" />
+                      )}
+                    </Button>
                   </div>
                 </FormInput>
-                
-                <FormInput label="City" id="senderCity" hint={senderPostalAutoFilled ? "Auto-filled" : ""}>
-                  <Input 
-                    value={senderCity} 
+                <FormInput
+                  label="Country"
+                  id="senderCountry"
+                  required
+                  error={touched.senderCountry && errors.senderCountry}
+                >
+                  <CountryCombobox
+                    value={senderCountry}
+                    onSelect={(country) => {
+                      setSenderCountry(country)
+                      setSenderPostalFetched(false)
+                      handleBlur("senderCountry")
+                    }}
+                    open={senderCountryOpen}
+                    onOpenChange={setSenderCountryOpen}
+                    disabled={isClient}
+                  />
+                </FormInput>
+                <FormInput label="City" id="senderCity" isLoading={loadingSenderPostal}>
+                  <Input
+                    value={senderCity}
                     onChange={(e) => setSenderCity(e.target.value)}
-                    className={cn(senderPostalAutoFilled && senderCity && "border-green-300 bg-green-50")}
+                    placeholder={loadingSenderPostal ? "Loading..." : "Enter city"}
                   />
                 </FormInput>
-                <FormInput label="State" id="senderState" hint={senderPostalAutoFilled ? "Auto-filled" : ""}>
-                  <Input 
-                    value={senderState} 
+                <FormInput label="State" id="senderState" isLoading={loadingSenderPostal}>
+                  <Input
+                    value={senderState}
                     onChange={(e) => setSenderState(e.target.value)}
-                    className={cn(senderPostalAutoFilled && senderState && "border-green-300 bg-green-50")}
+                    placeholder={loadingSenderPostal ? "Loading..." : "Enter state"}
                   />
                 </FormInput>
-                
-                <div className="sm:col-span-2">
-                  <FormInput label="Address Line 1" id="senderAddress" required error={validationErrors.senderAddress}>
-                    <Textarea
-                      rows={2}
-                      maxLength={30}
-                      value={senderAddress}
-                      onChange={(e) => {
-                        setSenderAddress(e.target.value)
-                        if (touchedFields.senderAddress) validateField("senderAddress", e.target.value)
-                      }}
-                      onBlur={() => {
-                        markFieldTouched("senderAddress")
-                        validateField("senderAddress", senderAddress)
-                      }}
-                      disabled={isClient}
-                      className={cn(validationErrors.senderAddress && "border-destructive")}
-                    />
-                    <div className="text-xs text-muted-foreground text-right mt-1">{senderAddress.length}/30</div>
-                  </FormInput>
-                </div>
-                <div className="sm:col-span-2">
-                  <FormInput label="Address Line 2" id="senderAddress2" hint={senderPostalAutoFilled ? "Auto-filled from postal data" : ""}>
-                    <Textarea 
-                      rows={2} 
-                      value={senderAddress2} 
-                      onChange={(e) => setSenderAddress2(e.target.value)} 
-                      disabled={isClient}
-                      className={cn(senderPostalAutoFilled && senderAddress2 && "border-green-300 bg-green-50")}
-                    />
-                  </FormInput>
-                </div>
-                
-                <FormInput 
-                  label="Contact Number" 
-                  id="senderContact" 
-                  required 
-                  error={validationErrors.senderContact}
-                  hint="Must be exactly 10 digits"
+                <FormInput
+                  label="Contact"
+                  id="senderContact"
+                  required
+                  error={touched.senderContact && errors.senderContact}
+                  helperText="Must be exactly 10 digits"
                 >
                   <div className="flex">
                     <span className="inline-flex items-center px-3 rounded-l-md border border-r-0 bg-slate-50 text-sm text-muted-foreground">
@@ -2413,180 +2228,182 @@ export default function AWBForm({ isEdit = false, awb }) {
                     </span>
                     <Input
                       type="text"
-                      className={cn("rounded-l-none", validationErrors.senderContact && "border-destructive")}
+                      className={cn(
+                        "rounded-l-none",
+                        touched.senderContact && errors.senderContact && "border-destructive"
+                      )}
                       value={senderContact}
-                      onChange={handleSenderPhoneChange}
-                      onBlur={() => {
-                        markFieldTouched("senderContact")
-                        validateField("senderContact", senderContact)
+                      onChange={(e) => {
+                        // Only allow digits
+                        const value = e.target.value.replace(/[^\d]/g, "")
+                        setSenderContact(value)
                       }}
+                      onBlur={() => handleBlur("senderContact")}
                       disabled={isClient}
-                      placeholder="10 digit number"
                       maxLength={10}
+                      placeholder="10 digit mobile number"
                     />
                   </div>
-                  {senderContact && (
-                    <div className={cn(
-                      "text-xs mt-1",
-                      senderContact.length === 10 ? "text-green-600" : "text-amber-600"
-                    )}>
-                      {senderContact.length}/10 digits
-                    </div>
-                  )}
                 </FormInput>
-                <FormInput label="GST" id="gst" error={validationErrors.gst} hint="Format: 22AAAAA0000A1Z5">
-                  <Input 
-                    value={gst} 
-                    onChange={(e) => {
-                      setGst(e.target.value.toUpperCase())
-                      if (touchedFields.gst) validateField("gst", e.target.value.toUpperCase())
-                    }}
-                    onBlur={() => {
-                      markFieldTouched("gst")
-                      validateField("gst", gst)
-                    }}
+                <FormInput label="GST" id="gst" error={touched.gst && errors.gst}>
+                  <Input
+                    value={gst}
+                    onChange={(e) => setGst(e.target.value.toUpperCase())}
+                    onBlur={() => handleBlur("gst")}
                     disabled={isClient}
-                    className={cn(validationErrors.gst && "border-destructive")}
+                    className={cn(touched.gst && errors.gst && "border-destructive")}
                     placeholder="e.g., 22AAAAA0000A1Z5"
-                    maxLength={15}
                   />
                 </FormInput>
-                <FormInput label="KYC Type" required>
-                  <Select value={kycType} onValueChange={setKycType} disabled={isClient}>
-                    <SelectTrigger>
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {[
-                        "Aadhaar No -",
-                        "Pan No -",
-                        "Passport No -",
-                        "Driving License No -",
-                        "Voter ID Card No -",
-                        "GST No -",
-                      ].map((t) => (
-                        <SelectItem key={t} value={t}>
-                          {t}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </FormInput>
-                <FormInput label="KYC Number" id="kyc" required error={validationErrors.kyc}>
-                  <Input 
-                    value={kyc} 
-                    onChange={(e) => {
-                      setKyc(e.target.value.toUpperCase())
-                      if (touchedFields.kyc) validateField("kyc", e.target.value.toUpperCase())
-                    }}
-                    onBlur={() => {
-                      markFieldTouched("kyc")
-                      validateField("kyc", kyc)
-                    }}
-                    disabled={isClient}
-                    className={cn(validationErrors.kyc && "border-destructive")}
-                    placeholder={
-                      kycType === "Aadhaar No -" ? "12 digit Aadhaar" :
-                      kycType === "Pan No -" ? "e.g., ABCDE1234F" :
-                      "Enter KYC number"
-                    }
-                  />
-                </FormInput>
+                <div className="sm:col-span-2 grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <FormInput label="KYC Type" required>
+                    <Select value={kycType} onValueChange={setKycType} disabled={isClient}>
+                      <SelectTrigger>
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {[
+                          "Aadhaar No -",
+                          "Pan No -",
+                          "Passport No -",
+                          "Driving License No -",
+                          "Voter ID Card No -",
+                          "GST No -",
+                        ].map((t) => (
+                          <SelectItem key={t} value={t}>
+                            {t}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </FormInput>
+                  <FormInput label="KYC Number" id="kyc" required error={touched.kyc && errors.kyc}>
+                    <Input
+                      value={kyc}
+                      onChange={(e) => setKyc(e.target.value.toUpperCase())}
+                      onBlur={() => handleBlur("kyc")}
+                      disabled={isClient}
+                      className={cn(touched.kyc && errors.kyc && "border-destructive")}
+                      placeholder={
+                        kycType === "Aadhaar No -"
+                          ? "12 digit Aadhaar"
+                          : kycType === "Pan No -"
+                            ? "e.g., ABCDE1234F"
+                            : "Enter KYC number"
+                      }
+                    />
+                  </FormInput>
+                </div>
               </div>
             </FormSection>
 
-            <FormSection title="Receiver Details" icon={<Users className="h-5 w-5" />}>
+            <FormSection title="Receiver Details" icon={<Users className="h-6 w-6" />}>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                {/* Note about data from Basic Details */}
-                <div className="sm:col-span-2">
-                  <Alert className="bg-blue-50 border-blue-200 mb-4">
-                    <Info className="h-4 w-4 text-blue-600" />
-                    <AlertDescription className="text-sm text-blue-800">
-                      <strong>Note:</strong> Destination country, pin code, city, and state were set in Basic Details. You can edit them here if needed.
-                    </AlertDescription>
-                  </Alert>
-                </div>
-
-                {/* Destination country - editable */}
-                <FormInput label="Country" required error={validationErrors.receiverCountry}>
+                {/* Country First - needed for postal lookup */}
+                <FormInput
+                  label="Country"
+                  id="receiverCountry"
+                  required
+                  error={touched.receiverCountry && errors.receiverCountry}
+                >
                   <CountryCombobox
                     value={receiverCountry}
                     onSelect={(country) => {
                       setReceiverCountry(country)
-                      setReceiverPostalAutoFilled(false)
-                      setValidationErrors(prev => ({ ...prev, receiverCountry: "" }))
+                      setReceiverPostalFetched(false)
+                      handleBlur("receiverCountry")
                     }}
                     open={receiverCountryOpen}
                     onOpenChange={setReceiverCountryOpen}
                   />
                 </FormInput>
-                
-                {/* Zip Code - editable */}
-                <FormInput 
-                  label="Zip Code" 
-                  id="receiverZipCode" 
-                  required 
-                  error={validationErrors.receiverZipCode}
-                  hint="Enter to auto-fill city & state"
+
+                {/* Zip Code - for Auto-fill */}
+                <FormInput
+                  label="Zip Code"
+                  id="receiverZipCode"
+                  required
+                  error={touched.receiverZipCode && errors.receiverZipCode}
+                  helperText="Enter zip code to auto-fill city & state"
+                  isLoading={loadingReceiverPostal}
                 >
-                  <div className="relative">
-                    <Input 
-                      value={receiverZipCode} 
-                      onChange={(e) => handleReceiverZipCodeChange(e.target.value)}
-                      onBlur={() => {
-                        markFieldTouched("receiverZipCode")
-                        validateField("receiverZipCode", receiverZipCode)
+                  <div className="flex gap-2">
+                    <Input
+                      value={receiverZipCode}
+                      onChange={(e) => {
+                        setReceiverZipCode(e.target.value.replace(/\s/g, ""))
+                        setReceiverPostalFetched(false)
                       }}
-                      className={cn(validationErrors.receiverZipCode && "border-destructive", "pr-10")}
-                      placeholder="Enter postal code"
+                      onBlur={() => handleBlur("receiverZipCode")}
+                      className={cn(touched.receiverZipCode && errors.receiverZipCode && "border-destructive")}
+                      placeholder="Enter zip code"
                     />
-                    {fetchingReceiverPostal && (
-                      <div className="absolute right-3 top-1/2 -translate-y-1/2">
-                        <Loader2 className="h-4 w-4 animate-spin text-blue-500" />
-                      </div>
-                    )}
-                    {!fetchingReceiverPostal && receiverPostalAutoFilled && receiverZipCode && (
-                      <div className="absolute right-3 top-1/2 -translate-y-1/2">
-                        <CheckCircle className="h-4 w-4 text-green-500" />
-                      </div>
-                    )}
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="icon"
+                      onClick={() => handleManualPostalLookup("receiver")}
+                      disabled={loadingReceiverPostal}
+                      title="Lookup address from pin code"
+                    >
+                      {loadingReceiverPostal ? (
+                        <Loader2 className="h-4 w-4 animate-spin" />
+                      ) : (
+                        <Search className="h-4 w-4" />
+                      )}
+                    </Button>
                   </div>
                 </FormInput>
-                
-                {/* City - editable */}
-                <FormInput label="City" id="receiverCity" hint={receiverPostalAutoFilled ? "Auto-filled" : ""}>
-                  <Input 
-                    value={receiverCity} 
+
+                {/* City - Auto-filled but editable */}
+                <FormInput
+                  label="City"
+                  id="receiverCity"
+                  required
+                  error={touched.receiverCity && errors.receiverCity}
+                  isLoading={loadingReceiverPostal}
+                >
+                  <Input
+                    value={receiverCity}
                     onChange={(e) => setReceiverCity(e.target.value)}
-                    className={cn(receiverPostalAutoFilled && receiverCity && "border-green-300 bg-green-50")}
+                    onBlur={() => handleBlur("receiverCity")}
+                    placeholder={loadingReceiverPostal ? "Loading..." : "Enter city"}
+                    className={cn(touched.receiverCity && errors.receiverCity && "border-destructive")}
                   />
                 </FormInput>
-                
-                {/* State - editable */}
-                <FormInput label="State" id="receiverState" hint={receiverPostalAutoFilled ? "Auto-filled" : ""}>
-                  <Input 
-                    value={receiverState} 
+
+                {/* State - Auto-filled but editable */}
+                <FormInput
+                  label="State"
+                  id="receiverState"
+                  required
+                  error={touched.receiverState && errors.receiverState}
+                  isLoading={loadingReceiverPostal}
+                >
+                  <Input
+                    value={receiverState}
                     onChange={(e) => setReceiverState(e.target.value)}
-                    className={cn(receiverPostalAutoFilled && receiverState && "border-green-300 bg-green-50")}
+                    onBlur={() => handleBlur("receiverState")}
+                    placeholder={loadingReceiverPostal ? "Loading..." : "Enter state"}
+                    className={cn(touched.receiverState && errors.receiverState && "border-destructive")}
                   />
                 </FormInput>
 
                 <div className="sm:col-span-2">
-                  <FormInput label="Receiver Name" id="receiverName" required error={validationErrors.receiverName}>
+                  <FormInput
+                    label="Receiver Name"
+                    id="receiverName"
+                    required
+                    error={touched.receiverName && errors.receiverName}
+                  >
                     <div className="flex gap-2">
                       <Input
                         id="receiverName"
                         placeholder="Jane Smith"
                         value={receiverName}
-                        onChange={(e) => {
-                          setReceiverName(e.target.value)
-                          if (touchedFields.receiverName) validateField("receiverName", e.target.value)
-                        }}
-                        onBlur={() => {
-                          markFieldTouched("receiverName")
-                          validateField("receiverName", receiverName)
-                        }}
-                        className={cn(validationErrors.receiverName && "border-destructive")}
+                        onChange={(e) => setReceiverName(e.target.value)}
+                        onBlur={() => handleBlur("receiverName")}
+                        className={cn(touched.receiverName && errors.receiverName && "border-destructive")}
                       />
                       <Button type="button" variant="outline" size="icon" onClick={() => openSearch("receiver")}>
                         <Search className="h-4 w-4" />
@@ -2597,144 +2414,117 @@ export default function AWBForm({ isEdit = false, awb }) {
                 <FormInput label="Company Name" id="receiverCompanyName">
                   <Input value={receiverCompanyName} onChange={(e) => setReceiverCompanyName(e.target.value)} />
                 </FormInput>
-                <FormInput label="Email" id="receiverEmail" error={validationErrors.receiverEmail}>
-                  <Input 
-                    type="email" 
-                    value={receiverEmail} 
-                    onChange={(e) => {
-                      setReceiverEmail(e.target.value)
-                      if (touchedFields.receiverEmail) validateField("receiverEmail", e.target.value)
-                    }}
-                    onBlur={() => {
-                      markFieldTouched("receiverEmail")
-                      validateField("receiverEmail", receiverEmail)
-                    }}
-                    className={cn(validationErrors.receiverEmail && "border-destructive")}
+                <FormInput label="Email" id="receiverEmail" error={touched.receiverEmail && errors.receiverEmail}>
+                  <Input
+                    type="email"
+                    value={receiverEmail}
+                    onChange={(e) => setReceiverEmail(e.target.value)}
+                    onBlur={() => handleBlur("receiverEmail")}
+                    className={cn(touched.receiverEmail && errors.receiverEmail && "border-destructive")}
                   />
                 </FormInput>
                 <div className="sm:col-span-2">
-                  <FormInput label="Address Line 1" id="receiverAddress" required error={validationErrors.receiverAddress}>
+                  <FormInput
+                    label="Address Line 1"
+                    id="receiverAddress"
+                    required
+                    error={touched.receiverAddress && errors.receiverAddress}
+                  >
                     <Textarea
                       rows={2}
-                      maxLength={30}
+                      maxLength={200}
                       value={receiverAddress}
+                      onChange={(e) => setReceiverAddress(e.target.value)}
+                      onBlur={() => handleBlur("receiverAddress")}
+                      className={cn(touched.receiverAddress && errors.receiverAddress && "border-destructive")}
+                    />
+                    <div className="text-xs text-muted-foreground text-right">{receiverAddress.length}/200</div>
+                  </FormInput>
+                </div>
+                <div className="sm:col-span-2">
+                  <FormInput label="Address Line 2" id="receiverAddress2">
+                    <Textarea rows={2} value={receiverAddress2} onChange={(e) => setReceiverAddress2(e.target.value)} />
+                  </FormInput>
+                </div>
+                <FormInput
+                  label="Contact"
+                  id="receiverContact"
+                  required
+                  error={touched.receiverContact && errors.receiverContact}
+                  helperText="Must be between 5 and 15 digits"
+                >
+                  <div className="flex">
+                    <span className="inline-flex items-center px-3 rounded-l-md border border-r-0 bg-slate-50 text-sm text-muted-foreground">
+                      {getCallingCode(receiverCountry) || "+"}
+                    </span>
+                    <Input
+                      type="text"
+                      className={cn(
+                        "rounded-l-none",
+                        touched.receiverContact && errors.receiverContact && "border-destructive"
+                      )}
+                      value={receiverContact}
                       onChange={(e) => {
-                        setReceiverAddress(e.target.value)
-                        if (touchedFields.receiverAddress) validateField("receiverAddress", e.target.value)
+                        // Only allow digits
+                        const value = e.target.value.replace(/[^\d]/g, "")
+                        setReceiverContact(value)
                       }}
-                      onBlur={() => {
-                        markFieldTouched("receiverAddress")
-                        validateField("receiverAddress", receiverAddress)
-                      }}
-                      className={cn(validationErrors.receiverAddress && "border-destructive")}
+                      onBlur={() => handleBlur("receiverContact")}
+                      maxLength={15}
+                      placeholder="5-15 digit phone number"
                     />
-                    <div className="text-xs text-muted-foreground text-right mt-1">{receiverAddress.length}/30</div>
-                  </FormInput>
-                </div>
-                <div className="sm:col-span-2">
-                  <FormInput label="Address Line 2" id="receiverAddress2" hint={receiverPostalAutoFilled ? "Auto-filled from postal data" : ""}>
-                    <Textarea 
-                      rows={2} 
-                      value={receiverAddress2} 
-                      onChange={(e) => setReceiverAddress2(e.target.value)}
-                      className={cn(receiverPostalAutoFilled && receiverAddress2 && "border-green-300 bg-green-50")}
-                    />
-                  </FormInput>
-                </div>
-                
-                <div className="sm:col-span-2">
-                  <FormInput 
-                    label="Contact Number" 
-                    id="receiverContact" 
-                    required 
-                    error={validationErrors.receiverContact}
-                    hint="5-15 digits for international numbers"
-                  >
-                    <div className="flex">
-                      <span className="inline-flex items-center px-3 rounded-l-md border border-r-0 bg-slate-50 text-sm text-muted-foreground">
-                        {getCallingCode(receiverCountry) || "+"}
-                      </span>
-                      <Input
-                        type="text"
-                        className={cn("rounded-l-none", validationErrors.receiverContact && "border-destructive")}
-                        value={receiverContact}
-                        onChange={handleReceiverPhoneChange}
-                        onBlur={() => {
-                          markFieldTouched("receiverContact")
-                          validateField("receiverContact", receiverContact)
-                        }}
-                        placeholder="Phone number"
-                        maxLength={15}
-                      />
-                    </div>
-                    {receiverContact && (
-                      <div className={cn(
-                        "text-xs mt-1",
-                        receiverContact.length >= 5 && receiverContact.length <= 15 ? "text-green-600" : "text-amber-600"
-                      )}>
-                        {receiverContact.length} digits (5-15 required)
-                      </div>
-                    )}
-                  </FormInput>
-                </div>
+                  </div>
+                </FormInput>
               </div>
             </FormSection>
           </div>
-        )
 
-      case 3: // Shipping Items
-        return (
-          <FormSection
-            title="Shipping Items Details"
-            description="Detail the items within each box for customs purposes."
-            icon={<FileText className="h-5 w-5" />}
-          >
-            <div className="space-y-6">
-              <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between space-y-4 sm:space-y-0 sm:space-x-4 p-4 bg-gradient-to-r from-purple-50 to-pink-50 rounded-lg border border-purple-100">
+          {boxes.length > 0 && (
+            <FormSection
+              title="Shipping Invoice"
+              description="Detail the items within each box for customs purposes."
+              icon={<FileText className="h-6 w-6" />}
+            >
+              <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between space-y-4 sm:space-y-0 sm:space-x-4 mb-6 pb-6 border-b">
+                <div className="flex items-center space-x-2">
+                  <Checkbox id="createShippingInvoice" checked={showItemDetails} onCheckedChange={setShowItemDetails} />
+                  <Label htmlFor="createShippingInvoice" className="font-medium text-sm">
+                    Create Shipping Invoice?
+                  </Label>
+                </div>
                 <div className="flex items-center gap-4">
                   <FormInput label="Currency">
                     <Select value={shippingCurrency} onValueChange={setShippingCurrency}>
-                      <SelectTrigger className="w-[100px]">
+                      <SelectTrigger className="w-[80px]">
                         <SelectValue />
                       </SelectTrigger>
                       <SelectContent>
-                        <SelectItem value="₹">₹ INR</SelectItem>
-                        <SelectItem value="$">$ USD</SelectItem>
+                        <SelectItem value="₹">₹</SelectItem>
+                        <SelectItem value="$">$</SelectItem>
                       </SelectContent>
                     </Select>
                   </FormInput>
-                </div>
-                <div className="text-right">
-                  <Label className="text-sm text-muted-foreground">Total Invoice Value</Label>
-                  <div className="font-bold text-2xl text-primary mt-1">
-                    {shippingCurrency} {totalShippingValue.toLocaleString("en-IN", { maximumFractionDigits: 2 })}
+                  <div className="text-right">
+                    <Label>Total Value</Label>
+                    <div className="font-bold text-lg">
+                      {shippingCurrency} {totalShippingValue.toLocaleString("en-IN", { maximumFractionDigits: 2 })}
+                    </div>
                   </div>
                 </div>
               </div>
 
-              {boxes.length > 0 && (
-                <div className="space-y-5">
+              {showItemDetails && (
+                <div className="space-y-6">
                   {boxes.map((box, boxIndex) => (
-                    <div key={`box-items-${boxIndex}`} className="p-4 border-2 rounded-lg bg-white shadow-sm">
-                      <div className="flex items-center justify-between mb-4">
-                        <h4 className="font-semibold text-base flex items-center gap-2">
-                          <Package className="h-4 w-4 text-primary" />
-                          Box {boxIndex + 1} Items
-                          <Badge variant="secondary" className="ml-2">
-                            {box.chargeableWeight} {parcelType === "Ecommerce" ? "g" : "kg"}
-                          </Badge>
-                        </h4>
-                        <Badge variant="outline">
-                          {box.items.length} item{box.items.length !== 1 ? "s" : ""}
-                        </Badge>
-                      </div>
-                      <div className="space-y-3">
+                    <div key={`box-items-${boxIndex}`} className="p-4 border rounded-lg bg-white">
+                      <h4 className="font-semibold mb-4">Box {boxIndex + 1} Items</h4>
+                      <div className="space-y-4">
                         {box.items.map((item, itemIndex) => (
                           <div
                             key={`item-${boxIndex}-${itemIndex}`}
-                            className="grid grid-cols-1 md:grid-cols-12 gap-3 items-end p-3 border rounded-lg bg-gray-50"
+                            className="grid grid-cols-1 md:grid-cols-12 gap-x-4 gap-y-2 items-end border-b pb-3"
                           >
-                            <div className="md:col-span-4">
+                            <div className="md:col-span-3">
                               <FormInput label="Item Name" required>
                                 <ItemNameAutocomplete
                                   id={`itemName-${boxIndex}-${itemIndex}`}
@@ -2744,30 +2534,28 @@ export default function AWBForm({ isEdit = false, awb }) {
                                     handleItemChange(boxIndex, itemIndex, "hsnCode", hsnItem.code)
                                     if (!item.name) handleItemChange(boxIndex, itemIndex, "name", hsnItem.item)
                                   }}
-                                  required={true}
+                                  required={showItemDetails}
                                 />
                               </FormInput>
                             </div>
                             <div className="md:col-span-2">
-                              <FormInput label="Qty" required>
+                              <FormInput label="Quantity" required>
                                 <Input
                                   type="number"
                                   value={item.quantity}
                                   onChange={(e) => handleItemChange(boxIndex, itemIndex, "quantity", e.target.value)}
                                   min="1"
-                                  className={cn(!item.quantity && "border-amber-300")}
                                 />
                               </FormInput>
                             </div>
                             <div className="md:col-span-2">
-                              <FormInput label={`Price (${shippingCurrency})`} required>
+                              <FormInput label="Price" required>
                                 <Input
                                   type="number"
                                   value={item.price}
                                   onChange={(e) => handleItemChange(boxIndex, itemIndex, "price", e.target.value)}
                                   min="0"
                                   step="0.01"
-                                  className={cn(!item.price && "border-amber-300")}
                                 />
                               </FormInput>
                             </div>
@@ -2789,21 +2577,23 @@ export default function AWBForm({ isEdit = false, awb }) {
                                 </div>
                               </FormInput>
                             </div>
-                            <div className="md:col-span-1 flex justify-end">
-                              <Button
-                                type="button"
-                                variant="ghost"
-                                size="icon"
-                                className="text-destructive hover:bg-destructive/10 h-9 w-9"
-                                onClick={() => removeItem(boxIndex, itemIndex)}
-                                disabled={box.items.length <= 1}
-                              >
-                                <Minus className="h-4 w-4" />
-                              </Button>
+                            <div className="md:col-span-2 flex justify-end">
+                              {box.items.length > 1 && (
+                                <Button
+                                  type="button"
+                                  variant="ghost"
+                                  size="sm"
+                                  className="text-destructive hover:bg-destructive/10"
+                                  onClick={() => removeItem(boxIndex, itemIndex)}
+                                >
+                                  <Minus className="h-4 w-4 mr-1" />
+                                  Remove
+                                </Button>
+                              )}
                             </div>
                           </div>
                         ))}
-                        <Button type="button" variant="outline" size="sm" onClick={() => addItem(boxIndex)} className="w-full">
+                        <Button type="button" variant="outline" size="sm" onClick={() => addItem(boxIndex)}>
                           <Plus className="h-4 w-4 mr-2" />
                           Add Item to Box {boxIndex + 1}
                         </Button>
@@ -2812,233 +2602,31 @@ export default function AWBForm({ isEdit = false, awb }) {
                   ))}
                 </div>
               )}
+            </FormSection>
+          )}
 
-              {boxes.length === 0 && (
-                <Alert className="bg-gray-50">
-                  <Info className="h-4 w-4" />
-                  <AlertDescription>
-                    Please add boxes in the previous step to add items.
-                  </AlertDescription>
-                </Alert>
-              )}
-            </div>
-          </FormSection>
-        )
-
-      case 4: // Export Details (only for Ecommerce)
-        if (parcelType !== "Ecommerce") return null
-        return (
-          <FormSection
-            title="Export & Customs Details"
-            description="Additional information required for international clearance."
-            icon={<Globe className="h-5 w-5" />}
-          >
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
-              <FormInput label="Term of Invoice">
-                <Select value={termOfInvoice} onValueChange={setTermOfInvoice}>
-                  <SelectTrigger>
-                    <SelectValue placeholder="Select Term" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {["FOB", "CFR", "CIF", "DAT", "DDP", "EXW", "FCA", "CIP", "CPT", "DAP", "C/F"].map((t) => (
-                      <SelectItem key={t} value={t}>
-                        {t}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </FormInput>
-
-              <FormInput label="CSB Selection">
-                <Select value={csbSelection} onValueChange={setCsbSelection}>
-                  <SelectTrigger>
-                    <SelectValue placeholder="Select CSB" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="CSB IV">CSB IV (Commercial &lt; 50k)</SelectItem>
-                    <SelectItem value="CSB V">CSB V (Commercial &gt; 50k)</SelectItem>
-                  </SelectContent>
-                </Select>
-              </FormInput>
-
-              <FormInput label="Bank AD Code" hint="Authorized Dealer Code">
-                <Input value={bankADCode} onChange={(e) => setBankADCode(e.target.value)} placeholder="e.g., 0123456" />
-              </FormInput>
-              <FormInput label="Bank Account No">
-                <Input value={bankAccount} onChange={(e) => setBankAccount(e.target.value)} />
-              </FormInput>
-              <FormInput label="Bank IFSC">
-                <Input 
-                  value={bankIFSC} 
-                  onChange={(e) => setBankIFSC(e.target.value.toUpperCase())} 
-                  placeholder="e.g., SBIN0001234"
-                  maxLength={11}
-                />
-              </FormInput>
-              <FormInput label="Consignor GSTIN">
-                <Input 
-                  value={consignorGSTIN} 
-                  onChange={(e) => setConsignorGSTIN(e.target.value.toUpperCase())}
-                  placeholder="e.g., 22AAAAA0000A1Z5"
-                  maxLength={15}
-                />
-              </FormInput>
-              <FormInput label="Consignor IEC" hint="Import Export Code">
-                <Input 
-                  value={consignorIEC} 
-                  onChange={(e) => setConsignorIEC(e.target.value.toUpperCase())} 
-                  placeholder="10-digit IEC"
-                  maxLength={10}
-                />
-              </FormInput>
-
-              <FormInput label="GST Invoice No">
-                <Input value={gstInvoiceNo} onChange={(e) => setGstInvoiceNo(e.target.value)} />
-              </FormInput>
-              <FormInput label="GST Invoice Date">
-                <Popover>
-                  <PopoverTrigger asChild>
-                    <Button
-                      type="button"
-                      variant={"outline"}
-                      className={cn("w-full justify-start text-left font-normal", !gstInvoiceDate && "text-muted-foreground")}
-                    >
-                      <CalendarIcon className="mr-2 h-4 w-4" />
-                      {gstInvoiceDate ? format(gstInvoiceDate, "PPP") : <span>Pick a date</span>}
-                    </Button>
-                  </PopoverTrigger>
-                  <PopoverContent className="w-auto p-0">
-                    <Calendar mode="single" selected={gstInvoiceDate} onSelect={setGstInvoiceDate} initialFocus />
-                  </PopoverContent>
-                </Popover>
-              </FormInput>
-
-              <div className="flex items-center space-x-3 border rounded-lg p-4 bg-gradient-to-r from-blue-50 to-indigo-50">
-                <Switch id="meis" checked={underMEISScheme} onCheckedChange={setUnderMEISScheme} />
-                <Label htmlFor="meis" className="cursor-pointer text-sm">
-                  Under MEIS Scheme?
-                </Label>
-              </div>
-              <div className="flex items-center space-x-3 border rounded-lg p-4 bg-gradient-to-r from-green-50 to-emerald-50">
-                <Switch id="lut" checked={againstBondOrLUT} onCheckedChange={setAgainstBondOrLUT} />
-                <Label htmlFor="lut" className="cursor-pointer text-sm">
-                  Against Bond/LUT?
-                </Label>
-              </div>
-              <div className="flex items-center space-x-3 border rounded-lg p-4 bg-gradient-to-r from-purple-50 to-pink-50">
-                <Switch id="igst" checked={igstPaymentStatus} onCheckedChange={setIgstPaymentStatus} />
-                <Label htmlFor="igst" className="cursor-pointer text-sm">
-                  Export on Payment of IGST?
-                </Label>
-              </div>
-            </div>
-          </FormSection>
-        )
-
-      default:
-        return null
-    }
-  }
-
-  return (
-    <div className="bg-gradient-to-br from-slate-50 to-blue-50/30 min-h-screen">
-      <div className="container mx-auto max-w-7xl p-4 sm:p-6 lg:p-8">
-        <header className="mb-6 text-center">
-          <h1 className="text-3xl font-bold tracking-tight bg-gradient-to-r from-primary to-blue-600 bg-clip-text text-transparent sm:text-4xl">
-            {isEdit ? "Edit Booking" : "Create New Booking"}
-          </h1>
-          <p className="mt-2 text-base text-muted-foreground max-w-2xl mx-auto">
-            Complete the steps below to {isEdit ? "update your" : "create a new"} airway bill.
-          </p>
-        </header>
-
-        <form onSubmit={handleFormSubmit} className="space-y-6">
-          <StepIndicator steps={steps} currentStep={currentStep} />
-
-          <div className="min-h-[500px]">{renderStepContent()}</div>
-
-          <div className="flex justify-between items-center pt-6 border-t-2 border-gray-100">
-            <Button
-              type="button"
-              variant="outline"
-              onClick={handlePrevious}
-              disabled={currentStep === 0}
-              size="lg"
-              className="min-w-[120px]"
-            >
-              <ArrowLeft className="mr-2 h-4 w-4" />
-              Previous
+          <div className="flex justify-end pt-8">
+            <Button size="lg" type="submit" className="bg-[#E31E24] hover:bg-[#C71D23] text-white" disabled={loading}>
+              {loading ? "Processing..." : isEdit ? "Update Booking" : "Create Booking"}
             </Button>
-
-            <div className="text-sm text-muted-foreground font-medium">
-              Step {currentStep + 1} of {steps.length}
-            </div>
-
-            {!isLastStep ? (
-              <Button
-                type="button"
-                onClick={handleNext}
-                size="lg"
-                className="min-w-[120px]"
-              >
-                Next
-                <ArrowRight className="ml-2 h-4 w-4" />
-              </Button>
-            ) : (
-              <Button
-                size="lg"
-                type="submit"
-                className="bg-gradient-to-r from-[#E31E24] to-[#C71D23] hover:from-[#C71D23] hover:to-[#A01A1F] text-white min-w-[160px]"
-                disabled={loading}
-              >
-                {loading ? (
-                  <>
-                    <div className="mr-2 h-4 w-4 animate-spin rounded-full border-2 border-white border-t-transparent" />
-                    Processing...
-                  </>
-                ) : (
-                  <>
-                    <CheckCircle className="mr-2 h-4 w-4" />
-                    {isEdit ? "Update" : "Create"} Booking
-                  </>
-                )}
-              </Button>
-            )}
           </div>
         </form>
 
         <Dialog open={success} onOpenChange={setSuccess}>
           <DialogContent className="sm:max-w-md">
             <DialogHeader>
-              <div className="flex items-center gap-3 mb-2">
-                <div className="bg-green-100 p-3 rounded-full">
-                  <CheckCircle className="h-6 w-6 text-green-600" />
-                </div>
-                <DialogTitle className="text-xl">{`AWB ${isEdit ? "Updated" : "Created"} Successfully`}</DialogTitle>
-              </div>
-              <DialogDescription className="text-base">
-                The AWB has been {isEdit ? "updated" : "created"} successfully. You can now print the shipping label or return to the
-                AWB table.
-              </DialogDescription>
+              <DialogTitle>{`AWB ${isEdit ? "Updated" : "Created"} Successfully`}</DialogTitle>
+              <DialogDescription>{`The AWB has been ${isEdit ? "updated" : "created"} successfully. Click the button below to view AWB or go back to AWB Table.`}</DialogDescription>
             </DialogHeader>
-            <DialogFooter className="flex gap-2 sm:gap-3">
+            <DialogFooter className="flex justify-center gap-2 sm:justify-center">
               <Button
-                type="button"
-                className="bg-indigo-600 hover:bg-indigo-700 flex-1"
+                className="bg-indigo-600 hover:bg-indigo-700"
                 onClick={() => router.push(`/shipping-and-label/${trackingNumber}`)}
-                size="lg"
               >
-                <FileText className="mr-2 h-4 w-4" />
-                Print Label
+                Print
               </Button>
-              <Button
-                type="button"
-                className="bg-green-600 hover:bg-green-700 flex-1"
-                onClick={() => router.push(`/awb`)}
-                size="lg"
-              >
-                <CheckCircle className="mr-2 h-4 w-4" />
-                View AWB Table
+              <Button className="bg-green-600 hover:bg-green-800" onClick={() => router.push(`/awb`)}>
+                Back to AWB Table
               </Button>
             </DialogFooter>
           </DialogContent>
@@ -3065,19 +2653,17 @@ export default function AWBForm({ isEdit = false, awb }) {
                       onSelect={() => handleSelectCustomer(customer)}
                       className="cursor-pointer"
                     >
-                      <Users className="mr-2 h-4 w-4" />
                       {customer.name}
                     </CommandItem>
                   ))}
                 </CommandGroup>
               </CommandList>
             </Command>
-            <DialogFooter className="flex justify-between gap-2">
-              <Button type="button" variant="outline" onClick={() => setShowSearchDialog(false)}>
+            <DialogFooter className="flex justify-between">
+              <Button variant="outline" onClick={() => setShowSearchDialog(false)}>
                 Cancel
               </Button>
               <Button
-                type="button"
                 onClick={() => {
                   if (searchType === "sender") setSenderName(searchTerm)
                   else if (searchType === "receiver") setReceiverName(searchTerm)

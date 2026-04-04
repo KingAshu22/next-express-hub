@@ -184,18 +184,26 @@ const FormSection = ({ title, description, icon, children, className }) => (
   </Card>
 )
 
-const FormInput = ({ id, label, children, required, error, helperText, isLoading, className }) => (
+const FormInput = ({ id, label, children, required, error, helperText, isLoading, className, errorClassName, inlineError }) => (
   <div className={cn(
     "space-y-0.5 rounded-sm focus-within:[&_*:focus]:bg-yellow-50 focus-within:[&_*:focus]:border-yellow-400 focus-within:[&_*:focus]:ring-yellow-200 focus-within:[&_*:focus]:ring-1 focus-within:[&_*:focus]:ring-offset-0",
     className
   )}>
-    <Label htmlFor={id} className="font-medium flex items-center gap-0.5 text-xs">
-      {label} {required && <span className="text-destructive">*</span>}
-      {isLoading && <Loader2 className="h-2 w-2 animate-spin text-muted-foreground" />}
-    </Label>
+    <div className="flex items-start justify-between gap-2">
+      <Label htmlFor={id} className="font-medium flex items-center gap-0.5 text-xs">
+        {label} {required && <span className="text-destructive">*</span>}
+        {isLoading && <Loader2 className="h-2 w-2 animate-spin text-muted-foreground" />}
+      </Label>
+      {inlineError && error && (
+        <div className="flex items-center gap-0.5 text-destructive text-xs">
+          <AlertCircle className="h-2 w-2" />
+          <span>{error}</span>
+        </div>
+      )}
+    </div>
     {children}
-    {error && (
-      <div className="flex items-center gap-0.5 text-destructive text-xs">
+    {!inlineError && error && (
+      <div className={cn("flex items-center gap-0.5 text-destructive text-xs", errorClassName)}>
         <AlertCircle className="h-2 w-2" />
         <span>{error}</span>
       </div>
@@ -439,7 +447,7 @@ export default function AWBForm({ isEdit = false, awb }) {
         if (!validateEmail(senderEmail)) error = "Please enter a valid email address"
         break
       case "senderAddress":
-        if (!validateAddress(senderAddress)) error = "Address must be between 5 and 200 characters"
+        if (!validateAddress(senderAddress)) error = "Address must be between 5 and 50 characters"
         break
       case "senderZipCode":
         if (!validateZipCode(senderZipCode)) error = "Please enter a valid zip code"
@@ -2076,8 +2084,9 @@ export default function AWBForm({ isEdit = false, awb }) {
             </div>
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-14">
-            <FormSection title="Sender Details" icon={<Users className="h-4 w-4" />}>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <div className="md:col-span-1">
+              <FormSection title="Sender Details" icon={<Users className="h-4 w-4" />}>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
                 <div className="sm:col-span-2">
                   <FormInput
@@ -2124,6 +2133,7 @@ export default function AWBForm({ isEdit = false, awb }) {
                     id="senderAddress"
                     required
                     error={touched.senderAddress && errors.senderAddress}
+                    inlineError
                   >
                     <Input
                       maxLength={50}
@@ -2295,8 +2305,10 @@ export default function AWBForm({ isEdit = false, awb }) {
                 </div>
               </div>
             </FormSection>
+            </div>
 
-            <FormSection title="Receiver Details" icon={<Users className="h-4 w-4" />}>
+            <div className="md:col-span-2">
+              <FormSection title="Receiver Details" icon={<Users className="h-4 w-4" />}>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 pr-2">
                 {/* Country First - needed for postal lookup */}
                 <FormInput
@@ -2429,6 +2441,7 @@ export default function AWBForm({ isEdit = false, awb }) {
                     id="receiverAddress"
                     required
                     error={touched.receiverAddress && errors.receiverAddress}
+                    inlineError
                   >
                     <Input
                       maxLength={50}
@@ -2471,6 +2484,7 @@ export default function AWBForm({ isEdit = false, awb }) {
                 </FormInput>
               </div>
             </FormSection>
+            </div>
           </div>
 
           {boxes.length > 0 && (

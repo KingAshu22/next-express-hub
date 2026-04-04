@@ -1385,10 +1385,7 @@ export default function AWBForm({ isEdit = false, awb }) {
         formattedSenderContact = `${senderCountryCode} ${senderContact.replace(/[^\d]/g, "")}`
       }
 
-      let formattedReceiverContact = receiverContact
-      if (receiverCountryCode && !formattedReceiverContact.startsWith(receiverCountryCode)) {
-        formattedReceiverContact = `${receiverCountryCode} ${receiverContact.replace(/[^\d]/g, "")}`
-      }
+      let formattedReceiverContact = receiverContact.replace(/[^\d]/g, "")
 
       const parcelData = {
         parcelType,
@@ -2075,7 +2072,7 @@ export default function AWBForm({ isEdit = false, awb }) {
             </div>
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-14">
             <FormSection title="Sender Details" icon={<Users className="h-4 w-4" />}>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
                 <div className="sm:col-span-2">
@@ -2124,26 +2121,24 @@ export default function AWBForm({ isEdit = false, awb }) {
                     required
                     error={touched.senderAddress && errors.senderAddress}
                   >
-                    <Textarea
-                      rows={1}
+                    <Input
                       maxLength={200}
                       value={senderAddress}
                       onChange={(e) => setSenderAddress(e.target.value)}
                       onBlur={() => handleBlur("senderAddress")}
                       disabled={isClient}
-                      className={cn("min-h-[28px] text-xs", touched.senderAddress && errors.senderAddress && "border-destructive")}
+                      className={cn("text-xs", touched.senderAddress && errors.senderAddress && "border-destructive")}
                     />
                     <div className="text-xs text-muted-foreground text-right">{senderAddress.length}/200</div>
                   </FormInput>
                 </div>
                 <div className="sm:col-span-2">
                   <FormInput label="Address Line 2" id="senderAddress2">
-                    <Textarea
-                      rows={1}
+                    <Input
                       value={senderAddress2}
                       onChange={(e) => setSenderAddress2(e.target.value)}
                       disabled={isClient}
-                      className="min-h-[28px] text-xs"
+                      className="text-xs"
                     />
                   </FormInput>
                 </div>
@@ -2431,20 +2426,19 @@ export default function AWBForm({ isEdit = false, awb }) {
                     required
                     error={touched.receiverAddress && errors.receiverAddress}
                   >
-                    <Textarea
-                      rows={1}
+                    <Input
                       maxLength={200}
                       value={receiverAddress}
                       onChange={(e) => setReceiverAddress(e.target.value)}
                       onBlur={() => handleBlur("receiverAddress")}
-                      className={cn("min-h-[28px] text-xs", touched.receiverAddress && errors.receiverAddress && "border-destructive")}
+                      className={cn("text-xs", touched.receiverAddress && errors.receiverAddress && "border-destructive")}
                     />
                     <div className="text-xs text-muted-foreground text-right">{receiverAddress.length}/200</div>
                   </FormInput>
                 </div>
                 <div className="sm:col-span-2">
                   <FormInput label="Address Line 2" id="receiverAddress2">
-                    <Textarea rows={1} value={receiverAddress2} onChange={(e) => setReceiverAddress2(e.target.value)} className="min-h-[28px] text-xs" />
+                    <Input value={receiverAddress2} onChange={(e) => setReceiverAddress2(e.target.value)} className="text-xs" />
                   </FormInput>
                 </div>
                 <FormInput
@@ -2454,27 +2448,22 @@ export default function AWBForm({ isEdit = false, awb }) {
                   error={touched.receiverContact && errors.receiverContact}
                   helperText="Must be between 5 and 15 digits"
                 >
-                  <div className="flex">
-                    <span className="inline-flex items-center px-3 rounded-l-md border border-r-0 bg-slate-50 text-sm text-muted-foreground">
-                      {getCallingCode(receiverCountry) || "+"}
-                    </span>
-                    <Input
-                      type="text"
-                      className={cn(
-                        "rounded-l-none",
-                        touched.receiverContact && errors.receiverContact && "border-destructive"
-                      )}
-                      value={receiverContact}
-                      onChange={(e) => {
-                        // Only allow digits
-                        const value = e.target.value.replace(/[^\d]/g, "")
-                        setReceiverContact(value)
-                      }}
-                      onBlur={() => handleBlur("receiverContact")}
-                      maxLength={15}
-                      placeholder="5-15 digit phone number"
-                    />
-                  </div>
+                  <Input
+                    type="text"
+                    className={cn(
+                      "text-xs",
+                      touched.receiverContact && errors.receiverContact && "border-destructive"
+                    )}
+                    value={receiverContact}
+                    onChange={(e) => {
+                      // Only allow digits
+                      const value = e.target.value.replace(/[^\d]/g, "")
+                      setReceiverContact(value)
+                    }}
+                    onBlur={() => handleBlur("receiverContact")}
+                    maxLength={15}
+                    placeholder="5-15 digit phone number"
+                  />
                 </FormInput>
               </div>
             </FormSection>

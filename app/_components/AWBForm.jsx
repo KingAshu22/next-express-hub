@@ -88,7 +88,7 @@ const validateName = (name) => {
 
 const validateAddress = (address) => {
   if (!address) return false
-  return address.trim().length >= 5 && address.trim().length <= 200
+  return address.trim().length >= 5 && address.trim().length <= 50
 }
 
 const validateKYC = (kycType, kyc) => {
@@ -185,7 +185,10 @@ const FormSection = ({ title, description, icon, children, className }) => (
 )
 
 const FormInput = ({ id, label, children, required, error, helperText, isLoading, className }) => (
-  <div className={cn("space-y-0.5", className)}>
+  <div className={cn(
+    "space-y-0.5 rounded-sm focus-within:[&_*:focus]:bg-yellow-50 focus-within:[&_*:focus]:border-yellow-400 focus-within:[&_*:focus]:ring-yellow-200 focus-within:[&_*:focus]:ring-1 focus-within:[&_*:focus]:ring-offset-0",
+    className
+  )}>
     <Label htmlFor={id} className="font-medium flex items-center gap-0.5 text-xs">
       {label} {required && <span className="text-destructive">*</span>}
       {isLoading && <Loader2 className="h-2 w-2 animate-spin text-muted-foreground" />}
@@ -495,6 +498,7 @@ export default function AWBForm({ isEdit = false, awb }) {
       "senderCountry",
       "kyc",
       "receiverName",
+      "receiverEmail",
       "receiverAddress",
       "receiverZipCode",
       "receiverContact",
@@ -2122,17 +2126,17 @@ export default function AWBForm({ isEdit = false, awb }) {
                     error={touched.senderAddress && errors.senderAddress}
                   >
                     <Input
-                      maxLength={200}
+                      maxLength={50}
                       value={senderAddress}
                       onChange={(e) => setSenderAddress(e.target.value)}
                       onBlur={() => handleBlur("senderAddress")}
                       disabled={isClient}
                       className={cn("text-xs", touched.senderAddress && errors.senderAddress && "border-destructive")}
                     />
-                    <div className="text-xs text-muted-foreground text-right">{senderAddress.length}/200</div>
+                    <div className="text-xs text-muted-foreground text-right">{senderAddress.length}/50</div>
                   </FormInput>
                 </div>
-                <div className="sm:col-span-2">
+                <div className="sm:col-span-2 -mt-6">
                   <FormInput label="Address Line 2" id="senderAddress2">
                     <Input
                       value={senderAddress2}
@@ -2293,7 +2297,7 @@ export default function AWBForm({ isEdit = false, awb }) {
             </FormSection>
 
             <FormSection title="Receiver Details" icon={<Users className="h-4 w-4" />}>
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 pr-2">
                 {/* Country First - needed for postal lookup */}
                 <FormInput
                   label="Country"
@@ -2410,7 +2414,7 @@ export default function AWBForm({ isEdit = false, awb }) {
                 <FormInput label="Company Name" id="receiverCompanyName">
                   <Input value={receiverCompanyName} onChange={(e) => setReceiverCompanyName(e.target.value)} />
                 </FormInput>
-                <FormInput label="Email" id="receiverEmail" error={touched.receiverEmail && errors.receiverEmail}>
+                <FormInput label="Email" id="receiverEmail" required error={touched.receiverEmail && errors.receiverEmail}>
                   <Input
                     type="email"
                     value={receiverEmail}
@@ -2427,16 +2431,16 @@ export default function AWBForm({ isEdit = false, awb }) {
                     error={touched.receiverAddress && errors.receiverAddress}
                   >
                     <Input
-                      maxLength={200}
+                      maxLength={50}
                       value={receiverAddress}
                       onChange={(e) => setReceiverAddress(e.target.value)}
                       onBlur={() => handleBlur("receiverAddress")}
                       className={cn("text-xs", touched.receiverAddress && errors.receiverAddress && "border-destructive")}
                     />
-                    <div className="text-xs text-muted-foreground text-right">{receiverAddress.length}/200</div>
+                    <div className="text-xs text-muted-foreground text-right">{receiverAddress.length}/50</div>
                   </FormInput>
                 </div>
-                <div className="sm:col-span-2">
+                <div className="sm:col-span-2 -mt-6">
                   <FormInput label="Address Line 2" id="receiverAddress2">
                     <Input value={receiverAddress2} onChange={(e) => setReceiverAddress2(e.target.value)} className="text-xs" />
                   </FormInput>

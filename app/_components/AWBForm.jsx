@@ -2310,97 +2310,6 @@ export default function AWBForm({ isEdit = false, awb }) {
             <div className="md:col-span-2">
               <FormSection title="Receiver Details" icon={<Users className="h-4 w-4" />}>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 pr-2">
-                {/* Country First - needed for postal lookup */}
-                <FormInput
-                  label="Country"
-                  id="receiverCountry"
-                  required
-                  error={touched.receiverCountry && errors.receiverCountry}
-                >
-                  <CountryCombobox
-                    value={receiverCountry}
-                    onSelect={(country) => {
-                      setReceiverCountry(country)
-                      setReceiverPostalFetched(false)
-                      handleBlur("receiverCountry")
-                    }}
-                    open={receiverCountryOpen}
-                    onOpenChange={setReceiverCountryOpen}
-                  />
-                </FormInput>
-
-                {/* Zip Code - for Auto-fill */}
-                <FormInput
-                  label="Zip Code"
-                  id="receiverZipCode"
-                  required
-                  error={touched.receiverZipCode && errors.receiverZipCode}
-                  helperText="Enter zip code to auto-fill city & state"
-                  isLoading={loadingReceiverPostal}
-                >
-                  <div className="flex gap-2">
-                    <Input
-                      value={receiverZipCode}
-                      onChange={(e) => {
-                        setReceiverZipCode(e.target.value.replace(/\s/g, ""))
-                        setReceiverPostalFetched(false)
-                      }}
-                      onBlur={() => handleBlur("receiverZipCode")}
-                      className={cn(touched.receiverZipCode && errors.receiverZipCode && "border-destructive")}
-                      placeholder="Enter zip code"
-                    />
-                    <Button
-                      type="button"
-                      variant="outline"
-                      size="sm"
-                      className="h-6 px-2"
-                      onClick={() => handleManualPostalLookup("receiver")}
-                      disabled={loadingReceiverPostal}
-                      title="Lookup address from pin code"
-                    >
-                      {loadingReceiverPostal ? (
-                        <Loader2 className="h-3 w-3 animate-spin" />
-                      ) : (
-                        <Search className="h-3 w-3" />
-                      )}
-                    </Button>
-                  </div>
-                </FormInput>
-
-                {/* City - Auto-filled but editable */}
-                <FormInput
-                  label="City"
-                  id="receiverCity"
-                  required
-                  error={touched.receiverCity && errors.receiverCity}
-                  isLoading={loadingReceiverPostal}
-                >
-                  <Input
-                    value={receiverCity}
-                    onChange={(e) => setReceiverCity(e.target.value)}
-                    onBlur={() => handleBlur("receiverCity")}
-                    placeholder={loadingReceiverPostal ? "Loading..." : "Enter city"}
-                    className={cn(touched.receiverCity && errors.receiverCity && "border-destructive")}
-                  />
-                </FormInput>
-
-                {/* State - Auto-filled but editable */}
-                <FormInput
-                  label="State"
-                  id="receiverState"
-                  required
-                  error={touched.receiverState && errors.receiverState}
-                  isLoading={loadingReceiverPostal}
-                >
-                  <Input
-                    value={receiverState}
-                    onChange={(e) => setReceiverState(e.target.value)}
-                    onBlur={() => handleBlur("receiverState")}
-                    placeholder={loadingReceiverPostal ? "Loading..." : "Enter state"}
-                    className={cn(touched.receiverState && errors.receiverState && "border-destructive")}
-                  />
-                </FormInput>
-
                 <div className="sm:col-span-2">
                   <FormInput
                     label="Receiver Name"
@@ -2458,6 +2367,96 @@ export default function AWBForm({ isEdit = false, awb }) {
                     <Input value={receiverAddress2} onChange={(e) => setReceiverAddress2(e.target.value)} className="text-xs" />
                   </FormInput>
                 </div>
+                {/* Country - moved after address */}
+                <FormInput
+                  label="Country"
+                  id="receiverCountry"
+                  required
+                  error={touched.receiverCountry && errors.receiverCountry}
+                >
+                  <CountryCombobox
+                    value={receiverCountry}
+                    onSelect={(country) => {
+                      setReceiverCountry(country)
+                      setReceiverPostalFetched(false)
+                      handleBlur("receiverCountry")
+                    }}
+                    open={receiverCountryOpen}
+                    onOpenChange={setReceiverCountryOpen}
+                  />
+                </FormInput>
+
+                {/* Zip Code - moved after address */}
+                <FormInput
+                  label="Zip Code"
+                  id="receiverZipCode"
+                  required
+                  error={touched.receiverZipCode && errors.receiverZipCode}
+                  helperText="Enter zip code to auto-fill city & state"
+                  isLoading={loadingReceiverPostal}
+                >
+                  <div className="flex gap-2">
+                    <Input
+                      value={receiverZipCode}
+                      onChange={(e) => {
+                        setReceiverZipCode(e.target.value.replace(/\s/g, ""))
+                        setReceiverPostalFetched(false)
+                      }}
+                      onBlur={() => handleBlur("receiverZipCode")}
+                      className={cn(touched.receiverZipCode && errors.receiverZipCode && "border-destructive")}
+                      placeholder="Enter zip code"
+                    />
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      className="h-6 px-2"
+                      onClick={() => handleManualPostalLookup("receiver")}
+                      disabled={loadingReceiverPostal}
+                      title="Lookup address from pin code"
+                    >
+                      {loadingReceiverPostal ? (
+                        <Loader2 className="h-3 w-3 animate-spin" />
+                      ) : (
+                        <Search className="h-3 w-3" />
+                      )}
+                    </Button>
+                  </div>
+                </FormInput>
+
+                {/* City - moved after address */}
+                <FormInput
+                  label="City"
+                  id="receiverCity"
+                  required
+                  error={touched.receiverCity && errors.receiverCity}
+                  isLoading={loadingReceiverPostal}
+                >
+                  <Input
+                    value={receiverCity}
+                    onChange={(e) => setReceiverCity(e.target.value)}
+                    onBlur={() => handleBlur("receiverCity")}
+                    placeholder={loadingReceiverPostal ? "Loading..." : "Enter city"}
+                    className={cn(touched.receiverCity && errors.receiverCity && "border-destructive")}
+                  />
+                </FormInput>
+
+                {/* State - moved after address */}
+                <FormInput
+                  label="State"
+                  id="receiverState"
+                  required
+                  error={touched.receiverState && errors.receiverState}
+                  isLoading={loadingReceiverPostal}
+                >
+                  <Input
+                    value={receiverState}
+                    onChange={(e) => setReceiverState(e.target.value)}
+                    onBlur={() => handleBlur("receiverState")}
+                    placeholder={loadingReceiverPostal ? "Loading..." : "Enter state"}
+                    className={cn(touched.receiverState && errors.receiverState && "border-destructive")}
+                  />
+                </FormInput>
                 <FormInput
                   label="Contact"
                   id="receiverContact"

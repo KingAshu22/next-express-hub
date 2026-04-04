@@ -2136,7 +2136,7 @@ export default function AWBForm({ isEdit = false, awb }) {
                     <div className="text-xs text-muted-foreground text-right">{senderAddress.length}/200</div>
                   </FormInput>
                 </div>
-                <div className="sm:col-span-2 hidden">
+                <div className="sm:col-span-2">
                   <FormInput label="Address Line 2" id="senderAddress2">
                     <Textarea
                       rows={1}
@@ -2442,7 +2442,7 @@ export default function AWBForm({ isEdit = false, awb }) {
                     <div className="text-xs text-muted-foreground text-right">{receiverAddress.length}/200</div>
                   </FormInput>
                 </div>
-                <div className="sm:col-span-2 hidden">
+                <div className="sm:col-span-2">
                   <FormInput label="Address Line 2" id="receiverAddress2">
                     <Textarea rows={1} value={receiverAddress2} onChange={(e) => setReceiverAddress2(e.target.value)} className="min-h-[28px] text-xs" />
                   </FormInput>

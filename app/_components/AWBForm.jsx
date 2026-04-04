@@ -171,29 +171,29 @@ const useDebounce = (value, delay) => {
 
 const FormSection = ({ title, description, icon, children, className }) => (
   <Card className={cn("overflow-hidden", className)}>
-    <CardHeader>
-      <div className="flex items-start gap-4">
-        {icon && <div className="bg-primary/10 text-primary p-2 rounded-lg">{icon}</div>}
+    <CardHeader className="py-1 px-2">
+      <div className="flex items-start gap-1">
+        {icon && <div className="bg-primary/10 text-primary p-0.5 rounded text-xs">{icon}</div>}
         <div>
-          <CardTitle className="text-lg text-primary">{title}</CardTitle>
-          {description && <CardDescription className="mt-1">{description}</CardDescription>}
+          <CardTitle className="text-xs text-primary">{title}</CardTitle>
+          {description && <CardDescription className="mt-0 text-xs">{description}</CardDescription>}
         </div>
       </div>
     </CardHeader>
-    <CardContent>{children}</CardContent>
+    <CardContent className="py-1 px-2">{children}</CardContent>
   </Card>
 )
 
-const FormInput = ({ id, label, children, required, error, helperText, isLoading }) => (
-  <div className="space-y-2">
-    <Label htmlFor={id} className="font-medium flex items-center gap-2">
+const FormInput = ({ id, label, children, required, error, helperText, isLoading, className }) => (
+  <div className={cn("space-y-0.5", className)}>
+    <Label htmlFor={id} className="font-medium flex items-center gap-0.5 text-xs">
       {label} {required && <span className="text-destructive">*</span>}
-      {isLoading && <Loader2 className="h-3 w-3 animate-spin text-muted-foreground" />}
+      {isLoading && <Loader2 className="h-2 w-2 animate-spin text-muted-foreground" />}
     </Label>
     {children}
     {error && (
-      <div className="flex items-center gap-1 text-destructive text-xs">
-        <AlertCircle className="h-3 w-3" />
+      <div className="flex items-center gap-0.5 text-destructive text-xs">
+        <AlertCircle className="h-2 w-2" />
         <span>{error}</span>
       </div>
     )}
@@ -542,11 +542,8 @@ export default function AWBForm({ isEdit = false, awb }) {
       })
     }
 
-    // Validate rate selection
-    if (!selectedRate && !isEdit) {
-      toast.error("Please select a shipping rate")
-      allValid = false
-    }
+    // Shipping rate selection is optional
+    // Users can submit without selecting a rate
 
     return allValid
   }
@@ -1595,27 +1592,27 @@ export default function AWBForm({ isEdit = false, awb }) {
 
   return (
     <div className="bg-slate-50/50 min-h-screen">
-      <div className="container mx-auto max-w-7xl p-4 sm:p-6 lg:p-8">
-        <header className="mb-8 text-center">
-          <h1 className="text-3xl font-bold tracking-tight text-primary sm:text-4xl">
+      <div className="container mx-auto max-w-7xl p-2">
+        <header className="mb-2 text-center">
+          <h1 className="text-2xl font-bold tracking-tight text-primary sm:text-2xl">
             {isEdit ? "Edit Booking" : "Create New Booking"}
           </h1>
-          <p className="mt-2 text-lg text-muted-foreground">
+          <p className="mt-1 text-sm text-muted-foreground">
             Fill in the details below to {isEdit ? "update the" : "create a new"} airway bill.
           </p>
         </header>
 
-        <form onSubmit={handleSubmit} className="space-y-8">
+        <form onSubmit={handleSubmit} className="space-y-2">
           <FormSection
             title="Basic Details"
             description="Provide the core information for this shipment."
-            icon={<FileText className="h-6 w-6" />}
+            icon={<FileText className="h-4 w-4" />}
           >
-            <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-4">
-              <FormInput label="Sr No:" id="invoiceNumber">
+            <div className="grid grid-cols-1 gap-1 sm:grid-cols-2 lg:grid-cols-4">
+              <FormInput label="Sr No:" id="invoiceNumber" className="hidden">
                 <Input id="invoiceNumber" value={invoiceNumber} readOnly disabled />
               </FormInput>
-              <FormInput label="AWB No:" id="trackingNumber">
+              <FormInput label="AWB No:" id="trackingNumber" className="hidden">
                 <Input
                   id="trackingNumber"
                   value={trackingNumber}
@@ -1630,10 +1627,10 @@ export default function AWBForm({ isEdit = false, awb }) {
                     <Button
                       type="button"
                       variant={"outline"}
-                      className={cn("w-full justify-start text-left font-normal", !date && "text-muted-foreground")}
+                      className={cn("w-full justify-start text-left font-normal h-8 text-xs", !date && "text-muted-foreground")}
                     >
-                      <CalendarIcon className="mr-2 h-4 w-4" />
-                      {date ? format(date, "PPP") : <span>Pick a date</span>}
+                      <CalendarIcon className="mr-1 h-3 w-3" />
+                      {date ? format(date, "PPP") : <span>Pick date</span>}
                     </Button>
                   </PopoverTrigger>
                   <PopoverContent className="w-auto p-0">
@@ -1680,15 +1677,16 @@ export default function AWBForm({ isEdit = false, awb }) {
                   <Button
                     type="button"
                     variant="outline"
-                    size="icon"
+                    size="sm"
+                    className="h-6 px-2"
                     onClick={() => handleManualPostalLookup("receiver")}
                     disabled={loadingReceiverPostal}
                     title="Lookup address from pin code"
                   >
                     {loadingReceiverPostal ? (
-                      <Loader2 className="h-4 w-4 animate-spin" />
+                      <Loader2 className="h-3 w-3 animate-spin" />
                     ) : (
-                      <Search className="h-4 w-4" />
+                      <Search className="h-3 w-3" />
                     )}
                   </Button>
                 </div>
@@ -1842,14 +1840,14 @@ export default function AWBForm({ isEdit = false, awb }) {
             </div>
           </FormSection>
 
-          <div className="grid grid-cols-1 gap-8 lg:grid-cols-5">
+          <div className="grid grid-cols-1 gap-1 lg:grid-cols-5">
             <div className="lg:col-span-3">
               <FormSection
                 title="Box & Weight Details"
                 description="Enter box dimensions to calculate weight and fetch shipping rates."
-                icon={<Package className="h-6 w-6" />}
+                icon={<Package className="h-4 w-4" />}
               >
-                <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 items-end border-b pb-6 mb-6">
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-1 items-end border-b pb-1 mb-1">
                   <FormInput label="How many boxes?" id="boxCount">
                     <Input
                       id="boxCount"
@@ -1860,84 +1858,84 @@ export default function AWBForm({ isEdit = false, awb }) {
                       min="1"
                     />
                   </FormInput>
-                  <Button type="button" onClick={generateBoxes} className="w-full sm:w-auto sm:self-end">
+                  <Button type="button" onClick={generateBoxes} className="w-full sm:w-auto sm:self-end h-7 text-xs" size="sm">
                     Generate Boxes
                   </Button>
-                  <Button type="button" onClick={addBox} variant="outline" className="w-full sm:w-auto sm:self-end">
-                    <Plus className="h-4 w-4 mr-2" />
+                  <Button type="button" onClick={addBox} variant="outline" className="w-full sm:w-auto sm:self-end h-7 text-xs" size="sm">
+                    <Plus className="h-3 w-3 mr-1" />
                     Add Single Box
                   </Button>
                 </div>
 
                 {boxes.length > 0 && (
-                  <div className="space-y-4">
+                  <div className="space-y-2">
                     <div className="w-full overflow-x-auto">
                       <Table>
-                        <TableHeader>
-                          <TableRow>
-                            <TableHead>Box</TableHead>
-                            <TableHead>Actual Wt. (kg)</TableHead>
-                            <TableHead>L (cm)</TableHead>
-                            <TableHead>B (cm)</TableHead>
-                            <TableHead>H (cm)</TableHead>
-                            <TableHead>Dim. Wt.</TableHead>
-                            <TableHead>Chargeable Wt.</TableHead>
-                            <TableHead>Actions</TableHead>
+                        <TableHeader className="bg-slate-100">
+                          <TableRow className="h-6">
+                            <TableHead className="p-1 text-xs">Box</TableHead>
+                            <TableHead className="p-1 text-xs">Actual Wt.</TableHead>
+                            <TableHead className="p-1 text-xs">L</TableHead>
+                            <TableHead className="p-1 text-xs">B</TableHead>
+                            <TableHead className="p-1 text-xs">H</TableHead>
+                            <TableHead className="p-1 text-xs">Dim. Wt.</TableHead>
+                            <TableHead className="p-1 text-xs">Chargeable</TableHead>
+                            <TableHead className="p-1 text-xs">Actions</TableHead>
                           </TableRow>
                         </TableHeader>
                         <TableBody>
                           {boxes.map((box, index) => (
-                            <TableRow key={`box-${index}`}>
-                              <TableCell className="font-medium">{index + 1}</TableCell>
-                              <TableCell>
+                            <TableRow key={`box-${index}`} className="h-6">
+                              <TableCell className="p-1 font-xs text-xs">{index + 1}</TableCell>
+                              <TableCell className="p-1">
                                 <Input
                                   type="number"
                                   value={box.actualWeight}
                                   onChange={(e) => handleBoxChange(index, "actualWeight", e.target.value)}
-                                  className="min-w-[80px]"
+                                  className="min-w-[60px] h-6 text-xs p-1"
                                   min="0"
                                   step="0.01"
                                 />
                               </TableCell>
-                              <TableCell>
+                              <TableCell className="p-1">
                                 <Input
                                   type="number"
                                   value={box.length}
                                   onChange={(e) => handleBoxChange(index, "length", e.target.value)}
-                                  className="min-w-[80px]"
+                                  className="min-w-[60px] h-6 text-xs p-1"
                                   min="0"
                                 />
                               </TableCell>
-                              <TableCell>
+                              <TableCell className="p-1">
                                 <Input
                                   type="number"
                                   value={box.breadth}
                                   onChange={(e) => handleBoxChange(index, "breadth", e.target.value)}
-                                  className="min-w-[80px]"
+                                  className="min-w-[60px] h-6 text-xs p-1"
                                   min="0"
                                 />
                               </TableCell>
-                              <TableCell>
+                              <TableCell className="p-1">
                                 <Input
                                   type="number"
                                   value={box.height}
                                   onChange={(e) => handleBoxChange(index, "height", e.target.value)}
-                                  className="min-w-[80px]"
+                                  className="min-w-[60px] h-6 text-xs p-1"
                                   min="0"
                                 />
                               </TableCell>
-                              <TableCell>{box.dimensionalWeight || "0.00"}</TableCell>
-                              <TableCell className="font-semibold">{box.chargeableWeight || "0.0"}</TableCell>
-                              <TableCell>
+                              <TableCell className="p-1 text-xs">{box.dimensionalWeight || "0.00"}</TableCell>
+                              <TableCell className="p-1 text-xs font-semibold">{box.chargeableWeight || "0.0"}</TableCell>
+                              <TableCell className="p-1">
                                 <Button
                                   type="button"
                                   variant="ghost"
                                   size="sm"
-                                  className="text-destructive hover:bg-destructive/10"
+                                  className="h-5 text-destructive hover:bg-destructive/10"
                                   onClick={() => removeBox(index)}
                                   disabled={boxes.length <= 1}
                                 >
-                                  <Minus className="h-4 w-4" />
+                                  <Minus className="h-3 w-3" />
                                 </Button>
                               </TableCell>
                             </TableRow>
@@ -1945,7 +1943,7 @@ export default function AWBForm({ isEdit = false, awb }) {
                         </TableBody>
                       </Table>
                     </div>
-                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 pt-4 border-t">
+                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-1 pt-1 border-t">
                       <div>
                         <Label>Total Actual</Label>
                         <div className="font-bold text-lg">{totalWeights.actual} kg</div>
@@ -1968,10 +1966,10 @@ export default function AWBForm({ isEdit = false, awb }) {
               <FormSection
                 title="Shipping Rates"
                 description="Fetch and select the best courier rate for your shipment."
-                icon={<TruckIcon className="h-6 w-6" />}
+                icon={<TruckIcon className="h-4 w-4" />}
               >
-                <div className="space-y-4">
-                  <div className="flex justify-between items-center mb-2 px-1">
+                <div className="space-y-2">
+                <div className="flex justify-between items-center mb-1 px-0 gap-1">
                     <Label htmlFor="gst-toggle" className="text-sm font-medium">
                       Show Price Including GST
                     </Label>
@@ -1986,12 +1984,12 @@ export default function AWBForm({ isEdit = false, awb }) {
                     <TruckIcon className="mr-2 h-4 w-4" />
                     {fetchingRates ? "Fetching Rates..." : "Get Available Rates"}
                   </Button>
-                  <div className="space-y-3">
+                  <div className="space-y-1">
                     {fetchingRates &&
                       Array.from({ length: 3 }).map((_, i) => (
-                        <div key={i} className="p-3 border rounded-lg animate-pulse bg-slate-100">
-                          <div className="h-4 bg-slate-300 rounded mb-2 w-3/4"></div>
-                          <div className="h-3 bg-slate-300 rounded w-1/2"></div>
+                        <div key={i} className="p-1 border rounded-lg animate-pulse bg-slate-100">
+                          <div className="h-2 bg-slate-300 rounded mb-1 w-3/4"></div>
+                          <div className="h-2 bg-slate-300 rounded w-1/2"></div>
                         </div>
                       ))}
                     {rates &&
@@ -2077,9 +2075,9 @@ export default function AWBForm({ isEdit = false, awb }) {
             </div>
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-            <FormSection title="Sender Details" icon={<Users className="h-6 w-6" />}>
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
+            <FormSection title="Sender Details" icon={<Users className="h-4 w-4" />}>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
                 <div className="sm:col-span-2">
                   <FormInput
                     label="Sender Name"
@@ -2097,8 +2095,8 @@ export default function AWBForm({ isEdit = false, awb }) {
                         disabled={isClient}
                         className={cn(touched.senderName && errors.senderName && "border-destructive")}
                       />
-                      <Button type="button" variant="outline" size="icon" onClick={() => openSearch("sender")}>
-                        <Search className="h-4 w-4" />
+                      <Button type="button" variant="outline" size="sm" className="h-6 px-2" onClick={() => openSearch("sender")}>
+                        <Search className="h-3 w-3" />
                       </Button>
                     </div>
                   </FormInput>
@@ -2127,24 +2125,25 @@ export default function AWBForm({ isEdit = false, awb }) {
                     error={touched.senderAddress && errors.senderAddress}
                   >
                     <Textarea
-                      rows={2}
+                      rows={1}
                       maxLength={200}
                       value={senderAddress}
                       onChange={(e) => setSenderAddress(e.target.value)}
                       onBlur={() => handleBlur("senderAddress")}
                       disabled={isClient}
-                      className={cn(touched.senderAddress && errors.senderAddress && "border-destructive")}
+                      className={cn("min-h-[28px] text-xs", touched.senderAddress && errors.senderAddress && "border-destructive")}
                     />
                     <div className="text-xs text-muted-foreground text-right">{senderAddress.length}/200</div>
                   </FormInput>
                 </div>
-                <div className="sm:col-span-2">
+                <div className="sm:col-span-2 hidden">
                   <FormInput label="Address Line 2" id="senderAddress2">
                     <Textarea
-                      rows={2}
+                      rows={1}
                       value={senderAddress2}
                       onChange={(e) => setSenderAddress2(e.target.value)}
                       disabled={isClient}
+                      className="min-h-[28px] text-xs"
                     />
                   </FormInput>
                 </div>
@@ -2170,15 +2169,16 @@ export default function AWBForm({ isEdit = false, awb }) {
                     <Button
                       type="button"
                       variant="outline"
-                      size="icon"
+                      size="sm"
+                      className="h-6 px-2"
                       onClick={() => handleManualPostalLookup("sender")}
                       disabled={loadingSenderPostal || isClient}
                       title="Lookup address from pin code"
                     >
                       {loadingSenderPostal ? (
-                        <Loader2 className="h-4 w-4 animate-spin" />
+                        <Loader2 className="h-3 w-3 animate-spin" />
                       ) : (
-                        <Search className="h-4 w-4" />
+                        <Search className="h-3 w-3" />
                       )}
                     </Button>
                   </div>
@@ -2297,8 +2297,8 @@ export default function AWBForm({ isEdit = false, awb }) {
               </div>
             </FormSection>
 
-            <FormSection title="Receiver Details" icon={<Users className="h-6 w-6" />}>
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <FormSection title="Receiver Details" icon={<Users className="h-4 w-4" />}>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
                 {/* Country First - needed for postal lookup */}
                 <FormInput
                   label="Country"
@@ -2341,15 +2341,16 @@ export default function AWBForm({ isEdit = false, awb }) {
                     <Button
                       type="button"
                       variant="outline"
-                      size="icon"
+                      size="sm"
+                      className="h-6 px-2"
                       onClick={() => handleManualPostalLookup("receiver")}
                       disabled={loadingReceiverPostal}
                       title="Lookup address from pin code"
                     >
                       {loadingReceiverPostal ? (
-                        <Loader2 className="h-4 w-4 animate-spin" />
+                        <Loader2 className="h-3 w-3 animate-spin" />
                       ) : (
-                        <Search className="h-4 w-4" />
+                        <Search className="h-3 w-3" />
                       )}
                     </Button>
                   </div>
@@ -2405,8 +2406,8 @@ export default function AWBForm({ isEdit = false, awb }) {
                         onBlur={() => handleBlur("receiverName")}
                         className={cn(touched.receiverName && errors.receiverName && "border-destructive")}
                       />
-                      <Button type="button" variant="outline" size="icon" onClick={() => openSearch("receiver")}>
-                        <Search className="h-4 w-4" />
+                      <Button type="button" variant="outline" size="sm" className="h-6 px-2" onClick={() => openSearch("receiver")}>
+                        <Search className="h-3 w-3" />
                       </Button>
                     </div>
                   </FormInput>
@@ -2431,19 +2432,19 @@ export default function AWBForm({ isEdit = false, awb }) {
                     error={touched.receiverAddress && errors.receiverAddress}
                   >
                     <Textarea
-                      rows={2}
+                      rows={1}
                       maxLength={200}
                       value={receiverAddress}
                       onChange={(e) => setReceiverAddress(e.target.value)}
                       onBlur={() => handleBlur("receiverAddress")}
-                      className={cn(touched.receiverAddress && errors.receiverAddress && "border-destructive")}
+                      className={cn("min-h-[28px] text-xs", touched.receiverAddress && errors.receiverAddress && "border-destructive")}
                     />
                     <div className="text-xs text-muted-foreground text-right">{receiverAddress.length}/200</div>
                   </FormInput>
                 </div>
-                <div className="sm:col-span-2">
+                <div className="sm:col-span-2 hidden">
                   <FormInput label="Address Line 2" id="receiverAddress2">
-                    <Textarea rows={2} value={receiverAddress2} onChange={(e) => setReceiverAddress2(e.target.value)} />
+                    <Textarea rows={1} value={receiverAddress2} onChange={(e) => setReceiverAddress2(e.target.value)} className="min-h-[28px] text-xs" />
                   </FormInput>
                 </div>
                 <FormInput
@@ -2483,19 +2484,13 @@ export default function AWBForm({ isEdit = false, awb }) {
             <FormSection
               title="Shipping Invoice"
               description="Detail the items within each box for customs purposes."
-              icon={<FileText className="h-6 w-6" />}
+              icon={<FileText className="h-4 w-4" />}
             >
-              <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between space-y-4 sm:space-y-0 sm:space-x-4 mb-6 pb-6 border-b">
-                <div className="flex items-center space-x-2">
-                  <Checkbox id="createShippingInvoice" checked={showItemDetails} onCheckedChange={setShowItemDetails} />
-                  <Label htmlFor="createShippingInvoice" className="font-medium text-sm">
-                    Create Shipping Invoice?
-                  </Label>
-                </div>
-                <div className="flex items-center gap-4">
+              <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between space-y-1 sm:space-y-0 sm:space-x-1 mb-1 pb-1 border-b">
+                <div className="flex items-center gap-1">
                   <FormInput label="Currency">
                     <Select value={shippingCurrency} onValueChange={setShippingCurrency}>
-                      <SelectTrigger className="w-[80px]">
+                      <SelectTrigger className="w-[60px] h-6 text-xs">
                         <SelectValue />
                       </SelectTrigger>
                       <SelectContent>
@@ -2505,24 +2500,23 @@ export default function AWBForm({ isEdit = false, awb }) {
                     </Select>
                   </FormInput>
                   <div className="text-right">
-                    <Label>Total Value</Label>
-                    <div className="font-bold text-lg">
+                    <Label className="text-xs">Total Value</Label>
+                    <div className="font-bold text-xs">
                       {shippingCurrency} {totalShippingValue.toLocaleString("en-IN", { maximumFractionDigits: 2 })}
                     </div>
                   </div>
                 </div>
               </div>
 
-              {showItemDetails && (
-                <div className="space-y-6">
+              <div className="space-y-2">
                   {boxes.map((box, boxIndex) => (
-                    <div key={`box-items-${boxIndex}`} className="p-4 border rounded-lg bg-white">
-                      <h4 className="font-semibold mb-4">Box {boxIndex + 1} Items</h4>
-                      <div className="space-y-4">
+                    <div key={`box-items-${boxIndex}`} className="p-1 border rounded-lg bg-white">
+                      <h4 className="font-semibold mb-1 text-xs">Box {boxIndex + 1}</h4>
+                      <div className="space-y-1">
                         {box.items.map((item, itemIndex) => (
                           <div
                             key={`item-${boxIndex}-${itemIndex}`}
-                            className="grid grid-cols-1 md:grid-cols-12 gap-x-4 gap-y-2 items-end border-b pb-3"
+                            className="grid grid-cols-1 md:grid-cols-12 gap-x-1 gap-y-0.5 items-end border-b pb-1"
                           >
                             <div className="md:col-span-3">
                               <FormInput label="Item Name" required>
@@ -2569,10 +2563,11 @@ export default function AWBForm({ isEdit = false, awb }) {
                                   <Button
                                     type="button"
                                     variant="outline"
-                                    size="icon"
+                                    size="sm"
+                                    className="h-6 px-2"
                                     onClick={() => openHsnSearch(boxIndex, itemIndex)}
                                   >
-                                    <Search className="h-4 w-4" />
+                                    <Search className="h-3 w-3" />
                                   </Button>
                                 </div>
                               </FormInput>
@@ -2583,30 +2578,29 @@ export default function AWBForm({ isEdit = false, awb }) {
                                   type="button"
                                   variant="ghost"
                                   size="sm"
-                                  className="text-destructive hover:bg-destructive/10"
+                                  className="h-5 text-destructive hover:bg-destructive/10 text-xs"
                                   onClick={() => removeItem(boxIndex, itemIndex)}
                                 >
-                                  <Minus className="h-4 w-4 mr-1" />
+                                  <Minus className="h-3 w-3 mr-0.5" />
                                   Remove
                                 </Button>
                               )}
                             </div>
                           </div>
                         ))}
-                        <Button type="button" variant="outline" size="sm" onClick={() => addItem(boxIndex)}>
-                          <Plus className="h-4 w-4 mr-2" />
+                        <Button type="button" variant="outline" size="sm" onClick={() => addItem(boxIndex)} className="h-7 text-xs">
+                          <Plus className="h-3 w-3 mr-1" />
                           Add Item to Box {boxIndex + 1}
                         </Button>
                       </div>
                     </div>
                   ))}
-                </div>
-              )}
+              </div>
             </FormSection>
           )}
 
-          <div className="flex justify-end pt-8">
-            <Button size="lg" type="submit" className="bg-[#E31E24] hover:bg-[#C71D23] text-white" disabled={loading}>
+          <div className="flex justify-end pt-2">
+            <Button size="sm" type="submit" className="bg-[#E31E24] hover:bg-[#C71D23] text-white h-8" disabled={loading}>
               {loading ? "Processing..." : isEdit ? "Update Booking" : "Create Booking"}
             </Button>
           </div>

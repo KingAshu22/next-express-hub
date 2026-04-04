@@ -2084,7 +2084,7 @@ export default function AWBForm({ isEdit = false, awb }) {
             </div>
           </div>
 
-          <div className="flex flex-col gap-4 md:flex-row md:gap-[5%]">
+          <div className="flex flex-col gap-4 md:flex-row md:gap-[3%]">
             <div className="md:w-[45%]">
               <FormSection title="Sender Details" icon={<Users className="h-4 w-4" />}>
               <div className="grid grid-cols- sm:grid-cols-2 gap-2">
@@ -2307,7 +2307,7 @@ export default function AWBForm({ isEdit = false, awb }) {
             </FormSection>
             </div>
 
-            <div className="md:w-[50%] mr-4">
+            <div className="md:w-[55%] mr-4">
               <FormSection title="Receiver Details" icon={<Users className="h-4 w-4" />}>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 pr-2">
                 <div className="sm:col-span-2">

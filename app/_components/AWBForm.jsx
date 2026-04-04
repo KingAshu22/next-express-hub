@@ -2307,7 +2307,7 @@ export default function AWBForm({ isEdit = false, awb }) {
             </FormSection>
             </div>
 
-            <div className="md:w-[50%]">
+            <div className="md:w-[50%] mr-4">
               <FormSection title="Receiver Details" icon={<Users className="h-4 w-4" />}>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 pr-2">
                 <div className="sm:col-span-2">

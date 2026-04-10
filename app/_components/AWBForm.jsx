@@ -217,6 +217,15 @@ const FormInput = ({ id, label, children, required, error, helperText, isLoading
 export default function AWBForm({ isEdit = false, awb }) {
   const router = useRouter()
 
+  const noAutoCompleteProps = {
+    autoComplete: "new-password",
+    autoCorrect: "off",
+    autoCapitalize: "none",
+    spellCheck: false,
+    "data-lpignore": "true",
+    "data-form-type": "other",
+  }
+
   // State
   const [success, setSuccess] = useState(false)
   const [customers, setCustomers] = useState([])
@@ -1611,7 +1620,23 @@ export default function AWBForm({ isEdit = false, awb }) {
           </p>
         </header>
 
-        <form onSubmit={handleSubmit} className="space-y-2">
+        <form onSubmit={handleSubmit} className="space-y-2" autoComplete="off" data-lpignore="true">
+          <input
+            type="text"
+            name="chrome-block-autofill-user"
+            autoComplete="username"
+            tabIndex={-1}
+            className="hidden"
+            aria-hidden="true"
+          />
+          <input
+            type="password"
+            name="chrome-block-autofill-password"
+            autoComplete="new-password"
+            tabIndex={-1}
+            className="hidden"
+            aria-hidden="true"
+          />
           <FormSection
             title="Basic Details"
             description="Provide the core information for this shipment."
@@ -2098,12 +2123,14 @@ export default function AWBForm({ isEdit = false, awb }) {
                     <div className="flex gap-2">
                       <Input
                         id="senderName"
+                        name="sender_contact_name"
                         placeholder="John Doe"
                         value={senderName}
                         onChange={(e) => setSenderName(e.target.value)}
                         onBlur={() => handleBlur("senderName")}
                         disabled={isClient}
                         className={cn(touched.senderName && errors.senderName && "border-destructive")}
+                        {...noAutoCompleteProps}
                       />
                       <Button type="button" variant="outline" size="sm" className="h-6 px-2" onClick={() => openSearch("sender")}>
                         <Search className="h-3 w-3" />
@@ -2113,18 +2140,22 @@ export default function AWBForm({ isEdit = false, awb }) {
                 </div>
                 <FormInput label="Company Name" id="senderCompanyName">
                   <Input
+                    name="sender_company_info"
                     value={senderCompanyName}
                     onChange={(e) => setSenderCompanyName(e.target.value)}
                     disabled={isClient}
+                    {...noAutoCompleteProps}
                   />
                 </FormInput>
                 <FormInput label="Email" id="senderEmail" error={touched.senderEmail && errors.senderEmail}>
                   <Input
                     type="email"
+                    name="sender_email_info"
                     value={senderEmail}
                     onChange={(e) => setSenderEmail(e.target.value)}
                     onBlur={() => handleBlur("senderEmail")}
                     className={cn(touched.senderEmail && errors.senderEmail && "border-destructive")}
+                    {...noAutoCompleteProps}
                   />
                 </FormInput>
                 <div className="sm:col-span-2">
@@ -2137,11 +2168,13 @@ export default function AWBForm({ isEdit = false, awb }) {
                   >
                     <Input
                       maxLength={50}
+                      name="sender_address_line_one"
                       value={senderAddress}
                       onChange={(e) => setSenderAddress(e.target.value)}
                       onBlur={() => handleBlur("senderAddress")}
                       disabled={isClient}
                       className={cn("text-xs", touched.senderAddress && errors.senderAddress && "border-destructive")}
+                      {...noAutoCompleteProps}
                     />
                     <div className="text-xs text-muted-foreground text-right">{senderAddress.length}/50</div>
                   </FormInput>
@@ -2149,10 +2182,12 @@ export default function AWBForm({ isEdit = false, awb }) {
                 <div className="sm:col-span-2 -mt-6">
                   <FormInput label="Address Line 2" id="senderAddress2">
                     <Input
+                      name="sender_address_line_two"
                       value={senderAddress2}
                       onChange={(e) => setSenderAddress2(e.target.value)}
                       disabled={isClient}
                       className="text-xs"
+                      {...noAutoCompleteProps}
                     />
                   </FormInput>
                 </div>
@@ -2166,6 +2201,7 @@ export default function AWBForm({ isEdit = false, awb }) {
                 >
                   <div className="flex gap-2">
                     <Input
+                      name="sender_zip_info"
                       value={senderZipCode}
                       onChange={(e) => {
                         setSenderZipCode(e.target.value.replace(/\s/g, ""))
@@ -2174,6 +2210,7 @@ export default function AWBForm({ isEdit = false, awb }) {
                       onBlur={() => handleBlur("senderZipCode")}
                       disabled={isClient}
                       className={cn(touched.senderZipCode && errors.senderZipCode && "border-destructive")}
+                      {...noAutoCompleteProps}
                     />
                     <Button
                       type="button"
@@ -2212,16 +2249,20 @@ export default function AWBForm({ isEdit = false, awb }) {
                 </FormInput>
                 <FormInput label="City" id="senderCity" isLoading={loadingSenderPostal}>
                   <Input
+                    name="sender_city_info"
                     value={senderCity}
                     onChange={(e) => setSenderCity(e.target.value)}
                     placeholder={loadingSenderPostal ? "Loading..." : "Enter city"}
+                    {...noAutoCompleteProps}
                   />
                 </FormInput>
                 <FormInput label="State" id="senderState" isLoading={loadingSenderPostal}>
                   <Input
+                    name="sender_state_info"
                     value={senderState}
                     onChange={(e) => setSenderState(e.target.value)}
                     placeholder={loadingSenderPostal ? "Loading..." : "Enter state"}
+                    {...noAutoCompleteProps}
                   />
                 </FormInput>
                 <FormInput
@@ -2237,6 +2278,7 @@ export default function AWBForm({ isEdit = false, awb }) {
                     </span>
                     <Input
                       type="text"
+                      name="sender_phone_info"
                       className={cn(
                         "rounded-l-none",
                         touched.senderContact && errors.senderContact && "border-destructive"
@@ -2251,17 +2293,21 @@ export default function AWBForm({ isEdit = false, awb }) {
                       disabled={isClient}
                       maxLength={10}
                       placeholder="10 digit mobile number"
+                      inputMode="numeric"
+                      {...noAutoCompleteProps}
                     />
                   </div>
                 </FormInput>
                 <FormInput label="GST" id="gst" error={touched.gst && errors.gst}>
                   <Input
+                    name="sender_gst_info"
                     value={gst}
                     onChange={(e) => setGst(e.target.value.toUpperCase())}
                     onBlur={() => handleBlur("gst")}
                     disabled={isClient}
                     className={cn(touched.gst && errors.gst && "border-destructive")}
                     placeholder="e.g., 22AAAAA0000A1Z5"
+                    {...noAutoCompleteProps}
                   />
                 </FormInput>
                 <div className="sm:col-span-2 grid grid-cols-1 sm:grid-cols-2 gap-4">
@@ -2288,6 +2334,7 @@ export default function AWBForm({ isEdit = false, awb }) {
                   </FormInput>
                   <FormInput label="KYC Number" id="kyc" required error={touched.kyc && errors.kyc}>
                     <Input
+                      name="sender_kyc_info"
                       value={kyc}
                       onChange={(e) => setKyc(e.target.value.toUpperCase())}
                       onBlur={() => handleBlur("kyc")}
@@ -2300,6 +2347,7 @@ export default function AWBForm({ isEdit = false, awb }) {
                             ? "e.g., ABCDE1234F"
                             : "Enter KYC number"
                       }
+                      {...noAutoCompleteProps}
                     />
                   </FormInput>
                 </div>
@@ -2320,11 +2368,13 @@ export default function AWBForm({ isEdit = false, awb }) {
                     <div className="flex gap-2">
                       <Input
                         id="receiverName"
+                        name="receiver_contact_name"
                         placeholder="Jane Smith"
                         value={receiverName}
                         onChange={(e) => setReceiverName(e.target.value)}
                         onBlur={() => handleBlur("receiverName")}
                         className={cn(touched.receiverName && errors.receiverName && "border-destructive")}
+                        {...noAutoCompleteProps}
                       />
                       <Button type="button" variant="outline" size="sm" className="h-6 px-2" onClick={() => openSearch("receiver")}>
                         <Search className="h-3 w-3" />
@@ -2333,15 +2383,22 @@ export default function AWBForm({ isEdit = false, awb }) {
                   </FormInput>
                 </div>
                 <FormInput label="Company Name" id="receiverCompanyName">
-                  <Input value={receiverCompanyName} onChange={(e) => setReceiverCompanyName(e.target.value)} />
+                  <Input
+                    name="receiver_company_info"
+                    value={receiverCompanyName}
+                    onChange={(e) => setReceiverCompanyName(e.target.value)}
+                    {...noAutoCompleteProps}
+                  />
                 </FormInput>
                 <FormInput label="Email" id="receiverEmail" required error={touched.receiverEmail && errors.receiverEmail}>
                   <Input
                     type="email"
+                    name="receiver_email_info"
                     value={receiverEmail}
                     onChange={(e) => setReceiverEmail(e.target.value)}
                     onBlur={() => handleBlur("receiverEmail")}
                     className={cn(touched.receiverEmail && errors.receiverEmail && "border-destructive")}
+                    {...noAutoCompleteProps}
                   />
                 </FormInput>
                 <div className="sm:col-span-2">
@@ -2354,17 +2411,25 @@ export default function AWBForm({ isEdit = false, awb }) {
                   >
                     <Input
                       maxLength={50}
+                      name="receiver_address_line_one"
                       value={receiverAddress}
                       onChange={(e) => setReceiverAddress(e.target.value)}
                       onBlur={() => handleBlur("receiverAddress")}
                       className={cn("text-xs", touched.receiverAddress && errors.receiverAddress && "border-destructive")}
+                      {...noAutoCompleteProps}
                     />
                     <div className="text-xs text-muted-foreground text-right">{receiverAddress.length}/50</div>
                   </FormInput>
                 </div>
                 <div className="sm:col-span-2 -mt-6">
                   <FormInput label="Address Line 2" id="receiverAddress2">
-                    <Input value={receiverAddress2} onChange={(e) => setReceiverAddress2(e.target.value)} className="text-xs" />
+                    <Input
+                      name="receiver_address_line_two"
+                      value={receiverAddress2}
+                      onChange={(e) => setReceiverAddress2(e.target.value)}
+                      className="text-xs"
+                      {...noAutoCompleteProps}
+                    />
                   </FormInput>
                 </div>
                 {/* Country - moved after address */}
@@ -2397,6 +2462,7 @@ export default function AWBForm({ isEdit = false, awb }) {
                 >
                   <div className="flex gap-2">
                     <Input
+                      name="receiver_zip_info"
                       value={receiverZipCode}
                       onChange={(e) => {
                         setReceiverZipCode(e.target.value.replace(/\s/g, ""))
@@ -2405,6 +2471,7 @@ export default function AWBForm({ isEdit = false, awb }) {
                       onBlur={() => handleBlur("receiverZipCode")}
                       className={cn(touched.receiverZipCode && errors.receiverZipCode && "border-destructive")}
                       placeholder="Enter zip code"
+                      {...noAutoCompleteProps}
                     />
                     <Button
                       type="button"
@@ -2433,11 +2500,13 @@ export default function AWBForm({ isEdit = false, awb }) {
                   isLoading={loadingReceiverPostal}
                 >
                   <Input
+                    name="receiver_city_info"
                     value={receiverCity}
                     onChange={(e) => setReceiverCity(e.target.value)}
                     onBlur={() => handleBlur("receiverCity")}
                     placeholder={loadingReceiverPostal ? "Loading..." : "Enter city"}
                     className={cn(touched.receiverCity && errors.receiverCity && "border-destructive")}
+                    {...noAutoCompleteProps}
                   />
                 </FormInput>
 
@@ -2450,11 +2519,13 @@ export default function AWBForm({ isEdit = false, awb }) {
                   isLoading={loadingReceiverPostal}
                 >
                   <Input
+                    name="receiver_state_info"
                     value={receiverState}
                     onChange={(e) => setReceiverState(e.target.value)}
                     onBlur={() => handleBlur("receiverState")}
                     placeholder={loadingReceiverPostal ? "Loading..." : "Enter state"}
                     className={cn(touched.receiverState && errors.receiverState && "border-destructive")}
+                    {...noAutoCompleteProps}
                   />
                 </FormInput>
                 <FormInput
@@ -2466,6 +2537,7 @@ export default function AWBForm({ isEdit = false, awb }) {
                 >
                   <Input
                     type="text"
+                    name="receiver_phone_info"
                     className={cn(
                       "text-xs",
                       touched.receiverContact && errors.receiverContact && "border-destructive"
@@ -2479,6 +2551,8 @@ export default function AWBForm({ isEdit = false, awb }) {
                     onBlur={() => handleBlur("receiverContact")}
                     maxLength={15}
                     placeholder="5-15 digit phone number"
+                    inputMode="numeric"
+                    {...noAutoCompleteProps}
                   />
                 </FormInput>
               </div>

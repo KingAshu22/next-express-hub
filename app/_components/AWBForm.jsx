@@ -891,15 +891,15 @@ export default function AWBForm({ isEdit = false, awb }) {
           console.log("Receiver postal data found:", postalData)
           
           // Only update if fields are empty or if postal data was previously fetched
-          if (!receiverCity || receiverPostalFetched) {
-            setReceiverCity(postalData.city)
-          }
-          if (!receiverState || receiverPostalFetched) {
-            setReceiverState(postalData.state)
-          }
-          if (!receiverAddress2 && postalData.address) {
-            setReceiverAddress2(postalData.address)
-          }
+          // if (!receiverCity || receiverPostalFetched) {
+          //   setReceiverCity(postalData.city)
+          // }
+          // if (!receiverState || receiverPostalFetched) {
+          //   setReceiverState(postalData.state)
+          // }
+          // if (!receiverAddress2 && postalData.address) {
+          //   setReceiverAddress2(postalData.address)
+          // }
           
           setReceiverPostalFetched(true)
           toast.success("Receiver address auto-filled from pin code")
@@ -972,11 +972,11 @@ export default function AWBForm({ isEdit = false, awb }) {
       try {
         const postalData = await lookupPostalData(receiverZipCode, countryCode, receiverCountry)
         if (postalData) {
-          setReceiverCity(postalData.city)
-          setReceiverState(postalData.state)
-          if (postalData.address) setReceiverAddress2(postalData.address)
+          // setReceiverCity(postalData.city)
+          // setReceiverState(postalData.state)
+          // if (postalData.address) setReceiverAddress2(postalData.address)
           setReceiverPostalFetched(true)
-          toast.success("Address auto-filled successfully!")
+          // toast.success("Address auto-filled successfully!")
         } else {
           toast.error("Could not find address for this pin code. Please enter manually.")
         }

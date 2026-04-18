@@ -7,7 +7,7 @@ import {
   MapPin, RefreshCw, Loader2, CircleDot, PackageX, Warehouse,
   ClipboardCheck, Navigation, Calendar, MessageSquare, Copy, Check,
   ExternalLink, Share2, Globe, CalendarCheck, Timer, Route,
-  Building2, User, Phone, MoreHorizontal, ArrowRight, ChevronRight,
+  Building2, User, Phone, MoreHorizontal, ArrowRight,
 } from "lucide-react";
 import { FaWhatsapp } from "react-icons/fa";
 
@@ -243,7 +243,7 @@ const ShipmentMap = ({ origin, destination, progress, isDelivered }) => {
 
       // ── Ghost arc (dashed) ──
       ghostLine.current = L.polyline(arc, {
-        color: "#c7d2fe", weight: 2.5, opacity: 0.7, dashArray: "7 9",
+        color: "#ef4444", weight: 2.5, opacity: 0.75, dashArray: "7 9",
       }).addTo(map);
 
       // ── Traveled arc (solid) ──
@@ -281,30 +281,26 @@ const ShipmentMap = ({ origin, destination, progress, isDelivered }) => {
 
       // ── Plane marker ──
       const planePos = arc[planeIdx];
-      const nextPos  = arc[Math.min(planeIdx + 1, arc.length - 1)];
-      const deg      = bearing(planePos[0], planePos[1], nextPos[0], nextPos[1]);
       const accent   = isDelivered ? "#10b981" : "#6366f1";
 
-      const makePlaneHTML = (rotateDeg) => `
+      const makePlaneHTML = () => `
         <div id="plane-wrap" style="
-          width:42px;height:42px;
+          width:40px;height:40px;
           display:flex;align-items:center;justify-content:center;
           background:white;border-radius:50%;
           border:2.5px solid ${accent};
           box-shadow:0 4px 14px rgba(99,102,241,.35),0 1px 4px rgba(0,0,0,.12);
-          transform:rotate(${rotateDeg}deg);
-          transition:transform 0.35s ease;
-          will-change:transform;
         ">
-          <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24"
-               fill="${accent}" stroke="none">
-            <!-- Lucide plane path (correct commercial-airplane silhouette) -->
-            <path d="M21 16v-2l-8-5V3.5a1.5 1.5 0 0 0-3 0V9l-8 5v2l8-2.5V19l-2 1.5V22l3.5-1 3.5 1v-1.5L13 19v-5.5z"/>
+          <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24"
+               fill="none" stroke="${accent}" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M21 8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16Z"/>
+            <path d="m3.3 7 8.7 5 8.7-5"/>
+            <path d="M12 22V12"/>
           </svg>
         </div>`;
 
       planeMarker.current = L.marker(planePos, {
-        icon: L.divIcon({ className:"", html: makePlaneHTML(deg - 90), iconAnchor:[21,21] }),
+        icon: L.divIcon({ className:"", html: makePlaneHTML(), iconAnchor:[20,20] }),
         zIndexOffset: 1000,
       }).addTo(map);
 
@@ -316,18 +312,10 @@ const ShipmentMap = ({ origin, destination, progress, isDelivered }) => {
         frame = (frame + 1) % 360;
         const osc = Math.sin(frame * Math.PI / 180) * RANGE;
         const idx  = Math.max(0, Math.min(arc.length - 1, Math.round(planeIdx + osc)));
-        const nIdx = Math.min(idx + 1, arc.length - 1);
         const pos  = arc[idx];
-        const npos = arc[nIdx];
-        const b    = bearing(pos[0], pos[1], npos[0], npos[1]);
 
         if (planeMarker.current) {
           planeMarker.current.setLatLng(pos);
-          const el = planeMarker.current.getElement();
-          if (el) {
-            const wrap = el.querySelector("#plane-wrap");
-            if (wrap) wrap.style.transform = `rotate(${b - 90}deg)`;
-          }
         }
         rafId.current = requestAnimationFrame(animate);
       };
@@ -400,7 +388,7 @@ const ShipmentMap = ({ origin, destination, progress, isDelivered }) => {
         )}
 
         {/* ── Route pill (bottom-center) ── */}
-        {!geocoding && coords && (
+        {false && !geocoding && coords && (
           <div className="absolute bottom-4 left-1/2 -translate-x-1/2 z-[9999] pointer-events-none">
             <div className="bg-white/95 backdrop-blur-sm border border-gray-100 rounded-full px-4 py-2 shadow-lg flex items-center gap-2 text-xs text-gray-700 whitespace-nowrap">
               <span className="font-bold text-gray-900 shrink-0">From:</span>
@@ -413,7 +401,7 @@ const ShipmentMap = ({ origin, destination, progress, isDelivered }) => {
         )}
 
         {/* ── Legend (bottom-left) ── */}
-        {!geocoding && coords && (
+        {false && !geocoding && coords && (
           <div className="absolute bottom-4 left-4 z-[9999] pointer-events-none">
             <div className="bg-white/92 backdrop-blur-sm rounded-xl px-3 py-2 shadow-sm border border-gray-100 flex flex-col gap-1.5">
               <div className="flex items-center gap-1.5 text-[10px] font-semibold text-gray-600">
@@ -548,29 +536,36 @@ export default function TrackingDetails({ parcelDetails }) {
   const shippingType = forwardingData?.shippingType;
   const daysTransit  = forwardingData?.daysInTransit;
   const carrier      = forwardingData?.carrier;
+  const statusTone   = isDelivered
+    ? "bg-emerald-100 text-emerald-700 border-emerald-200"
+    : anyLoading
+      ? "bg-gray-100 text-gray-600 border-gray-200"
+      : "bg-blue-100 text-blue-700 border-blue-200";
 
   if (!parcelDetails) return null;
 
   return (
     <div className="w-full min-h-screen bg-gray-100 p-3 sm:p-4 md:p-6">
 
-      {/* Breadcrumb */}
-      <nav className="flex items-center gap-1.5 text-sm text-gray-500 mb-4 flex-wrap">
-        <span className="hover:text-gray-800 cursor-pointer transition-colors">Customer</span>
-        <ChevronRight className="w-3.5 h-3.5 shrink-0" />
-        <span className="hover:text-gray-800 cursor-pointer transition-colors">Orders</span>
-        <ChevronRight className="w-3.5 h-3.5 shrink-0" />
-        <span className="hover:text-gray-800 cursor-pointer transition-colors">Shipments</span>
-        <ChevronRight className="w-3.5 h-3.5 shrink-0" />
-        <span className="font-semibold text-gray-900">#{trackNum}</span>
-      </nav>
+      <div className="mb-4 flex items-center justify-between gap-3 flex-wrap">
+        <div>
+          <p className="text-xs font-bold uppercase tracking-[0.22em] text-gray-500">Latest Status</p>
+          <div className={`mt-1 inline-flex items-center rounded-full border px-4 py-2 text-sm font-bold ${statusTone}`}>
+            {anyLoading ? "Updating..." : latestStatus}
+          </div>
+        </div>
+        <div className="text-right">
+          <p className="text-xs font-bold uppercase tracking-[0.22em] text-gray-500">Shipment No</p>
+          <p className="text-sm font-bold text-gray-900">#{trackNum}</p>
+        </div>
+      </div>
 
       {/* ─── MAIN CARD ─── */}
       <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
-        <div className="flex flex-col lg:flex-row" style={{ minHeight: "clamp(540px, 68vh, 640px)" }}>
+        <div className="flex flex-col lg:flex-row" style={{ minHeight: "clamp(500px, 58vh, 560px)" }}>
 
           {/* ══════ LEFT: MAP ══════ */}
-          <div className="relative flex-1 lg:flex-[1.55] min-h-[260px] sm:min-h-[320px] lg:min-h-[540px] border-b lg:border-b-0 lg:border-r border-gray-100 bg-slate-50">
+          <div className="relative flex-1 lg:flex-[1.35] min-h-[220px] sm:min-h-[280px] lg:min-h-[500px] border-b lg:border-b-0 lg:border-r border-gray-100 bg-slate-50">
 
             {/* Shipment badge – top-left */}
             <div className="absolute top-4 left-4 right-4 z-[9999] pointer-events-none">
@@ -611,6 +606,14 @@ export default function TrackingDetails({ parcelDetails }) {
 
           {/* ══════ RIGHT: DETAILS ══════ */}
           <div className="w-full lg:w-[370px] xl:w-[400px] flex flex-col bg-white">
+            <div className="px-5 py-4 border-b border-gray-100 bg-gradient-to-r from-slate-50 to-white">
+              <p className="text-[10px] uppercase tracking-[0.2em] text-gray-500 font-bold mb-2">Route</p>
+              <div className="flex items-center gap-2 text-sm leading-none">
+                <span className="font-bold text-gray-900">{mapOrigin}</span>
+                <ArrowRight className="w-4 h-4 text-gray-400 shrink-0" />
+                <span className="font-bold text-gray-900">{mapDestination}</span>
+              </div>
+            </div>
 
             {/* Panel header */}
             <div className="flex items-center justify-between px-5 py-4 border-b border-gray-100 shrink-0">
@@ -677,11 +680,14 @@ export default function TrackingDetails({ parcelDetails }) {
                 ))}
               </div>
 
-              {/* Tracking # */}
+              {/* Shipment # */}
               <div className="px-5 py-4">
-                <p className="text-[10px] uppercase tracking-wider text-gray-400 font-bold mb-2">Tracking Number</p>
-                <div className="flex items-center gap-2 bg-gray-50 rounded-xl px-3.5 py-2.5 border border-gray-100">
-                  <span className="font-mono text-sm font-bold text-gray-800 truncate flex-1">{trackNum}</span>
+                <p className="text-[10px] uppercase tracking-wider text-gray-400 font-bold mb-2">Shipment No</p>
+                <div className="flex items-center gap-3 bg-gray-50 rounded-xl px-3.5 py-3 border border-gray-100">
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-bold text-gray-900 truncate">#{trackNum}</p>
+                    <p className="font-mono text-[11px] tracking-[0.28em] text-gray-500 truncate">||| || ||| || ||| || ||</p>
+                  </div>
                   <button onClick={copyTrack} className="p-1.5 hover:bg-gray-200 active:bg-gray-300 rounded-lg transition-colors shrink-0">
                     {copied
                       ? <Check className="w-3.5 h-3.5 text-emerald-600" />

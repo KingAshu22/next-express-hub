@@ -10,6 +10,7 @@ import {
   Building2, User, Phone, MoreHorizontal, ArrowRight,
 } from "lucide-react";
 import { FaWhatsapp } from "react-icons/fa";
+import Barcode from "react-barcode";
 
 // ─────────────────────────────────────────────
 // HELPERS
@@ -553,6 +554,12 @@ export default function TrackingDetails({ parcelDetails }) {
           <div className={`mt-1 inline-flex items-center rounded-full border px-4 py-2 text-sm font-bold ${statusTone}`}>
             {anyLoading ? "Updating..." : latestStatus}
           </div>
+          {latestLoc && (
+            <p className="mt-2 flex items-center gap-1.5 text-sm font-semibold text-gray-700">
+              <MapPin className="w-4 h-4 shrink-0 text-gray-500" />
+              <span className="truncate">{latestLoc}</span>
+            </p>
+          )}
         </div>
         <div className="text-right">
           <p className="text-xs font-bold uppercase tracking-[0.22em] text-gray-500">Shipment No</p>
@@ -608,10 +615,10 @@ export default function TrackingDetails({ parcelDetails }) {
           <div className="w-full lg:w-[370px] xl:w-[400px] flex flex-col bg-white">
             <div className="px-5 py-4 border-b border-gray-100 bg-gradient-to-r from-slate-50 to-white">
               <p className="text-[10px] uppercase tracking-[0.2em] text-gray-500 font-bold mb-2">Route</p>
-              <div className="flex items-center gap-2 text-sm leading-none">
-                <span className="font-bold text-gray-900">{mapOrigin}</span>
-                <ArrowRight className="w-4 h-4 text-gray-400 shrink-0" />
-                <span className="font-bold text-gray-900">{mapDestination}</span>
+              <div className="flex items-center gap-3 text-base leading-none">
+                <span className="font-extrabold text-gray-950">{mapOrigin}</span>
+                <ArrowRight className="w-5 h-5 text-gray-500 shrink-0" />
+                <span className="font-extrabold text-gray-950">{mapDestination}</span>
               </div>
             </div>
 
@@ -686,7 +693,17 @@ export default function TrackingDetails({ parcelDetails }) {
                 <div className="flex items-center gap-3 bg-gray-50 rounded-xl px-3.5 py-3 border border-gray-100">
                   <div className="flex-1 min-w-0">
                     <p className="text-sm font-bold text-gray-900 truncate">#{trackNum}</p>
-                    <p className="font-mono text-[11px] tracking-[0.28em] text-gray-500 truncate">||| || ||| || ||| || ||</p>
+                    <div className="mt-2 overflow-hidden rounded-md bg-white px-2 py-2 border border-gray-200">
+                      <Barcode
+                        value={String(trackNum || "")}
+                        width={1.4}
+                        height={36}
+                        margin={0}
+                        displayValue={false}
+                        background="transparent"
+                        lineColor="#111827"
+                      />
+                    </div>
                   </div>
                   <button onClick={copyTrack} className="p-1.5 hover:bg-gray-200 active:bg-gray-300 rounded-lg transition-colors shrink-0">
                     {copied

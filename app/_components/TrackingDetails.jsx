@@ -8,7 +8,6 @@ import {
   ClipboardCheck, Navigation, Calendar, MessageSquare, Copy, Check,
   ExternalLink, Share2, Globe, CalendarCheck, Timer, Route,
   Building2, User, Phone, MoreHorizontal, ArrowRight, ChevronRight,
-  Plus, Minus,
 } from "lucide-react";
 import { FaWhatsapp } from "react-icons/fa";
 
@@ -218,16 +217,16 @@ const ShipmentMap = ({ origin, destination, progress, isDelivered }) => {
       if (!mapInst.current) {
         mapInst.current = L.map(mapDiv.current, {
           zoomControl: false,        // we render our own
-          scrollWheelZoom: true,
-          doubleClickZoom: true,
-          dragging: true,
+          scrollWheelZoom: false,
+          doubleClickZoom: false,
+          dragging: false,
           attributionControl: false,
           tap: true,                 // mobile
         });
 
         L.tileLayer(
-          "https://tiles.stadiamaps.com/tiles/alidade_smooth/{z}/{x}/{y}{r}.png",
-          { maxZoom: 20 }
+          "https://tiles.stadiamaps.com/tiles/alidade_bright/{z}/{x}/{y}{r}.png",
+          { zoom: 18 }
         ).addTo(mapInst.current);
 
         L.control.attribution({ position:"bottomright", prefix:false })
@@ -355,9 +354,6 @@ const ShipmentMap = ({ origin, destination, progress, isDelivered }) => {
     if (mapInst.current) { mapInst.current.remove(); mapInst.current = null; }
   }, []);
 
-  const zoomIn  = () => mapInst.current?.zoomIn();
-  const zoomOut = () => mapInst.current?.zoomOut();
-
   return (
     <>
       <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" crossOrigin="" />
@@ -392,45 +388,26 @@ const ShipmentMap = ({ origin, destination, progress, isDelivered }) => {
           </div>
         )}
 
-        {/* ── Zoom controls (top-right corner, below progress badge) ── */}
+        {/* ── Progress badge ── */}
         {!geocoding && (
           <div className="absolute top-4 right-4 z-[9999] flex flex-col gap-1.5">
-            {/* Progress badge */}
             <span className={`self-end text-[11px] font-bold px-3 py-1.5 rounded-full shadow-md pointer-events-none ${
               isDelivered ? "bg-emerald-500 text-white" : "bg-indigo-600 text-white"
             }`}>
-              {isDelivered ? "✓ Delivered" : `${progress}% Complete`}
+              {isDelivered ? "Delivered" : `${progress}% Complete`}
             </span>
-
-            {/* Zoom buttons */}
-            <div className="flex flex-col gap-1 self-end mt-1">
-              <button
-                onClick={zoomIn}
-                aria-label="Zoom in"
-                className="w-8 h-8 bg-white hover:bg-gray-50 active:bg-gray-100 border border-gray-200 rounded-lg shadow-sm flex items-center justify-center text-gray-700 transition-colors"
-              >
-                <Plus className="w-4 h-4" />
-              </button>
-              <button
-                onClick={zoomOut}
-                aria-label="Zoom out"
-                className="w-8 h-8 bg-white hover:bg-gray-50 active:bg-gray-100 border border-gray-200 rounded-lg shadow-sm flex items-center justify-center text-gray-700 transition-colors"
-              >
-                <Minus className="w-4 h-4" />
-              </button>
-            </div>
           </div>
         )}
 
         {/* ── Route pill (bottom-center) ── */}
         {!geocoding && coords && (
           <div className="absolute bottom-4 left-1/2 -translate-x-1/2 z-[9999] pointer-events-none">
-            <div className="bg-white/95 backdrop-blur-sm border border-gray-100 rounded-full px-4 py-1.5 shadow-lg flex items-center gap-2 text-xs font-semibold text-gray-700 whitespace-nowrap">
-              <span className="w-2 h-2 rounded-full bg-emerald-500 shrink-0" />
-              {coords.from.name}
+            <div className="bg-white/95 backdrop-blur-sm border border-gray-100 rounded-full px-4 py-2 shadow-lg flex items-center gap-2 text-xs text-gray-700 whitespace-nowrap">
+              <span className="font-bold text-gray-900 shrink-0">From:</span>
+              <span className="font-bold text-gray-800">{origin}</span>
               <ArrowRight className="w-3 h-3 text-gray-400 shrink-0" />
-              {coords.to.name}
-              <span className="w-2 h-2 rounded-full bg-red-400 shrink-0" />
+              <span className="font-bold text-gray-900 shrink-0">To:</span>
+              <span className="font-bold text-gray-800">{destination}</span>
             </div>
           </div>
         )}
@@ -441,7 +418,7 @@ const ShipmentMap = ({ origin, destination, progress, isDelivered }) => {
             <div className="bg-white/92 backdrop-blur-sm rounded-xl px-3 py-2 shadow-sm border border-gray-100 flex flex-col gap-1.5">
               <div className="flex items-center gap-1.5 text-[10px] font-semibold text-gray-600">
                 <span className="w-2.5 h-2.5 rounded-full bg-emerald-500 shrink-0" />
-                Origin: {(origin||"").toUpperCase()}
+                <span className="font-bold text-gray-900">From:</span> {(origin||"").toUpperCase()}
               </div>
               <div className="flex items-center gap-1.5 text-[10px] font-semibold text-gray-600">
                 <Plane className="w-2.5 h-2.5 text-indigo-500 shrink-0" />
@@ -449,7 +426,7 @@ const ShipmentMap = ({ origin, destination, progress, isDelivered }) => {
               </div>
               <div className="flex items-center gap-1.5 text-[10px] font-semibold text-gray-600">
                 <span className="w-2.5 h-2.5 rounded-full bg-red-400 shrink-0" />
-                Destination: {(destination||"").toUpperCase()}
+                <span className="font-bold text-gray-900">To:</span> {(destination||"").toUpperCase()}
               </div>
             </div>
           </div>
@@ -484,8 +461,12 @@ export default function TrackingDetails({ parcelDetails }) {
   const doForwarding    = fwdNumber && !isDHL;
 
   const trackNum  = parcelDetails?.trackingNumber;
+  const originCountry = parcelDetails?.sender?.country || "";
+  const destinationCountry = parcelDetails?.receiver?.country || "";
   const origin    = parcelDetails?.sender?.city    || parcelDetails?.sender?.country    || "Origin";
   const dest      = parcelDetails?.receiver?.city  || parcelDetails?.receiver?.country  || "Destination";
+  const mapOrigin = originCountry || origin;
+  const mapDestination = destinationCountry || dest;
   const hasFwdInfo= !!(fwdNumber || fwdLink);
 
   const rName     = parcelDetails?.receiver?.name    || "";
@@ -586,37 +567,42 @@ export default function TrackingDetails({ parcelDetails }) {
 
       {/* ─── MAIN CARD ─── */}
       <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
-        <div className="flex flex-col lg:flex-row" style={{ minHeight: "clamp(520px, 80vh, 720px)" }}>
+        <div className="flex flex-col lg:flex-row" style={{ minHeight: "clamp(540px, 68vh, 640px)" }}>
 
           {/* ══════ LEFT: MAP ══════ */}
-          <div className="relative flex-1 lg:flex-[1.6] min-h-[300px] sm:min-h-[380px] lg:min-h-0 border-b lg:border-b-0 lg:border-r border-gray-100">
+          <div className="relative flex-1 lg:flex-[1.55] min-h-[260px] sm:min-h-[320px] lg:min-h-[540px] border-b lg:border-b-0 lg:border-r border-gray-100 bg-slate-50">
 
             {/* Shipment badge – top-left */}
-            <div className="absolute top-4 left-4 z-[9999] pointer-events-none max-w-[calc(100%-110px)]">
-              <div className="bg-white/96 backdrop-blur-sm rounded-xl shadow-sm border border-gray-100 px-3.5 py-2.5">
-                <div className="flex items-center gap-2 flex-wrap">
-                  <span className="text-sm font-bold text-gray-900 truncate">Shipment #{trackNum}</span>
-                  <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full whitespace-nowrap ${
+            <div className="absolute top-4 left-4 right-4 z-[9999] pointer-events-none">
+              <div className="bg-white/96 backdrop-blur-sm rounded-xl shadow-sm border border-gray-100 px-3.5 py-3">
+                <div className="flex items-start justify-between gap-3">
+                  <div className="min-w-0">
+                    <span className="text-sm font-bold text-gray-900 block truncate">Shipment #{trackNum}</span>
+                    {latestLoc && (
+                      <p className="text-[11px] text-gray-500 flex items-center gap-1 mt-1 truncate">
+                        <MapPin className="w-2.5 h-2.5 shrink-0" />{latestLoc}
+                      </p>
+                    )}
+                  </div>
+                  <div className="shrink-0 text-right">
+                    <p className="text-[10px] uppercase tracking-[0.18em] text-gray-500 font-bold mb-1">Status</p>
+                    <span className={`inline-flex text-[11px] font-bold px-3 py-1 rounded-full whitespace-nowrap ${
                     isDelivered ? "bg-emerald-100 text-emerald-700"
                     : anyLoading ? "bg-gray-100 text-gray-500"
                     : "bg-violet-100 text-violet-700"
                   }`}>
-                    {anyLoading ? "Updating…" : latestStatus}
-                  </span>
+                      {anyLoading ? "Updating…" : latestStatus}
+                    </span>
+                  </div>
                 </div>
-                {latestLoc && (
-                  <p className="text-[11px] text-gray-500 flex items-center gap-1 mt-1 truncate">
-                    <MapPin className="w-2.5 h-2.5 shrink-0" />{latestLoc}
-                  </p>
-                )}
               </div>
             </div>
 
             {/* Map fills the whole left panel */}
             <div className="absolute inset-0">
               <ShipmentMap
-                origin={origin}
-                destination={dest}
+                origin={mapOrigin}
+                destination={mapDestination}
                 progress={progress}
                 isDelivered={isDelivered}
               />
@@ -658,10 +644,12 @@ export default function TrackingDetails({ parcelDetails }) {
                   <div className="flex-1 min-w-0 space-y-3">
                     <div>
                       <p className="text-[10px] uppercase tracking-wider text-gray-400 font-bold mb-0.5">Departure</p>
+                      <p className="text-xs font-bold text-gray-900 mb-1">From: {mapOrigin}</p>
                       <p className="text-sm font-semibold text-gray-800 leading-snug">{sAddr || origin}</p>
                     </div>
                     <div>
                       <p className="text-[10px] uppercase tracking-wider text-gray-400 font-bold mb-0.5">Arrival</p>
+                      <p className="text-xs font-bold text-gray-900 mb-1">To: {mapDestination}</p>
                       <p className="text-sm font-semibold text-gray-800 leading-snug">{rAddr || dest}</p>
                     </div>
                   </div>

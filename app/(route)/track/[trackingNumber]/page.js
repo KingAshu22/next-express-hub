@@ -68,10 +68,7 @@ export default function TrackingPage() {
   return (
     <>
       <FrontHeader className="mb-4" />
-      <div className="container mx-auto px-4 py-24 bg-gradient-to-b from-indigo-50 to-white">
-        <h1 className="text-4xl font-bold mb-8 text-center text-indigo-800">
-          Tracking Details
-        </h1>
+      <div className="container mx-auto px-4 py-20 bg-gradient-to-b from-indigo-50 to-white">
         <TrackingDetails parcelDetails={awbData} />
       </div>
       <Footer />

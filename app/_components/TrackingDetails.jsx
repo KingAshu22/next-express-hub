@@ -563,7 +563,19 @@ export default function TrackingDetails({ parcelDetails }) {
         </div>
         <div className="text-right">
           <p className="text-xs font-bold uppercase tracking-[0.22em] text-gray-500">Shipment No</p>
-          <p className="text-sm font-bold text-gray-900">#{trackNum}</p>
+          <p className="text-4xl font-bold text-gray-900">
+            <Barcode
+                        value={String(trackNum || "")}
+                        width={2.4}
+                        height={56}
+                        margin={0}
+                        displayValue={false}
+                        className="ml-28"
+                        background="transparent"
+                        lineColor="#111827"
+                      />
+            #{trackNum}
+            </p>
         </div>
       </div>
 
@@ -621,6 +633,25 @@ export default function TrackingDetails({ parcelDetails }) {
                 <span className="font-extrabold text-gray-950">{mapDestination}</span>
               </div>
             </div>
+
+            {/* Partner tracking # */}
+              {hasFwdInfo && !isDHL && fwdNumber && (
+                <div className="px-5 py-4">
+                  <p className="text-[10px] uppercase tracking-wider text-gray-400 font-bold mb-2">Forwarding Details</p>
+                  <div className="flex items-center gap-2 bg-orange-50 rounded-xl px-3.5 py-2.5 border border-orange-100">
+                    <span className="font-mono text-sm font-bold text-gray-800 truncate flex-1">{fwdNumber}</span>
+                    <button onClick={copyFwd} className="p-1.5 hover:bg-orange-100 active:bg-orange-200 rounded-lg transition-colors shrink-0">
+                      {copiedFwd ? <Check className="w-3.5 h-3.5 text-emerald-600" /> : <Copy className="w-3.5 h-3.5 text-orange-400" />}
+                    </button>
+                    {fwdLink && (
+                      <a href={fwdLink} target="_blank" rel="noopener noreferrer"
+                         className="p-1.5 bg-orange-500 hover:bg-orange-600 active:bg-orange-700 rounded-lg transition-colors shrink-0">
+                        <ExternalLink className="w-3.5 h-3.5 text-white" />
+                      </a>
+                    )}
+                  </div>
+                </div>
+              )}
 
             {/* Panel header */}
             <div className="flex items-center justify-between px-5 py-4 border-b border-gray-100 shrink-0">
@@ -686,52 +717,6 @@ export default function TrackingDetails({ parcelDetails }) {
                   </div>
                 ))}
               </div>
-
-              {/* Shipment # */}
-              <div className="px-5 py-4">
-                <p className="text-[10px] uppercase tracking-wider text-gray-400 font-bold mb-2">Shipment No</p>
-                <div className="flex items-center gap-3 bg-gray-50 rounded-xl px-3.5 py-3 border border-gray-100">
-                  <div className="flex-1 min-w-0">
-                    <p className="text-sm font-bold text-gray-900 truncate">#{trackNum}</p>
-                    <div className="mt-2 overflow-hidden rounded-md bg-white px-2 py-2 border border-gray-200">
-                      <Barcode
-                        value={String(trackNum || "")}
-                        width={1.4}
-                        height={36}
-                        margin={0}
-                        displayValue={false}
-                        background="transparent"
-                        lineColor="#111827"
-                      />
-                    </div>
-                  </div>
-                  <button onClick={copyTrack} className="p-1.5 hover:bg-gray-200 active:bg-gray-300 rounded-lg transition-colors shrink-0">
-                    {copied
-                      ? <Check className="w-3.5 h-3.5 text-emerald-600" />
-                      : <Copy  className="w-3.5 h-3.5 text-gray-400" />
-                    }
-                  </button>
-                </div>
-              </div>
-
-              {/* Partner tracking # */}
-              {hasFwdInfo && !isDHL && fwdNumber && (
-                <div className="px-5 py-4">
-                  <p className="text-[10px] uppercase tracking-wider text-gray-400 font-bold mb-2">Partner Tracking</p>
-                  <div className="flex items-center gap-2 bg-orange-50 rounded-xl px-3.5 py-2.5 border border-orange-100">
-                    <span className="font-mono text-sm font-bold text-gray-800 truncate flex-1">{fwdNumber}</span>
-                    <button onClick={copyFwd} className="p-1.5 hover:bg-orange-100 active:bg-orange-200 rounded-lg transition-colors shrink-0">
-                      {copiedFwd ? <Check className="w-3.5 h-3.5 text-emerald-600" /> : <Copy className="w-3.5 h-3.5 text-orange-400" />}
-                    </button>
-                    {fwdLink && (
-                      <a href={fwdLink} target="_blank" rel="noopener noreferrer"
-                         className="p-1.5 bg-orange-500 hover:bg-orange-600 active:bg-orange-700 rounded-lg transition-colors shrink-0">
-                        <ExternalLink className="w-3.5 h-3.5 text-white" />
-                      </a>
-                    )}
-                  </div>
-                </div>
-              )}
 
               {/* Recipient */}
               {(rName || rPhone) && (

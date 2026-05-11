@@ -6,6 +6,14 @@ const nextConfig = {
         protocol: 'https',
         hostname: 'upload.wikimedia.org',
       },
+      {
+        protocol: 'https',
+        hostname: 'kargoone.com',
+      },
+      {
+        protocol: 'https',
+        hostname: 'assets.aftership.com',
+      },
     ],
   },
 };

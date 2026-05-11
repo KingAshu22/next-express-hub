@@ -184,7 +184,6 @@ const ShipmentMap = ({ origin, destination, progress, isDelivered }) => {
   const [coords,    setCoords]    = useState(null);
   const [geocoding, setGeocoding] = useState(true);
 
-  // Geocode on prop change
   useEffect(() => {
     let cancelled = false;
     (async () => {
@@ -196,15 +195,12 @@ const ShipmentMap = ({ origin, destination, progress, isDelivered }) => {
     return () => { cancelled = true; };
   }, [origin, destination]);
 
-  // Build/update map when coords ready
   useEffect(() => {
     if (!coords || !mapDiv.current) return;
     let destroyed = false;
 
     import("leaflet").then((L) => {
       if (destroyed) return;
-
-      // Delete broken icon path set by webpack
       delete L.Icon.Default.prototype._getIconUrl;
 
       const { from, to } = coords;
@@ -214,15 +210,14 @@ const ShipmentMap = ({ origin, destination, progress, isDelivered }) => {
       const clamped = Math.min(Math.max(progress || 10, 0), 100);
       const planeIdx = Math.floor((clamped / 100) * (arc.length - 1));
 
-      // ── Create map once ──
       if (!mapInst.current) {
         mapInst.current = L.map(mapDiv.current, {
-          zoomControl: false,        // we render our own
+          zoomControl: false,
           scrollWheelZoom: false,
           doubleClickZoom: false,
           dragging: false,
           attributionControl: false,
-          tap: true,                 // mobile
+          tap: true,
         });
 
         L.tileLayer(
@@ -237,22 +232,18 @@ const ShipmentMap = ({ origin, destination, progress, isDelivered }) => {
 
       const map = mapInst.current;
 
-      // ── Remove old layers ──
       [ghostLine, travelLine, planeMarker].forEach(ref => {
         if (ref.current) { try { map.removeLayer(ref.current); } catch {} ref.current = null; }
       });
 
-      // ── Ghost arc (dashed) ──
       ghostLine.current = L.polyline(arc, {
         color: "#ef4444", weight: 2.5, opacity: 0.75, dashArray: "7 9",
       }).addTo(map);
 
-      // ── Traveled arc (solid) ──
       travelLine.current = L.polyline(arc.slice(0, planeIdx + 1), {
         color: isDelivered ? "#10b981" : "#6366f1", weight: 3.5, opacity: 1,
       }).addTo(map);
 
-      // ── Origin dot ──
       L.marker([from.lat, from.lng], {
         icon: L.divIcon({
           className: "",
@@ -266,7 +257,6 @@ const ShipmentMap = ({ origin, destination, progress, isDelivered }) => {
       }).addTo(map)
         .bindTooltip(`<b>${from.name}</b>`, { direction:"top", className:"tmap-tip" });
 
-      // ── Destination dot (pulsing) ──
       L.marker([to.lat, to.lng], {
         icon: L.divIcon({
           className: "",
@@ -280,19 +270,18 @@ const ShipmentMap = ({ origin, destination, progress, isDelivered }) => {
       }).addTo(map)
         .bindTooltip(`<b>${to.name}</b>`, { direction:"top", className:"tmap-tip" });
 
-      // ── Plane marker ──
       const planePos = arc[planeIdx];
       const accent   = isDelivered ? "#10b981" : "#6366f1";
 
       const makePlaneHTML = () => `
         <div id="plane-wrap" style="
-          width:40px;height:40px;
+          width:36px;height:36px;
           display:flex;align-items:center;justify-content:center;
           background:white;border-radius:50%;
           border:2.5px solid ${accent};
           box-shadow:0 4px 14px rgba(99,102,241,.35),0 1px 4px rgba(0,0,0,.12);
         ">
-          <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24"
+          <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24"
                fill="none" stroke="${accent}" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
             <path d="M21 8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16Z"/>
             <path d="m3.3 7 8.7 5 8.7-5"/>
@@ -301,13 +290,12 @@ const ShipmentMap = ({ origin, destination, progress, isDelivered }) => {
         </div>`;
 
       planeMarker.current = L.marker(planePos, {
-        icon: L.divIcon({ className:"", html: makePlaneHTML(), iconAnchor:[20,20] }),
+        icon: L.divIcon({ className:"", html: makePlaneHTML(), iconAnchor:[18,18] }),
         zIndexOffset: 1000,
       }).addTo(map);
 
-      // ── Smooth float animation ──
       let frame = 0;
-      const RANGE = 4;   // how many arc steps to oscillate ±
+      const RANGE = 4;
 
       const animate = () => {
         frame = (frame + 1) % 360;
@@ -324,11 +312,13 @@ const ShipmentMap = ({ origin, destination, progress, isDelivered }) => {
       if (rafId.current) cancelAnimationFrame(rafId.current);
       rafId.current = requestAnimationFrame(animate);
 
-      // ── Fit bounds ──
       map.fitBounds(
         L.latLngBounds([from.lat, from.lng], [to.lat, to.lng]).pad(0.28),
         { animate: true }
       );
+
+      // Invalidate size after mount in case container height changed
+      setTimeout(() => { try { map.invalidateSize(); } catch {} }, 100);
     });
 
     return () => {
@@ -337,7 +327,6 @@ const ShipmentMap = ({ origin, destination, progress, isDelivered }) => {
     };
   }, [coords, progress, isDelivered]);
 
-  // Teardown
   useEffect(() => () => {
     if (rafId.current)   cancelAnimationFrame(rafId.current);
     if (mapInst.current) { mapInst.current.remove(); mapInst.current = null; }
@@ -349,8 +338,9 @@ const ShipmentMap = ({ origin, destination, progress, isDelivered }) => {
       <style>{`
         .tmap-tip {
           background:white;border:none;border-radius:8px;
-          padding:5px 11px;font-size:11px;font-weight:700;
+          padding:5px 11px;font-size:11px;font-weight:600;
           box-shadow:0 4px 14px rgba(0,0,0,.12);color:#1e1b4b;white-space:nowrap;
+          font-family: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial;
         }
         .leaflet-tooltip-top::before { border-top-color:white; }
         @keyframes tmap-pulse {
@@ -363,61 +353,25 @@ const ShipmentMap = ({ origin, destination, progress, isDelivered }) => {
       `}</style>
 
       <div className="relative w-full h-full">
-        {/* Map tile */}
         <div ref={mapDiv} style={{ width:"100%", height:"100%" }} />
 
-        {/* ── Loading overlay ── */}
         {geocoding && (
-          <div className="absolute inset-0 z-[9999] flex flex-col items-center justify-center bg-slate-50/96 rounded-l-2xl">
-            <div className="w-12 h-12 rounded-full bg-indigo-50 flex items-center justify-center mb-3 shadow-sm">
-              <Plane className="w-6 h-6 text-indigo-400 animate-pulse" />
+          <div className="absolute inset-0 z-[9999] flex flex-col items-center justify-center bg-slate-50/96">
+            <div className="w-10 h-10 rounded-full bg-indigo-50 flex items-center justify-center mb-2 shadow-sm">
+              <Plane className="w-5 h-5 text-indigo-400 animate-pulse" />
             </div>
-            <p className="text-sm font-semibold text-gray-700">Plotting route...</p>
-            <p className="text-xs text-gray-400 mt-1">{origin} → {destination}</p>
+            <p className="text-xs font-semibold text-gray-700">Plotting route...</p>
+            <p className="text-[10px] text-gray-400 mt-0.5">{origin} → {destination}</p>
           </div>
         )}
 
-        {/* ── Progress badge ── */}
         {!geocoding && (
-          <div className="absolute top-4 right-4 z-[9999] flex flex-col gap-1.5">
-            <span className={`self-end text-[11px] font-bold px-3 py-1.5 rounded-full shadow-md pointer-events-none ${
+          <div className="absolute top-3 right-3 z-[9999] flex flex-col gap-1.5">
+            <span className={`self-end text-[10px] font-semibold px-2.5 py-1 rounded-full shadow-md pointer-events-none ${
               isDelivered ? "bg-emerald-500 text-white" : "bg-indigo-600 text-white"
             }`}>
               {isDelivered ? "Delivered" : `${progress}% Complete`}
             </span>
-          </div>
-        )}
-
-        {/* ── Route pill (bottom-center) ── */}
-        {false && !geocoding && coords && (
-          <div className="absolute bottom-4 left-1/2 -translate-x-1/2 z-[9999] pointer-events-none">
-            <div className="bg-white/95 backdrop-blur-sm border border-gray-100 rounded-full px-4 py-2 shadow-lg flex items-center gap-2 text-xs text-gray-700 whitespace-nowrap">
-              <span className="font-bold text-gray-900 shrink-0">From:</span>
-              <span className="font-bold text-gray-800">{origin}</span>
-              <ArrowRight className="w-3 h-3 text-gray-400 shrink-0" />
-              <span className="font-bold text-gray-900 shrink-0">To:</span>
-              <span className="font-bold text-gray-800">{destination}</span>
-            </div>
-          </div>
-        )}
-
-        {/* ── Legend (bottom-left) ── */}
-        {false && !geocoding && coords && (
-          <div className="absolute bottom-4 left-4 z-[9999] pointer-events-none">
-            <div className="bg-white/92 backdrop-blur-sm rounded-xl px-3 py-2 shadow-sm border border-gray-100 flex flex-col gap-1.5">
-              <div className="flex items-center gap-1.5 text-[10px] font-semibold text-gray-600">
-                <span className="w-2.5 h-2.5 rounded-full bg-emerald-500 shrink-0" />
-                <span className="font-bold text-gray-900">From:</span> {(origin||"").toUpperCase()}
-              </div>
-              <div className="flex items-center gap-1.5 text-[10px] font-semibold text-gray-600">
-                <Plane className="w-2.5 h-2.5 text-indigo-500 shrink-0" />
-                Airway
-              </div>
-              <div className="flex items-center gap-1.5 text-[10px] font-semibold text-gray-600">
-                <span className="w-2.5 h-2.5 rounded-full bg-red-400 shrink-0" />
-                <span className="font-bold text-gray-900">To:</span> {(destination||"").toUpperCase()}
-              </div>
-            </div>
           </div>
         )}
       </div>
@@ -440,7 +394,6 @@ export default function TrackingDetails({ parcelDetails }) {
   const [copiedFwd,       setCopiedFwd]       = useState(false);
   const [activeFilter,    setActiveFilter]    = useState("all");
 
-  // ── Derived from parcelDetails ──
   const hasVendor       = parcelDetails?.cNoteNumber && parcelDetails?.cNoteVendorName;
   const fwdNumber       = parcelDetails?.forwardingNumber;
   const fwdLink         = parcelDetails?.forwardingLink || "";
@@ -473,7 +426,6 @@ export default function TrackingDetails({ parcelDetails }) {
     window.open(`https://api.whatsapp.com/send?text=${encodeURIComponent(msg)}`, "_blank");
   };
 
-  // ── API calls ──
   const fetchVendor = async () => {
     if (!doVendor) return;
     setIsLoading(true); setError(null);
@@ -504,7 +456,6 @@ export default function TrackingDetails({ parcelDetails }) {
   useEffect(() => { if (doVendor)     fetchVendor();     }, [doVendor, parcelDetails]);
   useEffect(() => { if (doForwarding) fetchForwarding(); }, [doForwarding, fwdNumber]);
 
-  // ── Merge timeline ──
   useEffect(() => {
     const all = [];
     if (vendorData?.events?.length)
@@ -522,7 +473,6 @@ export default function TrackingDetails({ parcelDetails }) {
     )));
   }, [vendorData, forwardingData, parcelDetails]);
 
-  // ── Derived UI state ──
   const filtered     = activeFilter === "all" ? timeline : timeline.filter(e => e.source === activeFilter);
   const latestStatus = timeline[0]?.status   || "Awaiting Updates";
   const latestLoc    = timeline[0]?.location || "";
@@ -546,116 +496,175 @@ export default function TrackingDetails({ parcelDetails }) {
   if (!parcelDetails) return null;
 
   return (
-    <div className="w-full min-h-screen bg-gray-100 p-3 sm:p-4 md:p-6">
+    <div className="w-full min-h-screen bg-gray-100 p-3 sm:p-4 md:p-6 font-sans">
 
-      <div className="mb-4 flex items-center justify-between gap-3 flex-wrap">
-        <div>
-          <p className="text-xs font-bold uppercase tracking-[0.22em] text-gray-500">Latest Status</p>
-          <div className={`mt-1 inline-flex items-center rounded-full border px-4 py-2 text-sm font-bold ${statusTone}`}>
+      {/* ─── TOP HEADER ROW ─── */}
+      <div className="mb-5 flex items-start justify-between gap-4 flex-wrap">
+        {/* Left: Latest Status */}
+        <div className="min-w-0">
+          <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-gray-500">
+            Latest Status
+          </p>
+          <div className={`mt-2 inline-flex items-center rounded-full border px-3.5 py-1.5 text-sm font-semibold ${statusTone}`}>
             {anyLoading ? "Updating..." : latestStatus}
           </div>
           {latestLoc && (
-            <p className="mt-2 flex items-center gap-1.5 text-sm font-semibold text-gray-700">
+            <p className="mt-2 flex items-center gap-1.5 text-sm font-medium text-gray-700">
               <MapPin className="w-4 h-4 shrink-0 text-gray-500" />
               <span className="truncate">{latestLoc}</span>
             </p>
           )}
         </div>
-        <div className="text-right">
-          <p className="text-xs font-bold uppercase tracking-[0.22em] text-gray-500">Shipment No</p>
-          <p className="text-4xl font-bold text-gray-900">
+
+        {/* Right: Shipment Number + Barcode */}
+        <div className="flex flex-col items-end shrink-0">
+          <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-gray-500 mb-1.5">
+            Shipment No
+          </p>
+          <div className="bg-white border border-gray-200 rounded-xl px-4 py-2.5 shadow-sm flex flex-col items-center">
             <Barcode
-                        value={String(trackNum || "")}
-                        width={2.4}
-                        height={56}
-                        margin={0}
-                        displayValue={false}
-                        className="ml-28"
-                        background="transparent"
-                        lineColor="#111827"
-                      />
-            #{trackNum}
+              value={String(trackNum || "0")}
+              width={1.6}
+              height={42}
+              margin={0}
+              displayValue={false}
+              background="transparent"
+              lineColor="#111827"
+            />
+            <p className="text-base font-bold text-gray-900 tracking-wider mt-1.5">
+              #{trackNum}
             </p>
+          </div>
         </div>
       </div>
 
       {/* ─── MAIN CARD ─── */}
       <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
-        <div className="flex flex-col lg:flex-row" style={{ minHeight: "clamp(500px, 58vh, 560px)" }}>
+        <div className="flex flex-col lg:flex-row">
 
-          {/* ══════ LEFT: MAP ══════ */}
-          <div className="relative flex-1 lg:flex-[1.35] min-h-[220px] sm:min-h-[280px] lg:min-h-[500px] border-b lg:border-b-0 lg:border-r border-gray-100 bg-slate-50">
-
-            {/* Shipment badge – top-left */}
-            <div className="absolute top-4 left-4 right-4 z-[9999] pointer-events-none">
-              <div className="bg-white/96 backdrop-blur-sm rounded-xl shadow-sm border border-gray-100 px-3.5 py-3">
-                <div className="flex items-start justify-between gap-3">
-                  <div className="min-w-0">
-                    <span className="text-sm font-bold text-gray-900 block truncate">Shipment #{trackNum}</span>
-                    {latestLoc && (
-                      <p className="text-[11px] text-gray-500 flex items-center gap-1 mt-1 truncate">
-                        <MapPin className="w-2.5 h-2.5 shrink-0" />{latestLoc}
+          {/* ══════ LEFT: MAP (FIXED HEIGHT) ══════ */}
+          <div className="relative w-full lg:w-[520px] xl:w-[560px] shrink-0 border-b lg:border-b-0 lg:border-r border-gray-100 bg-slate-50">
+            {/* Fixed-height map container */}
+            <div className="relative h-[340px] sm:h-[380px] lg:h-[420px]">
+              {/* Shipment badge – top */}
+              <div className="absolute top-3 left-3 right-3 z-[9999] pointer-events-none">
+                <div className="bg-white/96 backdrop-blur-sm rounded-xl shadow-sm border border-gray-100 px-3 py-2.5">
+                  <div className="flex items-start justify-between gap-3">
+                    <div className="min-w-0">
+                      <span className="text-sm font-semibold text-gray-900 block truncate">
+                        Shipment #{trackNum}
+                      </span>
+                      {latestLoc && (
+                        <p className="text-[11px] text-gray-500 flex items-center gap-1 mt-0.5 truncate">
+                          <MapPin className="w-2.5 h-2.5 shrink-0" />{latestLoc}
+                        </p>
+                      )}
+                    </div>
+                    <div className="shrink-0 text-right">
+                      <p className="text-[9px] uppercase tracking-[0.16em] text-gray-500 font-semibold mb-1">
+                        Status
                       </p>
-                    )}
-                  </div>
-                  <div className="shrink-0 text-right">
-                    <p className="text-[10px] uppercase tracking-[0.18em] text-gray-500 font-bold mb-1">Status</p>
-                    <span className={`inline-flex text-[11px] font-bold px-3 py-1 rounded-full whitespace-nowrap ${
-                    isDelivered ? "bg-emerald-100 text-emerald-700"
-                    : anyLoading ? "bg-gray-100 text-gray-500"
-                    : "bg-violet-100 text-violet-700"
-                  }`}>
-                      {anyLoading ? "Updating…" : latestStatus}
-                    </span>
+                      <span className={`inline-flex text-[10px] font-semibold px-2.5 py-1 rounded-full whitespace-nowrap ${
+                        isDelivered ? "bg-emerald-100 text-emerald-700"
+                        : anyLoading ? "bg-gray-100 text-gray-500"
+                        : "bg-violet-100 text-violet-700"
+                      }`}>
+                        {anyLoading ? "Updating…" : latestStatus}
+                      </span>
+                    </div>
                   </div>
                 </div>
               </div>
-            </div>
 
-            {/* Map fills the whole left panel */}
-            <div className="absolute inset-0">
-              <ShipmentMap
-                origin={mapOrigin}
-                destination={mapDestination}
-                progress={progress}
-                isDelivered={isDelivered}
-              />
+              <div className="absolute inset-0">
+                <ShipmentMap
+                  origin={mapOrigin}
+                  destination={mapDestination}
+                  progress={progress}
+                  isDelivered={isDelivered}
+                />
+              </div>
             </div>
           </div>
 
           {/* ══════ RIGHT: DETAILS ══════ */}
-          <div className="w-full lg:w-[370px] xl:w-[400px] flex flex-col bg-white">
+          <div className="flex-1 flex flex-col bg-white min-w-0">
+            {/* Route header */}
             <div className="px-5 py-4 border-b border-gray-100 bg-gradient-to-r from-slate-50 to-white">
-              <p className="text-[10px] uppercase tracking-[0.2em] text-gray-500 font-bold mb-2">Route</p>
+              <p className="text-[10px] uppercase tracking-[0.18em] text-gray-500 font-semibold mb-2">
+                Route
+              </p>
               <div className="flex items-center gap-3 text-base leading-none">
-                <span className="font-extrabold text-gray-950">{mapOrigin}</span>
-                <ArrowRight className="w-5 h-5 text-gray-500 shrink-0" />
-                <span className="font-extrabold text-gray-950">{mapDestination}</span>
+                <span className="font-semibold text-gray-900">{mapOrigin}</span>
+                <ArrowRight className="w-4 h-4 text-gray-400 shrink-0" />
+                <span className="font-semibold text-gray-900">{mapDestination}</span>
               </div>
             </div>
 
-            {/* Partner tracking # */}
-              {hasFwdInfo && !isDHL && fwdNumber && (
-                <div className="px-5 py-4">
-                  <p className="text-[10px] uppercase tracking-wider text-gray-400 font-bold mb-2">Forwarding Details</p>
-                  <div className="flex items-center gap-2 bg-orange-50 rounded-xl px-3.5 py-2.5 border border-orange-100">
-                    <span className="font-mono text-sm font-bold text-gray-800 truncate flex-1">{fwdNumber}</span>
-                    <button onClick={copyFwd} className="p-1.5 hover:bg-orange-100 active:bg-orange-200 rounded-lg transition-colors shrink-0">
-                      {copiedFwd ? <Check className="w-3.5 h-3.5 text-emerald-600" /> : <Copy className="w-3.5 h-3.5 text-orange-400" />}
-                    </button>
-                    {fwdLink && (
-                      <a href={fwdLink} target="_blank" rel="noopener noreferrer"
-                         className="p-1.5 bg-orange-500 hover:bg-orange-600 active:bg-orange-700 rounded-lg transition-colors shrink-0">
-                        <ExternalLink className="w-3.5 h-3.5 text-white" />
-                      </a>
-                    )}
-                  </div>
+            {/* Forwarding tracking # — comes BEFORE recipient */}
+            {hasFwdInfo && !isDHL && fwdNumber && (
+              <div className="px-5 py-4 border-b border-gray-100">
+                <p className="text-[10px] uppercase tracking-[0.16em] text-gray-500 font-semibold mb-2">
+                  Forwarding Details
+                </p>
+                <div className="flex items-center gap-2 bg-orange-50 rounded-xl px-3 py-2.5 border border-orange-100">
+                  <span className="font-mono text-sm font-semibold text-gray-800 truncate flex-1">
+                    {fwdNumber}
+                  </span>
+                  <button
+                    onClick={copyFwd}
+                    className="p-1.5 hover:bg-orange-100 active:bg-orange-200 rounded-lg transition-colors shrink-0"
+                    title="Copy"
+                  >
+                    {copiedFwd
+                      ? <Check className="w-3.5 h-3.5 text-emerald-600" />
+                      : <Copy  className="w-3.5 h-3.5 text-orange-500" />}
+                  </button>
+                  {fwdLink && (
+                    <a
+                      href={fwdLink}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="p-1.5 bg-orange-500 hover:bg-orange-600 active:bg-orange-700 rounded-lg transition-colors shrink-0"
+                      title="Open in new tab"
+                    >
+                      <ExternalLink className="w-3.5 h-3.5 text-white" />
+                    </a>
+                  )}
                 </div>
-              )}
+              </div>
+            )}
+
+            {/* Recipient — comes AFTER forwarding */}
+            {(rName || rPhone) && (
+              <div className="px-5 py-4 border-b border-gray-100">
+                <p className="text-[10px] uppercase tracking-[0.16em] text-gray-500 font-semibold mb-3">
+                  Recipient
+                </p>
+                <div className="space-y-2">
+                  {rName && (
+                    <div className="flex items-center gap-2.5">
+                      <div className="w-7 h-7 bg-violet-50 rounded-lg flex items-center justify-center shrink-0">
+                        <User className="w-3.5 h-3.5 text-violet-500" />
+                      </div>
+                      <span className="text-sm font-medium text-gray-800">{rName}</span>
+                    </div>
+                  )}
+                  {rPhone && (
+                    <div className="flex items-center gap-2.5">
+                      <div className="w-7 h-7 bg-violet-50 rounded-lg flex items-center justify-center shrink-0">
+                        <Phone className="w-3.5 h-3.5 text-violet-500" />
+                      </div>
+                      <span className="text-sm text-gray-700">{rPhone}</span>
+                    </div>
+                  )}
+                </div>
+              </div>
+            )}
 
             {/* Panel header */}
-            <div className="flex items-center justify-between px-5 py-4 border-b border-gray-100 shrink-0">
-              <h2 className="text-base font-bold text-gray-900">Details</h2>
+            <div className="flex items-center justify-between px-5 py-3.5 border-b border-gray-100 shrink-0">
+              <h2 className="text-base font-semibold text-gray-900">Details</h2>
               <div className="flex items-center gap-1.5">
                 <button
                   onClick={() => { if (doVendor) fetchVendor(); if (doForwarding) fetchForwarding(); }}
@@ -663,35 +672,39 @@ export default function TrackingDetails({ parcelDetails }) {
                   className="p-1.5 hover:bg-gray-100 active:bg-gray-200 rounded-lg transition-colors"
                   title="Refresh"
                 >
-                  <RefreshCw className={`w-4 h-4 text-gray-400 ${anyLoading ? "animate-spin text-indigo-500" : ""}`} />
+                  <RefreshCw className={`w-4 h-4 text-gray-500 ${anyLoading ? "animate-spin text-indigo-500" : ""}`} />
                 </button>
                 <button className="p-1.5 hover:bg-gray-100 active:bg-gray-200 rounded-lg transition-colors">
-                  <MoreHorizontal className="w-4 h-4 text-gray-400" />
+                  <MoreHorizontal className="w-4 h-4 text-gray-500" />
                 </button>
               </div>
             </div>
 
             {/* Scrollable content */}
-            <div className="flex-1 overflow-y-auto overscroll-contain divide-y divide-gray-50">
+            <div className="flex-1 overflow-y-auto overscroll-contain divide-y divide-gray-50 max-h-[600px]">
 
-              {/* Route */}
+              {/* Address details */}
               <div className="px-5 py-4">
                 <div className="flex items-stretch gap-3">
                   <div className="flex flex-col items-center py-1 shrink-0">
-                    <div className="w-2 h-2 rounded-full bg-gray-400" />
+                    <div className="w-2.5 h-2.5 rounded-full bg-emerald-500" />
                     <div className="w-px flex-1 bg-gray-200 my-1.5" />
-                    <div className="w-2 h-2 rounded-full bg-indigo-500" />
+                    <div className="w-2.5 h-2.5 rounded-full bg-red-500" />
                   </div>
                   <div className="flex-1 min-w-0 space-y-3">
                     <div>
-                      <p className="text-[10px] uppercase tracking-wider text-gray-400 font-bold mb-0.5">Departure</p>
-                      <p className="text-xs font-bold text-gray-900 mb-1">From: {mapOrigin}</p>
-                      <p className="text-sm font-semibold text-gray-800 leading-snug">{sAddr || origin}</p>
+                      <p className="text-[10px] uppercase tracking-[0.14em] text-gray-500 font-semibold mb-0.5">
+                        Departure
+                      </p>
+                      <p className="text-xs font-semibold text-gray-900 mb-0.5">From: {mapOrigin}</p>
+                      <p className="text-sm text-gray-700 leading-snug">{sAddr || origin}</p>
                     </div>
                     <div>
-                      <p className="text-[10px] uppercase tracking-wider text-gray-400 font-bold mb-0.5">Arrival</p>
-                      <p className="text-xs font-bold text-gray-900 mb-1">To: {mapDestination}</p>
-                      <p className="text-sm font-semibold text-gray-800 leading-snug">{rAddr || dest}</p>
+                      <p className="text-[10px] uppercase tracking-[0.14em] text-gray-500 font-semibold mb-0.5">
+                        Arrival
+                      </p>
+                      <p className="text-xs font-semibold text-gray-900 mb-0.5">To: {mapDestination}</p>
+                      <p className="text-sm text-gray-700 leading-snug">{rAddr || dest}</p>
                     </div>
                   </div>
                 </div>
@@ -712,44 +725,25 @@ export default function TrackingDetails({ parcelDetails }) {
                   },
                 ].map(({ label, value, small }) => (
                   <div key={label} className="px-3 py-3 text-center">
-                    <p className="text-[10px] uppercase tracking-wide text-gray-400 font-bold mb-0.5">{label}</p>
-                    <p className={`font-bold text-gray-800 truncate ${small ? "text-[11px]" : "text-xs"}`}>{value}</p>
+                    <p className="text-[10px] uppercase tracking-[0.12em] text-gray-500 font-semibold mb-1">
+                      {label}
+                    </p>
+                    <p className={`font-semibold text-gray-900 truncate ${small ? "text-[11px]" : "text-sm"}`}>
+                      {value}
+                    </p>
                   </div>
                 ))}
               </div>
 
-              {/* Recipient */}
-              {(rName || rPhone) && (
-                <div className="px-5 py-4">
-                  <p className="text-[10px] uppercase tracking-wider text-gray-400 font-bold mb-3">Recipient</p>
-                  <div className="space-y-2">
-                    {rName && (
-                      <div className="flex items-center gap-2.5">
-                        <div className="w-7 h-7 bg-violet-50 rounded-lg flex items-center justify-center shrink-0">
-                          <User className="w-3.5 h-3.5 text-violet-500" />
-                        </div>
-                        <span className="text-sm font-semibold text-gray-800">{rName}</span>
-                      </div>
-                    )}
-                    {rPhone && (
-                      <div className="flex items-center gap-2.5">
-                        <div className="w-7 h-7 bg-violet-50 rounded-lg flex items-center justify-center shrink-0">
-                          <Phone className="w-3.5 h-3.5 text-violet-500" />
-                        </div>
-                        <span className="text-sm text-gray-700">{rPhone}</span>
-                      </div>
-                    )}
-                  </div>
-                </div>
-              )}
-
               {/* Carrier */}
               {(carrier || shippingType) && (
                 <div className="px-5 py-4">
-                  <p className="text-[10px] uppercase tracking-wider text-gray-400 font-bold mb-2">Carrier</p>
+                  <p className="text-[10px] uppercase tracking-[0.14em] text-gray-500 font-semibold mb-2">
+                    Carrier
+                  </p>
                   <div className="flex flex-wrap gap-2">
-                    {carrier     && <span className="text-xs font-semibold bg-blue-50  text-blue-700  border border-blue-100  px-3 py-1.5 rounded-lg">{carrier}</span>}
-                    {shippingType && <span className="text-xs font-semibold bg-gray-50 text-gray-700 border border-gray-100 px-3 py-1.5 rounded-lg">{shippingType}</span>}
+                    {carrier     && <span className="text-xs font-medium bg-blue-50  text-blue-700  border border-blue-100  px-3 py-1.5 rounded-lg">{carrier}</span>}
+                    {shippingType && <span className="text-xs font-medium bg-gray-50 text-gray-700 border border-gray-100 px-3 py-1.5 rounded-lg">{shippingType}</span>}
                   </div>
                 </div>
               )}
@@ -761,7 +755,7 @@ export default function TrackingDetails({ parcelDetails }) {
                     <div className="flex items-center gap-2 p-3 bg-red-50 rounded-xl border border-red-100">
                       <AlertCircle className="w-4 h-4 text-red-500 shrink-0" />
                       <p className="text-xs text-red-700 flex-1 min-w-0 break-words">{error}</p>
-                      <button onClick={fetchVendor} className="text-xs font-bold text-red-600 hover:text-red-800 flex items-center gap-1 whitespace-nowrap shrink-0">
+                      <button onClick={fetchVendor} className="text-xs font-semibold text-red-600 hover:text-red-800 flex items-center gap-1 whitespace-nowrap shrink-0">
                         <RefreshCw className="w-3 h-3" /> Retry
                       </button>
                     </div>
@@ -770,7 +764,7 @@ export default function TrackingDetails({ parcelDetails }) {
                     <div className="flex items-center gap-2 p-3 bg-orange-50 rounded-xl border border-orange-100">
                       <AlertCircle className="w-4 h-4 text-orange-500 shrink-0" />
                       <p className="text-xs text-orange-700 flex-1 min-w-0 break-words">{fwdError}</p>
-                      <button onClick={fetchForwarding} className="text-xs font-bold text-orange-600 hover:text-orange-800 flex items-center gap-1 whitespace-nowrap shrink-0">
+                      <button onClick={fetchForwarding} className="text-xs font-semibold text-orange-600 hover:text-orange-800 flex items-center gap-1 whitespace-nowrap shrink-0">
                         <RefreshCw className="w-3 h-3" /> Retry
                       </button>
                     </div>
@@ -780,36 +774,34 @@ export default function TrackingDetails({ parcelDetails }) {
 
               {/* ── Timeline ── */}
               <div>
-                {/* Header */}
                 <div className="px-5 pt-4 pb-2 flex items-center justify-between gap-2">
                   <div className="flex items-center gap-2 min-w-0">
-                    <Clock className="w-3.5 h-3.5 text-gray-400 shrink-0" />
-                    <span className="text-xs font-bold text-gray-700 truncate">Shipment History</span>
+                    <Clock className="w-3.5 h-3.5 text-gray-500 shrink-0" />
+                    <span className="text-xs font-semibold text-gray-800 truncate">Shipment History</span>
                     <span className="text-[10px] text-gray-400 shrink-0">({timeline.length})</span>
                   </div>
                   {(vendorCnt > 0 || fwdCnt > 0) && (
                     <div className="flex items-center gap-0.5 bg-gray-100 rounded-lg p-0.5 shrink-0">
                       <button
                         onClick={() => setActiveFilter("all")}
-                        className={`px-2 py-1 text-[10px] font-bold rounded-md transition-all ${activeFilter==="all" ? "bg-white text-gray-900 shadow-sm" : "text-gray-500 hover:text-gray-700"}`}
+                        className={`px-2 py-1 text-[10px] font-semibold rounded-md transition-all ${activeFilter==="all" ? "bg-white text-gray-900 shadow-sm" : "text-gray-500 hover:text-gray-700"}`}
                       >All</button>
                       {vendorCnt > 0 && (
                         <button
                           onClick={() => setActiveFilter("vendor")}
-                          className={`px-2 py-1 text-[10px] font-bold rounded-md transition-all ${activeFilter==="vendor" ? "bg-indigo-500 text-white shadow-sm" : "text-gray-500 hover:text-gray-700"}`}
+                          className={`px-2 py-1 text-[10px] font-semibold rounded-md transition-all ${activeFilter==="vendor" ? "bg-indigo-500 text-white shadow-sm" : "text-gray-500 hover:text-gray-700"}`}
                         >Primary</button>
                       )}
                       {fwdCnt > 0 && (
                         <button
                           onClick={() => setActiveFilter("forwarding")}
-                          className={`px-2 py-1 text-[10px] font-bold rounded-md transition-all ${activeFilter==="forwarding" ? "bg-orange-500 text-white shadow-sm" : "text-gray-500 hover:text-gray-700"}`}
+                          className={`px-2 py-1 text-[10px] font-semibold rounded-md transition-all ${activeFilter==="forwarding" ? "bg-orange-500 text-white shadow-sm" : "text-gray-500 hover:text-gray-700"}`}
                         >Partner</button>
                       )}
                     </div>
                   )}
                 </div>
 
-                {/* Events */}
                 {anyLoading && timeline.length === 0 ? (
                   <div className="px-5 py-8 text-center">
                     <Loader2 className="w-7 h-7 text-indigo-400 animate-spin mx-auto mb-2" />
@@ -823,13 +815,13 @@ export default function TrackingDetails({ parcelDetails }) {
                 ) : (
                   Object.entries(grouped).map(([date, evts], gi) => (
                     <div key={date}>
-                      {/* Date divider */}
                       <div className="px-5 py-1.5 flex items-center gap-1.5 sticky top-0 bg-white/95 backdrop-blur-sm z-10">
                         <Calendar className="w-2.5 h-2.5 text-gray-400 shrink-0" />
-                        <span className="text-[9px] font-bold text-gray-400 uppercase tracking-wider">{date}</span>
+                        <span className="text-[10px] font-semibold text-gray-500 uppercase tracking-[0.12em]">
+                          {date}
+                        </span>
                       </div>
 
-                      {/* Event rows */}
                       {evts.map((evt, idx) => {
                         const isFirst = gi === 0 && idx === 0;
                         return (
@@ -837,7 +829,6 @@ export default function TrackingDetails({ parcelDetails }) {
                             key={`${evt.timestamp}-${idx}`}
                             className={`flex gap-3 px-5 py-2.5 transition-colors hover:bg-gray-50/70 active:bg-gray-100/60 ${isFirst ? "bg-violet-50/50" : ""}`}
                           >
-                            {/* Icon + line */}
                             <div className="flex flex-col items-center shrink-0 pt-0.5">
                               <div className={`w-6 h-6 rounded-full flex items-center justify-center border-2 shrink-0 ${
                                 isFirst               ? "bg-white border-violet-500 text-violet-600"
@@ -852,13 +843,12 @@ export default function TrackingDetails({ parcelDetails }) {
                               )}
                             </div>
 
-                            {/* Content */}
                             <div className="flex-1 min-w-0 py-0.5">
                               <div className="flex items-start justify-between gap-2">
-                                <p className={`text-xs font-bold leading-snug ${isFirst ? "text-violet-700" : "text-gray-800"}`}>
+                                <p className={`text-xs font-semibold leading-snug ${isFirst ? "text-violet-700" : "text-gray-800"}`}>
                                   {evt.status}
                                 </p>
-                                <time className="text-[10px] text-gray-400 whitespace-nowrap shrink-0 mt-0.5">
+                                <time className="text-[10px] text-gray-400 whitespace-nowrap shrink-0 mt-0.5 font-medium">
                                   {fmtTime(evt.timestamp)}
                                 </time>
                               </div>
@@ -879,7 +869,6 @@ export default function TrackingDetails({ parcelDetails }) {
                   ))
                 )}
 
-                {/* Bottom padding */}
                 <div className="h-4" />
               </div>
             </div>
@@ -889,7 +878,7 @@ export default function TrackingDetails({ parcelDetails }) {
               <button
                 onClick={() => { if (doVendor) fetchVendor(); if (doForwarding) fetchForwarding(); }}
                 disabled={anyLoading}
-                className="flex-1 flex items-center justify-center gap-2 px-3 py-2.5 border border-gray-200 rounded-xl text-sm font-semibold text-gray-700 hover:bg-gray-50 active:bg-gray-100 transition-colors disabled:opacity-60"
+                className="flex-1 flex items-center justify-center gap-2 px-3 py-2.5 border border-gray-200 rounded-xl text-sm font-medium text-gray-700 hover:bg-gray-50 active:bg-gray-100 transition-colors disabled:opacity-60"
               >
                 <RefreshCw className={`w-3.5 h-3.5 shrink-0 ${anyLoading ? "animate-spin text-indigo-500" : ""}`} />
                 <span className="truncate">{anyLoading ? "Refreshing…" : "Track Shipment"}</span>
@@ -897,7 +886,7 @@ export default function TrackingDetails({ parcelDetails }) {
 
               <button
                 onClick={shareWhatsApp}
-                className="flex items-center justify-center gap-2 px-4 py-2.5 bg-violet-600 hover:bg-violet-700 active:bg-violet-800 rounded-xl text-sm font-semibold text-white transition-colors shadow-sm shrink-0"
+                className="flex items-center justify-center gap-2 px-4 py-2.5 bg-violet-600 hover:bg-violet-700 active:bg-violet-800 rounded-xl text-sm font-medium text-white transition-colors shadow-sm shrink-0"
               >
                 <FaWhatsapp className="w-4 h-4 shrink-0" />
                 <span className="hidden sm:inline">Share</span>
@@ -905,7 +894,7 @@ export default function TrackingDetails({ parcelDetails }) {
 
               <button
                 onClick={copyTrack}
-                className="flex items-center justify-center gap-2 px-4 py-2.5 bg-violet-600 hover:bg-violet-700 active:bg-violet-800 rounded-xl text-sm font-semibold text-white transition-colors shadow-sm shrink-0"
+                className="flex items-center justify-center gap-2 px-4 py-2.5 bg-violet-600 hover:bg-violet-700 active:bg-violet-800 rounded-xl text-sm font-medium text-white transition-colors shadow-sm shrink-0"
               >
                 {copied
                   ? <Check className="w-3.5 h-3.5 shrink-0" />
@@ -918,7 +907,7 @@ export default function TrackingDetails({ parcelDetails }) {
         </div>
       </div>
 
-      <p className="text-[10px] text-gray-400 text-center mt-3">
+      <p className="text-[10px] text-gray-400 text-center mt-3 font-medium">
         Updated: {new Date().toLocaleString()}
       </p>
     </div>

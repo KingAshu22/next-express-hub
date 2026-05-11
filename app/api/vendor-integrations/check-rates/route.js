@@ -1,5 +1,6 @@
 import { connectToDB } from "@/app/_utils/mongodb"
 import VendorIntegration from "@/models/VendorIntegration"
+import { ITDRateFetcher } from "@/lib/itd-rate-fetcher"
 import iso from "iso-3166-1-alpha-2"
 
 export async function POST(request) {
@@ -105,72 +106,23 @@ export async function POST(request) {
     // LOGIC FOR ITD SOFTWARE
     // ==========================================
     else if (vendor.softwareType === "itd") {
-      // Assuming you have an 'itdCredentials' object in your Schema
-      const creds = vendor.itdCredentials 
-      
-      // Clean URL
-      const baseUrl = creds.apiUrl.replace(/\/$/, "")
-      const companyId = creds.companyId || "2" // Default to 2 if not in DB, or require it
-      const endpoint = `${baseUrl}/docket_api/customer_rate_cals?api_company_id=${companyId}`
-
-      // Format Date for ITD (YYYY-MM-DD)
-      const today = new Date()
-      const i_yyyy = today.getFullYear()
-      const i_mm = String(today.getMonth() + 1).padStart(2, '0')
-      const i_dd = String(today.getDate()).padStart(2, '0')
-      const bookingDate = `${i_yyyy}-${i_mm}-${i_dd}`
-
-      // Base64 Encode Credentials (as per docs)
-      const encodedUser = Buffer.from(creds.email).toString('base64')
-      const encodedPass = Buffer.from(creds.password).toString('base64')
-
-      // Prepare Form Data (application/x-www-form-urlencoded)
-      const formData = new URLSearchParams()
-      formData.append("product_code", packageCode || "DOX") // Default DOX or SPX
-      formData.append("destination_code", destCountry)
-      formData.append("booking_date", bookingDate)
-      formData.append("origin_code", originCountry)
-      formData.append("pcs", totalPcs)
-      formData.append("actual_weight", totalWeight)
-      formData.append("customer_code", creds.customerCode) // e.g., T001
-      formData.append("username", encodedUser)
-      formData.append("password", encodedPass)
-
-      console.log("ITD Payload:", formData.toString())
-
-      const response = await fetch(endpoint, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/x-www-form-urlencoded" // Standard for form data
-        },
-        body: formData
+      const fetcher = new ITDRateFetcher(vendor)
+      await fetcher.initialize()
+      const itdRates = await fetcher.fetchRates({
+        destinationCode: destCountry,
+        originCode: originCountry,
+        weight: totalWeight,
+        pcs: totalPcs,
+        productCode: packageCode,
       })
 
-      const responseText = await response.text()
-      console.log("ITD Response:", responseText)
-
-      let result
-      try {
-        result = JSON.parse(responseText)
-      } catch (e) {
-        throw new Error(`Invalid JSON from ITD: ${responseText}`)
-      }
-
-      if (result.success === false) {
-        // Handle ITD specific error array
-        const errorMsg = Array.isArray(result.error) ? result.error.join(", ") : "Unknown ITD Error"
-        throw new Error(errorMsg)
-      }
-
-      // Map ITD response to unified format
-      rates = (result.data || []).map(item => ({
-        serviceName: item.code, // ITD returns 'code' like 'UPS'
-        serviceCode: item.code,
-        branchName: "", // ITD doesn't seem to return branch name in this endpoint
-        totalPrice: item.total,
-        breakdown: item // Store full object as breakdown (has igst, fsc, etc)
+      rates = itdRates.map(rate => ({
+        serviceName: rate.originalName,
+        serviceCode: rate.serviceCode,
+        branchName: "",
+        totalPrice: rate.total,
+        breakdown: rate.rawRate || rate.chargesBreakdown,
       }))
-
     } else {
       return new Response(JSON.stringify({ success: false, error: "Unsupported vendor software type" }), { status: 400 })
     }

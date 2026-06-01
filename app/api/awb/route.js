@@ -32,6 +32,16 @@ export async function GET(req) {
       query.refCode = userId
     }
 
+    const trackingNumbersParam = searchParams.get("trackingNumbers") || ""
+    const trackingNumbers = trackingNumbersParam
+      .split(",")
+      .map((item) => item.trim())
+      .filter(Boolean)
+
+    if (trackingNumbers.length > 0) {
+      query.trackingNumber = { $in: trackingNumbers }
+    }
+
     if (search.trim()) {
       const searchRegex = { $regex: search.trim(), $options: "i" }
       query.$or = [
@@ -130,6 +140,67 @@ export async function POST(req) {
 
     console.log(data)
 
+    const userType = req.headers.get("userType")
+    const userId = req.headers.get("userId")
+
+    // Calculate total to deduct (base shipment cost)
+    const total = data.financials?.sales?.grandTotal || 0
+
+    if (total > 0 && (userType === "client" || userType === "franchise")) {
+      // Get user model
+      let UserModel;
+      if (userType === "client") {
+        UserModel = (await import("@/models/Client")).default;
+      } else if (userType === "franchise") {
+        UserModel = (await import("@/models/Franchise")).default;
+      }
+
+      let user;
+      if (userType === "franchise") {
+        user = await UserModel.findOne({ code: userId });
+      } else {
+        user = await UserModel.findById(userId);
+      }
+      if (!user) {
+        return NextResponse.json({ error: "User not found" }, { status: 404 });
+      }
+
+      // Check wallet balance and credit limit logic
+      if (user.walletBalance > 0) {
+        // Sufficient balance - deduct normally
+        user.walletBalance -= total;
+        user.walletTransactions.push({
+          type: 'debit',
+          amount: total,
+          source: 'shipment_deduction',
+          referenceId: data.awbNumber || data.trackingNumber,
+          timestamp: new Date(),
+        });
+      } else 
+        // (!user.hasUsedCreditLimit)
+       {
+        // Insufficient balance but credit limit available - allow negative once
+        user.walletBalance -= total;
+        user.hasUsedCreditLimit = true;
+        user.walletTransactions.push({
+          type: 'debit',
+          amount: total,
+          source: 'shipment_deduction_credit',
+          referenceId: data.awbNumber || data.trackingNumber,
+          timestamp: new Date(),
+        });
+      } 
+      // else {
+      //   // Insufficient balance and credit limit already used
+      //   return NextResponse.json({
+      //     error: "Insufficient wallet balance. You have already used your credit limit once. Please recharge your wallet before creating new shipments.",
+      //     requiresRecharge: true
+      //   }, { status: 400 });
+      // }
+
+      await user.save();
+    }
+
     const awb = new Awb(data)
     await awb.save()
 
@@ -150,6 +221,7 @@ export async function POST(req) {
           country: data.sender.country,
           zip: data.sender.zip,
           contact: data.sender.contact,
+          whatsappContact: data.sender.whatsappContact,
           kyc: data.sender.kyc,
           gst: data.sender.gst,
           role: "customer",
@@ -184,7 +256,6 @@ export async function POST(req) {
       },
       { upsert: true, new: true }
     )
-
     return NextResponse.json({ message: "Parcel added successfully!", awb }, { status: 200 })
   } catch (error) {
     console.error("Error in POST /api/awb:", error.message)

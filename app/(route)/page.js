@@ -1,36 +1,25 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import AreasWeServe from "../_components/AreasWeServe";
-import CTA from "../_components/Cta";
-import Experience from "../_components/Experience";
-import Features from "../_components/Features";
-import Footer from "../_components/Footer";
-import FrontHeader from "../_components/FrontHeader";
 import Hero from "../_components/Hero";
-import HowWeDoIt from "../_components/HowWeDoIt";
-import WhatWeOffer from "../_components/WhatWeOffer";
-import Services from "../_components/Services";
+import FrontHeader from "../_components/FrontHeader";
+import Footer from "../_components/Footer";
+import FloatingContactButtons from "../_components/FloatingContactButtons";
+import Features from "../_components/Features";
 import Features2 from "../_components/Features2";
-import InternationalRatesSection from "../_components/InternationalRatesSection";
+import Services from "../_components/Services";
+import HowWeDoIt from "../_components/HowWeDoIt";
+import Experience from "../_components/Experience";
+import CTA from "../_components/Cta";
 
 export default function Home() {
-  const [scrollY, setScrollY] = useState(0)
-
-  useEffect(() => {
-    const handleScroll = () => setScrollY(window.scrollY)
-    window.addEventListener("scroll", handleScroll)
-    return () => window.removeEventListener("scroll", handleScroll)
-  }, [])
-
   return (
     <main className="min-h-screen">
-      <FrontHeader/>
+      <FrontHeader />
       <Hero />
+      <FloatingContactButtons />
       <Features />
       <Features2 />
-      <InternationalRatesSection />
-      <AreasWeServe />
       <Services />
       <HowWeDoIt />
       <Experience />

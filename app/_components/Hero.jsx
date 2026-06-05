@@ -136,27 +136,13 @@ const HeroSection = () => {
 
             {/* Main Heading with Typewriter */}
             <motion.div variants={itemVariants}>
-              <div className="space-y-4">
-                <h1 className="text-5xl md:text-6xl lg:text-7xl font-bold text-gray-900 leading-tight">
-                  Fast, Reliable
-                  <span className={`block text-transparent bg-clip-text bg-gradient-to-r from-purple-600 to-red-600`}>
-                    International Shipping
-                  </span>
-                </h1>
-                <div className={`text-2xl md:text-3xl font-semibold min-h-[3.5rem] ${colors.text}`}>
+              <h1 className={`text-4xl md:text-5xl lg:text-6xl font-bold min-h-[4rem] md:min-h-[5rem] leading-tight`}>
+                <span className={`text-transparent bg-clip-text bg-gradient-to-r from-purple-600 to-red-600`}>
                   {displayText}
-                  <span className="animate-pulse">|</span>
-                </div>
-              </div>
+                </span>
+                <span className="animate-pulse">|</span>
+              </h1>
             </motion.div>
-
-            {/* Subheading */}
-            <motion.p
-              className="text-lg md:text-xl text-gray-600 max-w-xl leading-relaxed"
-              variants={itemVariants}
-            >
-              Ship to 220+ countries at unbeatable rates. Track your parcels in real-time with full transparency and professional support.
-            </motion.p>
 
             {/* Search Form */}
             <motion.form

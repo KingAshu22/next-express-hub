@@ -23,6 +23,7 @@ import {
 import { useEffect, useState } from "react";
 import BackFooter from "../_components/BackFooter";
 import { GoogleTagManager } from '@next/third-parties/google'
+import { ThemeProvider } from "../_components/ThemeProvider";
 
 const inter = Inter({ subsets: ["latin"] });
 
@@ -158,6 +159,7 @@ export default function RootLayout({ children }) {
       <body
         className={cn(inter.className, "min-h-screen bg-background antialiased")}
       >
+        <ThemeProvider>
         <Toaster
           position="top-right"
           toastOptions={{
@@ -181,6 +183,7 @@ export default function RootLayout({ children }) {
           <BackFooter />
           </>
         )}
+        </ThemeProvider>
       </body>
     </html>
   );

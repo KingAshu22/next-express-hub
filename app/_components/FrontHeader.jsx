@@ -5,21 +5,36 @@ import Image from "next/image";
 import { Button } from "@/components/ui/button";
 import { useRouter } from "next/navigation";
 import { Menu, X } from "lucide-react";
-import { useState } from "react";
+import { useState, useEffect, useContext } from "react";
 import { motion } from "framer-motion";
+import { ThemeContext } from "./ThemeProvider";
 
 export default function FrontHeader() {
   const router = useRouter();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const [mounted, setMounted] = useState(false);
+  const themeContext = useContext(ThemeContext);
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
+
+  const colors = themeContext?.colors || {
+    border: 'border-purple-200',
+    button: 'bg-purple-900 hover:bg-purple-800',
+  };
 
   const navLinks = [
     { label: "Services", href: "#services" },
     { label: "How It Works", href: "#how-we-do-it" },
-    { label: "Experience", href: "#our-experience" },
+    { label: "Testimonials", href: "#testimonials" },
+    { label: "About", href: "/about" },
+    { label: "Contact", href: "/contact" },
+    { label: "Blog", href: "/blogs" },
   ];
 
   return (
-    <header className="fixed top-0 left-0 right-0 bg-white/90 backdrop-blur-xl z-50 shadow-sm border-b border-purple-200/50">
+    <header className={`fixed top-0 left-0 right-0 bg-white/90 backdrop-blur-xl z-50 shadow-sm ${colors.border} border-b`}>
       <div className="container mx-auto px-4 md:px-6">
         <div className="flex items-center justify-between h-16">
           {/* Logo */}
@@ -35,12 +50,12 @@ export default function FrontHeader() {
           </Link>
 
           {/* Desktop Navigation */}
-          <nav className="hidden lg:flex items-center space-x-12">
+          <nav className="hidden lg:flex items-center space-x-8 text-sm">
             {navLinks.map((link) => (
               <Link
                 key={link.href}
                 href={link.href}
-                className="text-sm text-purple-700 font-medium hover:text-purple-900 transition-colors relative group"
+                className="font-medium hover:text-purple-900 transition-colors relative group text-gray-700"
               >
                 {link.label}
                 <span className="absolute bottom-0 left-0 w-0 h-0.5 bg-purple-900 group-hover:w-full transition-all duration-300" />
@@ -53,13 +68,13 @@ export default function FrontHeader() {
             <Button
               variant="ghost"
               onClick={() => router.push("/dashboard")}
-              className="text-sm text-purple-700 hover:bg-purple-100 hover:text-purple-900"
+              className="text-sm text-gray-700 hover:bg-gray-100"
             >
               Login
             </Button>
             <Button
               onClick={() => router.push("/track")}
-              className="text-sm bg-purple-900 hover:bg-purple-800 text-white rounded-lg px-6 py-2 transition-all"
+              className={`text-sm ${colors.button} text-white rounded-lg px-6 py-2 transition-all`}
             >
               Track
             </Button>
@@ -115,7 +130,7 @@ export default function FrontHeader() {
                   router.push("/track");
                   setMobileMenuOpen(false);
                 }}
-                className="w-full justify-center bg-purple-900 hover:bg-purple-800 text-white text-sm"
+                className={`w-full justify-center ${colors.button} text-white text-sm`}
               >
                 Track Parcel
               </Button>

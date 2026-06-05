@@ -19,30 +19,32 @@ export default function FrontHeader() {
   ];
 
   return (
-    <header className="fixed top-0 left-0 right-0 bg-white/95 backdrop-blur-md z-50 shadow-sm border-b border-slate-100">
+    <header className="fixed top-0 left-0 right-0 bg-white/90 backdrop-blur-xl z-50 shadow-sm border-b border-slate-200/50">
       <div className="container mx-auto px-4 md:px-6">
-        <div className="flex items-center justify-between h-20">
+        <div className="flex items-center justify-between h-16">
           {/* Logo */}
-          <Link href="/" className="flex items-center gap-2 hover:opacity-80 transition">
-            <Image
-              src="/logo.jpg"
-              alt="Kargo One Logo"
-              width={180}
-              height={50}
-              priority
-              className="h-auto w-auto"
-            />
+          <Link href="/" className="flex items-center gap-2 hover:opacity-80 transition group">
+            <div className="w-10 h-10 rounded-lg bg-gradient-to-br from-slate-900 to-slate-700 flex items-center justify-center">
+              <svg className="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 8h14M5 8a2 2 0 110-4h14a2 2 0 110 4M5 8v10a2 2 0 002 2h10a2 2 0 002-2V8m-9 4h4" />
+              </svg>
+            </div>
+            <div className="hidden sm:flex flex-col leading-tight">
+              <span className="text-sm font-bold text-slate-900">Kargo</span>
+              <span className="text-xs text-slate-600">Shipping</span>
+            </div>
           </Link>
 
           {/* Desktop Navigation */}
-          <nav className="hidden lg:flex items-center space-x-8">
+          <nav className="hidden lg:flex items-center space-x-12">
             {navLinks.map((link) => (
               <Link
                 key={link.href}
                 href={link.href}
-                className="text-slate-700 font-medium hover:text-blue-600 transition-colors"
+                className="text-sm text-slate-700 font-medium hover:text-slate-900 transition-colors relative group"
               >
                 {link.label}
+                <span className="absolute bottom-0 left-0 w-0 h-0.5 bg-slate-900 group-hover:w-full transition-all duration-300" />
               </Link>
             ))}
           </nav>
@@ -52,15 +54,15 @@ export default function FrontHeader() {
             <Button
               variant="ghost"
               onClick={() => router.push("/dashboard")}
-              className="text-slate-700 hover:bg-slate-100"
+              className="text-sm text-slate-700 hover:bg-slate-100 hover:text-slate-900"
             >
               Login
             </Button>
             <Button
               onClick={() => router.push("/track")}
-              className="bg-gradient-to-r from-blue-600 to-red-600 hover:from-blue-700 hover:to-red-700 text-white"
+              className="text-sm bg-slate-900 hover:bg-slate-800 text-white rounded-lg px-6 py-2 transition-all"
             >
-              Track Parcel
+              Track
             </Button>
           </div>
 
@@ -72,9 +74,9 @@ export default function FrontHeader() {
               aria-label="Toggle menu"
             >
               {mobileMenuOpen ? (
-                <X className="w-6 h-6 text-slate-700" />
+                <X className="w-5 h-5 text-slate-700" />
               ) : (
-                <Menu className="w-6 h-6 text-slate-700" />
+                <Menu className="w-5 h-5 text-slate-700" />
               )}
             </button>
           </div>
@@ -86,13 +88,13 @@ export default function FrontHeader() {
             initial={{ opacity: 0, y: -10 }}
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: -10 }}
-            className="lg:hidden border-t border-slate-100 py-4 space-y-3"
+            className="lg:hidden border-t border-slate-200 py-4 space-y-3"
           >
             {navLinks.map((link) => (
               <Link
                 key={link.href}
                 href={link.href}
-                className="block px-4 py-2 text-slate-700 hover:bg-slate-50 rounded-lg transition"
+                className="block px-4 py-2 text-slate-700 hover:bg-slate-50 rounded-lg transition text-sm"
                 onClick={() => setMobileMenuOpen(false)}
               >
                 {link.label}
@@ -105,7 +107,7 @@ export default function FrontHeader() {
                   router.push("/dashboard");
                   setMobileMenuOpen(false);
                 }}
-                className="w-full justify-center"
+                className="w-full justify-center text-sm"
               >
                 Login
               </Button>
@@ -114,7 +116,7 @@ export default function FrontHeader() {
                   router.push("/track");
                   setMobileMenuOpen(false);
                 }}
-                className="w-full justify-center bg-gradient-to-r from-blue-600 to-red-600 hover:from-blue-700 hover:to-red-700 text-white"
+                className="w-full justify-center bg-slate-900 hover:bg-slate-800 text-white text-sm"
               >
                 Track Parcel
               </Button>

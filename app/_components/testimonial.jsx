@@ -1,96 +1,128 @@
+"use client";
+
 import { motion } from "framer-motion";
-import Image from "next/image";
+import { Star } from "lucide-react";
 
 const testimonials = [
   {
     name: "Mayank Kapoor",
-    title: "Aariv Impex Owner, Gurugram",
-    avatar: "/testimonials/user1.jpg",
-    text: "Kargo One's tracking is seamless and their door-to-door delivery is always reliable. The best part? Their support team is available whenever I need them!”",
-    link: "#",
+    title: "Business Owner, Gurugram",
+    text: "Kargo One's tracking is seamless and their door-to-door delivery is always reliable. The best part? Their support team is available whenever I need them!",
+    rating: 5,
   },
   {
     name: "Yashika Khandelwal",
-    title: "Auza Jewels Owner, Jaipur",
-    avatar: "/testimonials/user2.jpg",
-    text: "“The pricing Kargo One offers is truly transparent. I always know what I’m paying, and my shipments reach my customers on time, every time.”",
-    link: "#",
+    title: "E-commerce Seller, Jaipur",
+    text: "The pricing is truly transparent. I always know what I'm paying, and my shipments reach my customers on time, every time.",
+    rating: 5,
   },
   {
     name: "Rohit Sharma",
-    title: "Global Seller, Mumbai",
-    avatar: "/testimonials/user3.jpg",
-    text: "“With Kargo One, I expanded my business overseas without any hassle. Their platform is easy to use and the rates are unbeatable.”",
-    link: "#",
+    title: "Global Trader, Mumbai",
+    text: "With Kargo One, I expanded my business overseas without any hassle. Their platform is easy to use and the rates are unbeatable.",
+    rating: 5,
   },
   {
     name: "Priya Menon",
-    title: "Mother & Frequent Shipper, Kochi",
-    avatar: "/testimonials/user4.jpg",
-    text: "“Sending gifts to my family abroad is now stress-free. Kargo One makes sure my parcels are delivered safely and quickly.”",
-    link: "#",
+    title: "Frequent Shipper, Kochi",
+    text: "Sending gifts to my family abroad is now stress-free. Kargo One makes sure my parcels are delivered safely and quickly.",
+    rating: 5,
   },
 ];
 
-export default function Testimonial() {
-  const scrollingTestimonials = [...testimonials, ...testimonials];
-
+export default function Testimonials() {
   return (
-    <section className="py-16 flex justify-center bg-white">
-      <div className="w-full max-w-6xl px-4 flex flex-col md:flex-row gap-8 items-start">
-        {/* Left: Heading */}
-        <div className="w-full md:w-1/2 mb-8 md:mb-0">
-          <h3 className="text-2xl font-bold text-[#2563eb] mb-1">Customer Testimonials</h3>
-          <div className="w-32 h-2 bg-yellow-400 rounded mb-4" />
-          <h2 className="text-2xl md:text-3xl font-bold text-[#232C65] mb-4">
-            1 Crore+ Successful Shipments
+    <section id="testimonials" className="py-20 bg-slate-50">
+      <div className="container mx-auto px-4 md:px-6">
+        {/* Section Header */}
+        <motion.div
+          className="text-center mb-16 space-y-3"
+          initial={{ opacity: 0, y: -15 }}
+          whileInView={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.6 }}
+          viewport={{ once: true }}
+        >
+          <h2 className="text-4xl md:text-5xl font-bold text-slate-900">
+            Loved by Our Customers
           </h2>
-          <p className="text-gray-700 max-w-lg">
-            From parents sending love overseas to new entrepreneurs growing their brands, Kargo One is trusted by all. Discover why so many choose us for their shipping needs.
+          <p className="text-slate-600 max-w-2xl mx-auto">
+            Join millions of satisfied customers worldwide
           </p>
-        </div>
+        </motion.div>
 
-        {/* Right: Scrolling Testimonials */}
-        <div className="w-full md:w-1/2 h-[400px] overflow-hidden relative">
-          <motion.div
-            className="flex flex-col gap-6"
-            animate={{ y: ["0%", "-50%"] }}
-            transition={{
-              repeat: Infinity,
-              duration: 16,
-              ease: "linear",
-            }}
-            style={{ willChange: "transform" }}
-          >
-            {scrollingTestimonials.map((t, i) => (
-              <div
-                key={i}
-                className="bg-white border border-blue-100 rounded-2xl shadow-sm p-5 flex gap-4 items-start min-h-[120px]"
-                style={{ minWidth: 0 }}
-              >
-                <div>
-                  <Image
-                    src={t.avatar}
-                    alt={t.name}
-                    width={56}
-                    height={56}
-                    className="rounded-full border-4 border-yellow-400"
-                  />
-                </div>
-                <div>
-                  <div className="font-bold text-lg text-[#232C65]">{t.name}</div>
-                  <div className="text-sm text-blue-600 font-medium mb-1">
-                    <a href={t.link} target="_blank" rel="noopener noreferrer">{t.title}</a>
-                  </div>
-                  <div className="text-gray-700 text-base">{t.text}</div>
-                </div>
+        {/* Testimonials Grid */}
+        <motion.div
+          className="grid grid-cols-1 md:grid-cols-2 gap-8"
+          initial={{ opacity: 0 }}
+          whileInView={{ opacity: 1 }}
+          transition={{ duration: 0.6, staggerChildren: 0.1 }}
+          viewport={{ once: true }}
+        >
+          {testimonials.map((testimonial, index) => (
+            <motion.div
+              key={index}
+              initial={{ opacity: 0, y: 20 }}
+              whileInView={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.6, delay: index * 0.1 }}
+              viewport={{ once: true }}
+              className="bg-white rounded-xl p-8 border border-slate-200 hover:border-slate-300 hover:shadow-lg transition-all"
+            >
+              {/* Rating */}
+              <div className="flex gap-1 mb-4">
+                {[...Array(testimonial.rating)].map((_, i) => (
+                  <Star key={i} className="w-4 h-4 fill-yellow-400 text-yellow-400" />
+                ))}
               </div>
-            ))}
-          </motion.div>
-          {/* Gradient fade top & bottom */}
-          <div className="absolute top-0 left-0 w-full h-8 bg-gradient-to-b from-white to-transparent pointer-events-none" />
-          <div className="absolute bottom-0 left-0 w-full h-8 bg-gradient-to-t from-white to-transparent pointer-events-none" />
-        </div>
+
+              {/* Text */}
+              <p className="text-slate-700 mb-6 text-sm leading-relaxed italic">
+                "{testimonial.text}"
+              </p>
+
+              {/* Author */}
+              <div>
+                <p className="font-semibold text-slate-900 text-sm">
+                  {testimonial.name}
+                </p>
+                <p className="text-xs text-slate-600">
+                  {testimonial.title}
+                </p>
+              </div>
+            </motion.div>
+          ))}
+        </motion.div>
+
+        {/* Stats */}
+        <motion.div
+          className="grid grid-cols-2 md:grid-cols-4 gap-6 mt-16 pt-16 border-t border-slate-200"
+          initial={{ opacity: 0 }}
+          whileInView={{ opacity: 1 }}
+          transition={{ duration: 0.6, staggerChildren: 0.1 }}
+          viewport={{ once: true }}
+        >
+          {[
+            { label: "Happy Customers", value: "10M+" },
+            { label: "Countries Served", value: "220+" },
+            { label: "Packages Shipped", value: "100M+" },
+            { label: "Success Rate", value: "99.2%" },
+          ].map((stat, index) => (
+            <motion.div
+              key={index}
+              initial={{ opacity: 0, y: 20 }}
+              whileInView={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.6, delay: index * 0.1 }}
+              viewport={{ once: true }}
+              className="text-center"
+            >
+              <p className="text-3xl md:text-4xl font-black text-slate-900 mb-2">
+                {stat.value}
+              </p>
+              <p className="text-sm text-slate-600">
+                {stat.label}
+              </p>
+            </motion.div>
+          ))}
+        </motion.div>
       </div>
     </section>
   );

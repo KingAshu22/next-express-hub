@@ -2,16 +2,20 @@
 
 import { useState, useEffect } from "react";
 import Link from "next/link";
+import FrontHeader from "../../_components/FrontHeader";
+import Footer from "../../_components/Footer";
+import FloatingContactButtons from "../../_components/FloatingContactButtons";
+import { motion } from "framer-motion";
 
 export default function BlogList() {
   const [blogs, setBlogs] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
-  
+
   useEffect(() => {
     fetchBlogs();
   }, []);
-  
+
   const fetchBlogs = async () => {
     try {
       const response = await fetch("/api/blogs");
@@ -19,75 +23,146 @@ export default function BlogList() {
         throw new Error("Failed to fetch blogs");
       }
       const data = await response.json();
-      setBlogs(data.blogs);
+      setBlogs(data.blogs || []);
     } catch (err) {
       setError(err.message);
     } finally {
       setLoading(false);
     }
   };
-  
+
   if (loading) {
     return (
-      <div className="flex justify-center items-center min-h-screen">
-        <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-blue-500"></div>
-      </div>
+      <main className="min-h-screen bg-white">
+        <FrontHeader />
+        <FloatingContactButtons />
+        <div className="flex justify-center items-center min-h-[60vh]">
+          <motion.div
+            animate={{ rotate: 360 }}
+            transition={{ duration: 2, repeat: Infinity }}
+            className={`w-12 h-12 border-4 ${colors.light} border-t-purple-900 rounded-full`}
+          />
+        </div>
+        <Footer />
+      </main>
     );
   }
-  
+
   return (
-    <div className="container mx-auto px-4 py-8">
-      <h1 className="text-4xl font-bold text-center mb-12">Our Blog</h1>
-      
-      {error && (
-        <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded mb-6">
-          {error}
+    <main className="min-h-screen bg-white">
+      <FrontHeader />
+      <FloatingContactButtons />
+
+      {/* Hero Section */}
+      <section className="pt-32 pb-16 px-4 md:px-6">
+        <div className="container mx-auto max-w-4xl">
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.6 }}
+            className="text-center space-y-4"
+          >
+            <h1 className="text-4xl md:text-5xl font-bold text-gray-900">
+              Kargo One Blog
+            </h1>
+            <p className="text-lg text-gray-600">
+              Insights, tips, and news about international shipping
+            </p>
+          </motion.div>
         </div>
-      )}
-      
-      {blogs.length === 0 ? (
-        <div className="text-center py-10">
-          <p className="text-gray-500 text-xl">No blog posts available yet.</p>
-        </div>
-      ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
-          {blogs.map((blog) => (
-            <div key={blog._id} className="bg-white rounded-lg shadow-md overflow-hidden hover:shadow-lg transition-shadow duration-300">
-              <div className="p-6">
-                <h2 className="text-xl font-bold mb-3 line-clamp-2">
-                  <a href={`/blogs/${blog.slug}`} className="hover:text-blue-600">
-                    {blog.title}
-                  </a>
-                </h2>
-                
-                <div className="text-gray-600 text-sm mb-4 line-clamp-3">
-                  {blog.metaDesc || "No description available"}
-                </div>
-                
-                <div className="flex flex-wrap gap-2 mb-4">
-                  {blog.keywords && blog.keywords.slice(0, 3).map((keyword, index) => (
-                    <span
-                      key={index}
-                      className="bg-blue-100 text-blue-800 text-xs px-2 py-1 rounded"
-                    >
-                      {keyword}
-                    </span>
-                  ))}
-                  {blog.keywords && blog.keywords.length > 3 && (
-                    <span className="bg-gray-100 text-gray-600 text-xs px-2 py-1 rounded">
-                      +{blog.keywords.length - 3} more
-                    </span>
+      </section>
+
+      {/* Blog Content */}
+      <section className="py-16 px-4 md:px-6">
+        <div className="container mx-auto max-w-5xl">
+          {error && (
+            <motion.div
+              initial={{ opacity: 0, y: -10 }}
+              animate={{ opacity: 1, y: 0 }}
+              className="bg-red-100 border border-red-300 text-red-800 px-6 py-4 rounded-lg mb-8"
+            >
+              {error}
+            </motion.div>
+          )}
+
+          {blogs.length === 0 ? (
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              className="text-center py-20"
+            >
+              <p className="text-gray-600 text-xl">
+                No blog posts available yet. Check back soon for more insights!
+              </p>
+            </motion.div>
+          ) : (
+            <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-8">
+              {blogs.map((blog, idx) => (
+                <motion.div
+                  key={blog._id}
+                  initial={{ opacity: 0, y: 20 }}
+                  whileInView={{ opacity: 1, y: 0 }}
+                  transition={{ duration: 0.4, delay: idx * 0.1 }}
+                  viewport={{ once: true }}
+                  className="bg-white rounded-lg shadow-sm hover:shadow-lg transition-shadow border border-gray-200 overflow-hidden h-full flex flex-col"
+                >
+                  {/* Image */}
+                  {blog.image && (
+                    <div className="w-full h-48 bg-gradient-to-br from-purple-200 to-purple-100 overflow-hidden">
+                      <img
+                        src={blog.image}
+                        alt={blog.title}
+                        className="w-full h-full object-cover"
+                      />
+                    </div>
                   )}
-                </div>
-                
-                <a href={`/blogs/${blog.slug}`} className="inline-block bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded-md text-sm font-medium transition-colors">
-                    Read More
-                </a>
-              </div>
+
+                  {/* Content */}
+                  <div className="p-6 flex flex-col flex-grow">
+                    {/* Meta Info */}
+                    <div className="flex items-center gap-4 mb-4 text-sm text-gray-600">
+                      {blog.createdAt && (
+                        <span>
+                          {new Date(blog.createdAt).toLocaleDateString('en-US', {
+                            year: 'numeric',
+                            month: 'short',
+                            day: 'numeric'
+                          })}
+                        </span>
+                      )}
+                      {blog.category && (
+                        <span className="bg-purple-100 px-3 py-1 rounded-full text-xs font-medium text-purple-900">
+                          {blog.category}
+                        </span>
+                      )}
+                    </div>
+
+                    {/* Title */}
+                    <h3 className="text-lg font-semibold text-gray-900 mb-2 line-clamp-2">
+                      {blog.title}
+                    </h3>
+
+                    {/* Excerpt */}
+                    <p className="text-gray-600 text-sm mb-4 flex-grow line-clamp-3">
+                      {blog.excerpt || blog.content?.substring(0, 150)}...
+                    </p>
+
+                    {/* Read More Link */}
+                    <Link
+                      href={`/blogs/${blog.slug || blog._id}`}
+                      className={`inline-flex items-center gap-2 font-semibold text-purple-900 hover:text-purple-700 transition-colors mt-auto`}
+                    >
+                      Read More →
+                    </Link>
+                  </div>
+                </motion.div>
+              ))}
             </div>
-          ))}
+          )}
         </div>
-      )}
-    </div>
+      </section>
+
+      <Footer />
+    </main>
   );
 }

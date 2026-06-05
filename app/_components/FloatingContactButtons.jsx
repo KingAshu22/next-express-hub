@@ -1,9 +1,15 @@
 "use client";
 
 import { motion } from "framer-motion";
-import { Phone, MessageCircle } from "lucide-react";
+import { Phone } from "lucide-react";
+import Image from "next/image";
+import { useContext } from "react";
+import { ThemeContext } from "./ThemeProvider";
 
 export default function FloatingContactButtons() {
+  const themeContext = useContext(ThemeContext);
+  const colors = themeContext?.colors || { primary: 'bg-purple-900' };
+
   return (
     <>
       {/* Call Button - Bottom Left */}
@@ -27,13 +33,13 @@ export default function FloatingContactButtons() {
           />
 
           {/* Button */}
-          <div className="relative w-14 h-14 bg-gradient-to-r from-blue-600 to-blue-700 rounded-full flex items-center justify-center shadow-lg hover:shadow-xl transition-all cursor-pointer">
+          <div className={`relative w-14 h-14 bg-gradient-to-r from-blue-600 to-blue-700 rounded-full flex items-center justify-center shadow-lg hover:shadow-xl transition-all cursor-pointer`}>
             <Phone className="w-6 h-6 text-white" strokeWidth={2} />
           </div>
 
           {/* Tooltip */}
           <motion.div
-            className="absolute left-16 top-1/2 -translate-y-1/2 bg-purple-900 text-white px-3 py-2 rounded-lg text-sm font-medium whitespace-nowrap pointer-events-none opacity-0 group-hover:opacity-100 transition-opacity"
+            className={`absolute left-16 top-1/2 -translate-y-1/2 ${colors.primary} text-white px-3 py-2 rounded-lg text-sm font-medium whitespace-nowrap pointer-events-none opacity-0 group-hover:opacity-100 transition-opacity`}
             initial={{ opacity: 0, x: -10 }}
             whileHover={{ opacity: 1, x: 0 }}
           >
@@ -52,8 +58,8 @@ export default function FloatingContactButtons() {
         whileTap={{ scale: 0.95 }}
         initial={{ opacity: 0, x: 50 }}
         animate={{ opacity: 1, x: 0 }}
-        transition={{ delay: 0.5, duration: 0.5 }}
-        aria-label="Contact on WhatsApp"
+        transition={{ delay: 0.7, duration: 0.5 }}
+        aria-label="Chat on WhatsApp"
       >
         <div className="relative">
           {/* Ripple effect */}
@@ -65,17 +71,23 @@ export default function FloatingContactButtons() {
           />
 
           {/* Button */}
-          <div className="relative w-14 h-14 bg-gradient-to-r from-green-500 to-green-600 rounded-full flex items-center justify-center shadow-lg hover:shadow-xl transition-all cursor-pointer">
-            <MessageCircle className="w-6 h-6 text-white" strokeWidth={2} />
+          <div className={`relative w-14 h-14 bg-gradient-to-r from-green-600 to-green-700 rounded-full flex items-center justify-center shadow-lg hover:shadow-xl transition-all cursor-pointer`}>
+            <Image
+              src="/whatsapp.svg"
+              alt="WhatsApp"
+              width={24}
+              height={24}
+              className="w-6 h-6 text-white"
+            />
           </div>
 
           {/* Tooltip */}
           <motion.div
-            className="absolute right-16 top-1/2 -translate-y-1/2 bg-purple-900 text-white px-3 py-2 rounded-lg text-sm font-medium whitespace-nowrap pointer-events-none opacity-0 group-hover:opacity-100 transition-opacity"
+            className={`absolute right-16 top-1/2 -translate-y-1/2 ${colors.primary} text-white px-3 py-2 rounded-lg text-sm font-medium whitespace-nowrap pointer-events-none opacity-0 group-hover:opacity-100 transition-opacity`}
             initial={{ opacity: 0, x: 10 }}
             whileHover={{ opacity: 1, x: 0 }}
           >
-            WhatsApp
+            Message Us
           </motion.div>
         </div>
       </motion.a>

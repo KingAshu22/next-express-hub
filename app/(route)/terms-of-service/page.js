@@ -110,7 +110,7 @@ export default function TermsOfService() {
               className="mt-12 p-6 bg-purple-50 rounded-lg border border-purple-200"
             >
               <p className="text-gray-700">
-                If you have any questions about these Terms of Service, please contact us at support@kargoone.com or +91 81691 55537.
+                If you have any questions about these Terms of Service, please contact us at support@kargoone.com or +91 91520 39557.
               </p>
             </motion.div>
           </motion.div>

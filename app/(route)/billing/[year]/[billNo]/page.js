@@ -12,7 +12,7 @@ const COMPANY_DETAILS = {
   name: "Kargo One",
   address: "Andheri East, Mumbai 400069",
   court: "Mumbai",
-  phone: "+91 81691 55537",
+  phone: "+91 91520 39557",
   email: "info@kargoone.com",
   gstin: "-",
   website: "www.kargoone.com"

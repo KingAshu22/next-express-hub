@@ -52,14 +52,14 @@ Dependencies: framer-motion, lucide-react
 - **Call Button (Left)**
   - Fixed position: bottom-8, left-8
   - Blue gradient background
-  - Link to `tel:+918169155537`
+  - Link to `tel:+919152039557`
   - Pulsing ripple animation
   - Tooltip on hover
 
 - **WhatsApp Button (Right)**
   - Fixed position: bottom-8, right-8
   - Green gradient background
-  - Link to WhatsApp: `https://wa.me/918169155537`
+  - Link to WhatsApp: `https://wa.me/919152039557`
   - Opens in new tab
   - Pulsing ripple animation
   - Tooltip on hover

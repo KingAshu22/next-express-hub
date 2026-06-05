@@ -37,7 +37,7 @@ export default function PrivacyPolicy() {
     },
     {
       title: "8. Contact Us",
-      content: "If you have questions about this privacy policy, please contact us at support@kargoone.com or +91 81691 55537.",
+      content: "If you have questions about this privacy policy, please contact us at support@kargoone.com or +91 91520 39557.",
     },
   ];
 

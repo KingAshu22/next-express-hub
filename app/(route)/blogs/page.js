@@ -40,7 +40,7 @@ export default function BlogList() {
           <motion.div
             animate={{ rotate: 360 }}
             transition={{ duration: 2, repeat: Infinity }}
-            className={`w-12 h-12 border-4 ${colors.light} border-t-purple-900 rounded-full`}
+            className="w-12 h-12 border-4 border-violet-200 border-t-purple-900 rounded-full"
           />
         </div>
         <Footer />

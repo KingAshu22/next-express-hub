@@ -360,7 +360,7 @@ export default function PrintAWBPage({ searchParams }) {
         city: "MUMBAI",
         state: "MAHARASHTRA",
         pincode: "400097",
-        phone: "8169155537",
+        phone: "9152039557",
         country: "INDIA",
       },
       receiver: {

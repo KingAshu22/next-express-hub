@@ -38,13 +38,13 @@ The homepage has been completely redesigned with a modern, professional aestheti
 
 **Features:**
 - **Call Button (Bottom Left)** - Blue gradient, pulsing ripple effect
-  - Links to `tel:+918169155537`
+  - Links to `tel:+919152039557`
   - Animated entrance from left with scale transform
   - Tooltip shows "Call Us" on hover
   - Ripple animation loop
 
 - **WhatsApp Button (Bottom Right)** - Green gradient, pulsing ripple effect
-  - Links to WhatsApp: `https://wa.me/918169155537`
+  - Links to WhatsApp: `https://wa.me/919152039557`
   - Opens in new tab
   - Animated entrance from right
   - Tooltip shows "WhatsApp" on hover

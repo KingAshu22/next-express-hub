@@ -79,8 +79,8 @@ export default function Contact() {
                   {
                     icon: Phone,
                     label: "Phone",
-                    value: "+91 81691 55537",
-                    href: "tel:+918169155537",
+                    value: "+91 91520 39557",
+                    href: "tel:+919152039557",
                   },
                   {
                     icon: Mail,

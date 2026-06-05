@@ -94,7 +94,7 @@ export default function ViewEstimate() {
           <h2 className="text-3xl font-bold text-blue-900">Kargo One</h2>
           <p className="text-lg text-gray-700 mt-1">International Courier & Cargo Services</p>
           <p className="text-sm text-gray-600 mt-3">
-            📞 +91 97699 93011 / +91 81691 55537 | ✉️ expresshub555@gmail.com | 🌐 www.expresshub.in
+            📞 +91 97699 93011 / +91 91520 39557 | ✉️ expresshub555@gmail.com | 🌐 www.expresshub.in
           </p>
           <p className="text-xs text-gray-600 mt-1 whitespace-nowrap">
             Shop no 10, Ground floor Prakashwadi CHS Beside Summit Business park, Gundavali, Andheri East, Mumbai 400 093

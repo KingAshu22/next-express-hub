@@ -38,10 +38,10 @@ export default function Services() {
           transition={{ duration: 0.6 }}
           viewport={{ once: true }}
         >
-          <h2 className="text-4xl md:text-5xl font-bold text-slate-900">
+          <h2 className="text-4xl md:text-5xl font-bold text-purple-900">
             Why Choose Kargo One?
           </h2>
-          <p className="text-slate-600 max-w-2xl mx-auto">
+          <p className="text-purple-600 max-w-2xl mx-auto">
             Industry-leading solutions tailored for your shipping needs
           </p>
         </motion.div>
@@ -63,22 +63,22 @@ export default function Services() {
               viewport={{ once: true }}
               className="group"
             >
-              <div className="relative h-full p-8 rounded-2xl border border-slate-200 bg-white hover:border-slate-300 hover:shadow-lg transition-all">
+              <div className="relative h-full p-8 rounded-2xl border border-purple-200 bg-white hover:border-purple-300 hover:shadow-lg transition-all">
                 {/* Icon */}
-                <div className="w-14 h-14 rounded-xl bg-slate-900 text-white flex items-center justify-center mb-6 group-hover:scale-110 transition-transform">
+                <div className="w-14 h-14 rounded-xl bg-purple-900 text-white flex items-center justify-center mb-6 group-hover:scale-110 transition-transform">
                   <service.icon className="w-7 h-7" />
                 </div>
 
                 {/* Content */}
-                <h3 className="text-xl font-semibold text-slate-900 mb-3">
+                <h3 className="text-xl font-semibold text-purple-900 mb-3">
                   {service.title}
                 </h3>
-                <p className="text-slate-600 text-sm leading-relaxed">
+                <p className="text-purple-600 text-sm leading-relaxed">
                   {service.description}
                 </p>
 
                 {/* Accent line */}
-                <div className="absolute bottom-0 left-0 h-1 w-0 bg-slate-900 rounded-br-2xl group-hover:w-full transition-all duration-300" />
+                <div className="absolute bottom-0 left-0 h-1 w-0 bg-purple-900 rounded-br-2xl group-hover:w-full transition-all duration-300" />
               </div>
             </motion.div>
           ))}

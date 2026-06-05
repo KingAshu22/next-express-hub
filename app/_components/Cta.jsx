@@ -8,11 +8,11 @@ export default function CTA() {
   const router = useRouter();
 
   return (
-    <section className="py-20 bg-slate-900 relative overflow-hidden">
+    <section className="py-20 bg-purple-900 relative overflow-hidden">
       {/* Background gradient elements */}
       <div className="absolute inset-0 overflow-hidden pointer-events-none">
         <motion.div
-          className="absolute top-0 right-0 w-96 h-96 bg-slate-800 rounded-full blur-3xl opacity-40"
+          className="absolute top-0 right-0 w-96 h-96 bg-purple-800 rounded-full blur-3xl opacity-40"
           animate={{ x: [0, 50, 0], y: [0, 30, 0] }}
           transition={{ duration: 8, repeat: Infinity, ease: "easeInOut" }}
         />
@@ -39,7 +39,7 @@ export default function CTA() {
 
           {/* Subheading */}
           <motion.p
-            className="text-lg text-slate-300 max-w-2xl mx-auto leading-relaxed"
+            className="text-lg text-purple-300 max-w-2xl mx-auto leading-relaxed"
             initial={{ opacity: 0, y: 20 }}
             whileInView={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.6, delay: 0.2 }}
@@ -58,7 +58,7 @@ export default function CTA() {
           >
             <Button
               onClick={() => router.push("/dashboard")}
-              className="px-8 py-3 bg-white text-slate-900 hover:bg-slate-100 font-semibold rounded-lg transition-all"
+              className="px-8 py-3 bg-white text-purple-900 hover:bg-purple-100 font-semibold rounded-lg transition-all"
             >
               Get Started Now
             </Button>

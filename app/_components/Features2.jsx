@@ -57,10 +57,10 @@ export default function Features2() {
           transition={{ duration: 0.6 }}
           viewport={{ once: true }}
         >
-          <h2 className="text-4xl md:text-5xl font-bold text-slate-900">
+          <h2 className="text-4xl md:text-5xl font-bold text-purple-900">
             Why We're Different
           </h2>
-          <p className="text-slate-600 max-w-2xl mx-auto">
+          <p className="text-purple-600 max-w-2xl mx-auto">
             Cutting-edge technology meets personalized service
           </p>
         </motion.div>
@@ -78,15 +78,15 @@ export default function Features2() {
               key={index}
               variants={itemVariants}
               whileHover={{ y: -5 }}
-              className="p-8 rounded-2xl border border-slate-200 hover:border-slate-300 hover:shadow-lg transition-all bg-white group"
+              className="p-8 rounded-2xl border border-purple-200 hover:border-purple-300 hover:shadow-lg transition-all bg-white group"
             >
               <div className="text-4xl mb-4 group-hover:scale-110 transition-transform">
                 {feature.icon}
               </div>
-              <h3 className="text-xl font-semibold text-slate-900 mb-3">
+              <h3 className="text-xl font-semibold text-purple-900 mb-3">
                 {feature.title}
               </h3>
-              <p className="text-slate-600 text-sm leading-relaxed">
+              <p className="text-purple-600 text-sm leading-relaxed">
                 {feature.description}
               </p>
             </motion.div>

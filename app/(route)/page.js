@@ -2,7 +2,6 @@
 
 import { useEffect, useState } from "react";
 import Hero from "../_components/Hero";
-import MarqueeRates from "../_components/MarqueeRates";
 import FrontHeader from "../_components/FrontHeader";
 import Footer from "../_components/Footer";
 import FloatingContactButtons from "../_components/FloatingContactButtons";
@@ -19,7 +18,6 @@ export default function Home() {
     <main className="min-h-screen">
       <FrontHeader />
       <Hero />
-      <MarqueeRates />
       <FloatingContactButtons />
       <Features />
       <Features2 />

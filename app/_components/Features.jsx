@@ -78,7 +78,7 @@ const itemVariants = {
 
 export default function Features() {
   return (
-    <section id="services" className="py-20 bg-slate-50">
+    <section id="services" className="py-20 bg-purple-50">
       <div className="container mx-auto px-4 md:px-6">
         {/* Section Header */}
         <motion.div
@@ -88,10 +88,10 @@ export default function Features() {
           transition={{ duration: 0.6 }}
           viewport={{ once: true }}
         >
-          <h2 className="text-4xl md:text-5xl font-bold text-slate-900">
+          <h2 className="text-4xl md:text-5xl font-bold text-purple-900">
             Our Services
           </h2>
-          <p className="text-slate-600 max-w-2xl mx-auto">
+          <p className="text-purple-600 max-w-2xl mx-auto">
             Comprehensive shipping solutions for every need
           </p>
         </motion.div>
@@ -111,17 +111,17 @@ export default function Features() {
               whileHover={{ y: -4, transition: { duration: 0.2 } }}
               className="group"
             >
-              <div className="h-full bg-white rounded-xl p-5 border border-slate-200 hover:border-slate-300 shadow-sm hover:shadow-md transition-all">
+              <div className="h-full bg-white rounded-xl p-5 border border-purple-200 hover:border-purple-300 shadow-sm hover:shadow-md transition-all">
                 {/* Icon */}
-                <div className="w-10 h-10 rounded-lg bg-slate-100 flex items-center justify-center mb-4 group-hover:bg-slate-900 group-hover:text-white transition-all">
+                <div className="w-10 h-10 rounded-lg bg-purple-100 flex items-center justify-center mb-4 group-hover:bg-purple-900 group-hover:text-white transition-all">
                   <feature.icon className="w-5 h-5" />
                 </div>
 
                 {/* Content */}
-                <h3 className="text-sm font-semibold text-slate-900 mb-1">
+                <h3 className="text-sm font-semibold text-purple-900 mb-1">
                   {feature.title}
                 </h3>
-                <p className="text-xs text-slate-600 leading-relaxed">
+                <p className="text-xs text-purple-600 leading-relaxed">
                   {feature.description}
                 </p>
               </div>

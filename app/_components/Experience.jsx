@@ -41,10 +41,10 @@ export default function Experience() {
           transition={{ duration: 0.6 }}
           viewport={{ once: true }}
         >
-          <h2 className="text-4xl md:text-5xl font-bold text-slate-900">
+          <h2 className="text-4xl md:text-5xl font-bold text-purple-900">
             Our Track Record
           </h2>
-          <p className="text-slate-600 max-w-2xl mx-auto">
+          <p className="text-purple-600 max-w-2xl mx-auto">
             Trusted by thousands of businesses worldwide
           </p>
         </motion.div>
@@ -64,12 +64,12 @@ export default function Experience() {
               className="text-center group"
             >
               <div className="relative inline-block">
-                <div className="text-4xl md:text-5xl font-black text-slate-900 group-hover:text-slate-700 transition-colors">
+                <div className="text-4xl md:text-5xl font-black text-purple-900 group-hover:text-purple-700 transition-colors">
                   {stat.number}
                 </div>
-                <div className="h-1 w-0 bg-slate-900 group-hover:w-12 transition-all duration-300 mx-auto mt-2 rounded-full" />
+                <div className="h-1 w-0 bg-purple-900 group-hover:w-12 transition-all duration-300 mx-auto mt-2 rounded-full" />
               </div>
-              <div className="text-sm text-slate-600 mt-4 font-medium">
+              <div className="text-sm text-purple-600 mt-4 font-medium">
                 {stat.label}
               </div>
             </motion.div>

@@ -33,7 +33,7 @@ const steps = [
 
 export default function HowWeDoIt() {
   return (
-    <section className="py-20 bg-slate-50" id="how-we-do-it">
+    <section className="py-20 bg-purple-50" id="how-we-do-it">
       <div className="container mx-auto px-4 md:px-6">
         {/* Section Header */}
         <motion.div
@@ -43,10 +43,10 @@ export default function HowWeDoIt() {
           transition={{ duration: 0.6 }}
           viewport={{ once: true }}
         >
-          <h2 className="text-4xl md:text-5xl font-bold text-slate-900">
+          <h2 className="text-4xl md:text-5xl font-bold text-purple-900">
             How It Works
           </h2>
-          <p className="text-slate-600 max-w-2xl mx-auto">
+          <p className="text-purple-600 max-w-2xl mx-auto">
             Five simple steps to ship globally
           </p>
         </motion.div>
@@ -63,22 +63,22 @@ export default function HowWeDoIt() {
               className="relative"
             >
               {/* Card */}
-              <div className="h-full bg-white rounded-xl p-6 border border-slate-200 hover:border-slate-300 hover:shadow-md transition-all group">
+              <div className="h-full bg-white rounded-xl p-6 border border-purple-200 hover:border-purple-300 hover:shadow-md transition-all group">
                 {/* Step Number */}
-                <div className="absolute -top-3 -right-3 w-8 h-8 rounded-full bg-slate-900 text-white flex items-center justify-center text-xs font-bold">
+                <div className="absolute -top-3 -right-3 w-8 h-8 rounded-full bg-purple-900 text-white flex items-center justify-center text-xs font-bold">
                   {index + 1}
                 </div>
 
                 {/* Icon */}
-                <div className="w-12 h-12 rounded-lg bg-slate-100 flex items-center justify-center mb-4 group-hover:bg-slate-900 group-hover:text-white transition-all">
+                <div className="w-12 h-12 rounded-lg bg-purple-100 flex items-center justify-center mb-4 group-hover:bg-purple-900 group-hover:text-white transition-all">
                   <step.icon className="w-6 h-6" />
                 </div>
 
                 {/* Content */}
-                <h3 className="text-sm font-semibold text-slate-900 mb-2">
+                <h3 className="text-sm font-semibold text-purple-900 mb-2">
                   {step.title}
                 </h3>
-                <p className="text-xs text-slate-600">
+                <p className="text-xs text-purple-600">
                   {step.description}
                 </p>
               </div>
@@ -92,7 +92,7 @@ export default function HowWeDoIt() {
                   transition={{ delay: 0.3 + index * 0.1 }}
                   viewport={{ once: true }}
                 >
-                  <ArrowRight className="w-5 h-5 text-slate-400" />
+                  <ArrowRight className="w-5 h-5 text-purple-400" />
                 </motion.div>
               )}
             </motion.div>

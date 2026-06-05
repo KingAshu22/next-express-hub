@@ -33,7 +33,7 @@ export default function FloatingContactButtons() {
 
           {/* Tooltip */}
           <motion.div
-            className="absolute left-16 top-1/2 -translate-y-1/2 bg-slate-900 text-white px-3 py-2 rounded-lg text-sm font-medium whitespace-nowrap pointer-events-none opacity-0 group-hover:opacity-100 transition-opacity"
+            className="absolute left-16 top-1/2 -translate-y-1/2 bg-purple-900 text-white px-3 py-2 rounded-lg text-sm font-medium whitespace-nowrap pointer-events-none opacity-0 group-hover:opacity-100 transition-opacity"
             initial={{ opacity: 0, x: -10 }}
             whileHover={{ opacity: 1, x: 0 }}
           >
@@ -71,7 +71,7 @@ export default function FloatingContactButtons() {
 
           {/* Tooltip */}
           <motion.div
-            className="absolute right-16 top-1/2 -translate-y-1/2 bg-slate-900 text-white px-3 py-2 rounded-lg text-sm font-medium whitespace-nowrap pointer-events-none opacity-0 group-hover:opacity-100 transition-opacity"
+            className="absolute right-16 top-1/2 -translate-y-1/2 bg-purple-900 text-white px-3 py-2 rounded-lg text-sm font-medium whitespace-nowrap pointer-events-none opacity-0 group-hover:opacity-100 transition-opacity"
             initial={{ opacity: 0, x: 10 }}
             whileHover={{ opacity: 1, x: 0 }}
           >

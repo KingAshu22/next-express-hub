@@ -1,73 +1,127 @@
+"use client";
+
 import Link from "next/link";
 import Image from "next/image";
 import { Button } from "@/components/ui/button";
 import { useRouter } from "next/navigation";
+import { Menu, X } from "lucide-react";
+import { useState } from "react";
+import { motion } from "framer-motion";
 
 export default function FrontHeader() {
   const router = useRouter();
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+
+  const navLinks = [
+    { label: "Services", href: "#services" },
+    { label: "How It Works", href: "#how-we-do-it" },
+    { label: "Experience", href: "#our-experience" },
+  ];
+
   return (
-    <header className="fixed top-0 left-0 right-0 bg-white z-50 shadow-sm">
-      <div className="container mx-auto px-4">
-        <div className="flex items-center justify-between h-20">
-          <Link href="/" className="flex flex-col items-center mt-4">
+    <header className="fixed top-0 left-0 right-0 bg-white/90 backdrop-blur-xl z-50 shadow-sm border-b border-purple-200/50">
+      <div className="container mx-auto px-4 md:px-6">
+        <div className="flex items-center justify-between h-16">
+          {/* Logo */}
+          <Link href="/" className="flex items-center gap-2 hover:opacity-80 transition group">
             <Image
               src="/logo.jpg"
-              alt="Kargo One Logo"
-              width={220}
-              height={60}
+              alt="Kargo Logo"
+              width={140}
+              height={40}
+              priority
+              className="h-10 w-auto"
             />
           </Link>
 
-          <nav className="hidden lg:flex items-center space-x-20 font-bold -ml-48 mt-4 ml-2">
-            <Link
-              href="#what-we-offer"
-              className="text-[#232C65] hover:text-[#E31E24] transition-colors"
-            >
-              What We Offer
-            </Link>
-            <Link
-              href="#how-we-do-it"
-              className="text-[#232C65] hover:text-[#E31E24] transition-colors"
-            >
-              How We Do It
-            </Link>
-            <Link
-              href="#our-experience"
-              className="text-[#232C65] hover:text-[#E31E24] transition-colors"
-            >
-              Our Experience
-            </Link>
+          {/* Desktop Navigation */}
+          <nav className="hidden lg:flex items-center space-x-12">
+            {navLinks.map((link) => (
+              <Link
+                key={link.href}
+                href={link.href}
+                className="text-sm text-purple-700 font-medium hover:text-purple-900 transition-colors relative group"
+              >
+                {link.label}
+                <span className="absolute bottom-0 left-0 w-0 h-0.5 bg-purple-900 group-hover:w-full transition-all duration-300" />
+              </Link>
+            ))}
           </nav>
 
-          <div className="flex items-center space-x-4 font-bold">
-            <Link
-              href="https://wa.me/918169155537"
-              className="hidden md:inline-block text-sm text-white hover:text-[#E31E24] transition-colors bg-[#25D366] px-3 py-2 rounded-lg"
-            >
-              <div className="flex gap-2">
-                <Image
-                  src="/whatsapp.svg"
-                  alt="Whatsapp Icon"
-                  width={16}
-                  height={16}
-                />
-                <span>Contact Us</span>
-              </div>
-            </Link>
-            <Link
-              href="/dashboard"
-              className="hidden md:inline-block text-sm text-white hover:text-[#E31E24] transition-colors bg-orange-500 px-3 py-2 rounded-lg"
+          {/* Desktop Actions */}
+          <div className="hidden lg:flex items-center gap-3">
+            <Button
+              variant="ghost"
+              onClick={() => router.push("/dashboard")}
+              className="text-sm text-purple-700 hover:bg-purple-100 hover:text-purple-900"
             >
               Login
-            </Link>
+            </Button>
             <Button
-              className="bg-[#E31E24] hover:bg-[#C71D23] text-white rounded-md px-6"
               onClick={() => router.push("/track")}
+              className="text-sm bg-purple-900 hover:bg-purple-800 text-white rounded-lg px-6 py-2 transition-all"
             >
-              Track Parcel
+              Track
             </Button>
           </div>
+
+          {/* Mobile Menu Button */}
+          <div className="lg:hidden">
+            <button
+              onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
+              className="p-2 rounded-lg hover:bg-purple-100 transition"
+              aria-label="Toggle menu"
+            >
+              {mobileMenuOpen ? (
+                <X className="w-5 h-5 text-purple-700" />
+              ) : (
+                <Menu className="w-5 h-5 text-purple-700" />
+              )}
+            </button>
+          </div>
         </div>
+
+        {/* Mobile Menu */}
+        {mobileMenuOpen && (
+          <motion.div
+            initial={{ opacity: 0, y: -10 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -10 }}
+            className="lg:hidden border-t border-purple-200 py-4 space-y-3"
+          >
+            {navLinks.map((link) => (
+              <Link
+                key={link.href}
+                href={link.href}
+                className="block px-4 py-2 text-purple-700 hover:bg-purple-50 rounded-lg transition text-sm"
+                onClick={() => setMobileMenuOpen(false)}
+              >
+                {link.label}
+              </Link>
+            ))}
+            <div className="flex flex-col gap-2 px-4 pt-2">
+              <Button
+                variant="outline"
+                onClick={() => {
+                  router.push("/dashboard");
+                  setMobileMenuOpen(false);
+                }}
+                className="w-full justify-center text-sm"
+              >
+                Login
+              </Button>
+              <Button
+                onClick={() => {
+                  router.push("/track");
+                  setMobileMenuOpen(false);
+                }}
+                className="w-full justify-center bg-purple-900 hover:bg-purple-800 text-white text-sm"
+              >
+                Track Parcel
+              </Button>
+            </div>
+          </motion.div>
+        )}
       </div>
     </header>
   );

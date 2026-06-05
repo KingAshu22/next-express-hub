@@ -1,127 +1,89 @@
-"use client"
+"use client";
 
-import { useEffect, useRef, useState } from "react"
-import { Zap, TrendingUp, Truck, Heart } from "lucide-react"
+import { motion } from "framer-motion";
+import { Zap, TrendingUp, Truck, Heart } from "lucide-react";
 
-export default function WhyChoose() {
-  const [isVisible, setIsVisible] = useState(false)
-  const sectionRef = useRef(null)
+const services = [
+  {
+    icon: Zap,
+    title: "Smart Logistics",
+    description: "Advanced tracking and real-time updates for complete visibility of your shipments",
+  },
+  {
+    icon: TrendingUp,
+    title: "Cost Savings",
+    description: "Reduced costs and simplified operations to help your business grow",
+  },
+  {
+    icon: Truck,
+    title: "Same-Day Delivery",
+    description: "Efficient warehouse management enabling quick deliveries",
+  },
+  {
+    icon: Heart,
+    title: "Customer Focus",
+    description: "Reliable service with personalized support for every shipment",
+  },
+];
 
-  useEffect(() => {
-    const observer = new IntersectionObserver(
-      ([entry]) => {
-        if (entry.isIntersecting) {
-          setIsVisible(true)
-          observer.unobserve(entry.target)
-        }
-      },
-      { threshold: 0.1 },
-    )
-
-    if (sectionRef.current) {
-      observer.observe(sectionRef.current)
-    }
-
-    return () => observer.disconnect()
-  }, [])
-
-  const features = [
-    {
-      icon: Zap,
-      title: "Smart Logistics Solutions",
-      description:
-        "At Kargo One, we use the latest technology to make logistics smarter & more efficient. Our system, inspired by the top industry model's software for logistics supply, helps optimize the journey from warehouse to delivery. With Unique Tracking Number for precise inventory tracking & live updates on your shipments, we keep you informed every step of the way.",
-      delay: 0,
-    },
-    {
-      icon: TrendingUp,
-      title: "Enhanced Efficiency & Cost Savings",
-      description:
-        "We simplify operations to reduce costs, allowing your business to focus on growth while we handle the logistics. Our solutions save time and money, making it easier for you to stay competitive.",
-      delay: 100,
-    },
-    {
-      icon: Truck,
-      title: "Same-Day Delivery Options",
-      description:
-        "With efficient warehousing and delivery management, Kargo One enables same-day delivery to enhance customer satisfaction and keep your business competitive.",
-      delay: 200,
-    },
-    {
-      icon: Heart,
-      title: "Customer-Centric Experience",
-      description:
-        "Precision, reliability, and a personalized touch are central to Kargo One. We prioritize your customers' needs, ensuring every delivery is smooth and satisfying.",
-      delay: 300,
-    },
-  ]
-
+export default function Services() {
   return (
-    <section ref={sectionRef} className="py-16 md:py-2 bg-white">
-      {/* Yellow Header Section */}
-      <div className="bg-accent mb-12 md:mb-16 py-8 md:py-12 px-4 md:px-8">
-        <div className="max-w-7xl mx-auto">
-          <h2 className="text-3xl md:text-4xl lg:text-5xl font-bold text-primary-darker leading-tight">
-            Why Kargo One is Your Top Choice?
+    <section className="py-20 bg-white">
+      <div className="container mx-auto px-4 md:px-6">
+        {/* Section Header */}
+        <motion.div
+          className="text-center mb-16 space-y-3"
+          initial={{ opacity: 0, y: -15 }}
+          whileInView={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.6 }}
+          viewport={{ once: true }}
+        >
+          <h2 className="text-4xl md:text-5xl font-bold text-purple-900">
+            Why Choose Kargo One?
           </h2>
-        </div>
-      </div>
+          <p className="text-purple-600 max-w-2xl mx-auto">
+            Industry-leading solutions tailored for your shipping needs
+          </p>
+        </motion.div>
 
-      {/* Features Grid */}
-      <div className="max-w-7xl mx-auto px-4 md:px-8">
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-8 md:gap-12">
-          {features.map((feature, index) => {
-            const Icon = feature.icon
-            return (
-              <div
-                key={index}
-                className={`group transition-all duration-500 ${
-                  isVisible ? "opacity-100 translate-y-0" : "opacity-0 translate-y-8"
-                }`}
-                style={{
-                  transitionDelay: isVisible ? `${feature.delay}ms` : "0ms",
-                }}
-              >
-                <div className="h-full flex flex-col">
-                  {/* Icon and Title */}
-                  <div className="flex items-start gap-4 mb-4">
-                    <div className="flex-shrink-0">
-                      <div className="flex items-center justify-center w-12 h-12 rounded-lg bg-accent/20 group-hover:bg-accent/30 transition-colors duration-300">
-                        <Icon className="w-6 h-6 text-primary" />
-                      </div>
-                    </div>
-                    <div className="flex-1">
-                      <h3 className="text-xl md:text-2xl font-bold text-primary-darker mb-2 flex items-center gap-2">
-                        {feature.title}
-                        <span className="inline-flex items-center gap-0.5 text-accent font-bold text-lg">
-                          <span>›</span>
-                          <span>›</span>
-                          <span>›</span>
-                        </span>
-                      </h3>
-                    </div>
-                  </div>
-
-                  {/* Description */}
-                  <p className="text-gray-600 leading-relaxed text-sm md:text-base group-hover:text-gray-700 transition-colors duration-300">
-                    {feature.description}
-                  </p>
-
-                  {/* Animated Bottom Border */}
-                  <div className="mt-6 h-1 bg-gradient-to-r from-accent to-accent/30 rounded-full transform origin-left scale-x-0 group-hover:scale-x-100 transition-transform duration-500" />
+        {/* Services Grid */}
+        <motion.div
+          className="grid grid-cols-1 md:grid-cols-2 gap-8"
+          initial={{ opacity: 0 }}
+          whileInView={{ opacity: 1 }}
+          transition={{ duration: 0.6, staggerChildren: 0.1 }}
+          viewport={{ once: true }}
+        >
+          {services.map((service, index) => (
+            <motion.div
+              key={index}
+              initial={{ opacity: 0, y: 20 }}
+              whileInView={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.6, delay: index * 0.1 }}
+              viewport={{ once: true }}
+              className="group"
+            >
+              <div className="relative h-full p-8 rounded-2xl border border-purple-200 bg-white hover:border-purple-300 hover:shadow-lg transition-all">
+                {/* Icon */}
+                <div className="w-14 h-14 rounded-xl bg-purple-900 text-white flex items-center justify-center mb-6 group-hover:scale-110 transition-transform">
+                  <service.icon className="w-7 h-7" />
                 </div>
-              </div>
-            )
-          })}
-        </div>
-      </div>
 
-      {/* Decorative Elements */}
-      <div className="mt-16 md:mt-24 relative">
-        <div className="absolute inset-0 flex items-center justify-center opacity-5 pointer-events-none">
-          <div className="w-96 h-96 bg-accent rounded-full blur-3xl" />
-        </div>
+                {/* Content */}
+                <h3 className="text-xl font-semibold text-purple-900 mb-3">
+                  {service.title}
+                </h3>
+                <p className="text-purple-600 text-sm leading-relaxed">
+                  {service.description}
+                </p>
+
+                {/* Accent line */}
+                <div className="absolute bottom-0 left-0 h-1 w-0 bg-purple-900 rounded-br-2xl group-hover:w-full transition-all duration-300" />
+              </div>
+            </motion.div>
+          ))}
+        </motion.div>
       </div>
     </section>
-  )
+  );
 }

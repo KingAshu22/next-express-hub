@@ -1,48 +1,77 @@
-"use client"
+"use client";
 
-import { useEffect, useRef, useState } from "react"
+import { motion } from "framer-motion";
+import { Button } from "@/components/ui/button";
+import { useRouter } from "next/navigation";
 
 export default function CTA() {
-  const [isVisible, setIsVisible] = useState(false)
-  const ref = useRef(null)
-
-  useEffect(() => {
-    const observer = new IntersectionObserver(
-      ([entry]) => {
-        if (entry.isIntersecting) {
-          setIsVisible(true)
-        }
-      },
-      { threshold: 0.1 },
-    )
-
-    if (ref.current) observer.observe(ref.current)
-    return () => observer.disconnect()
-  }, [])
+  const router = useRouter();
 
   return (
-    <section id="contact" ref={ref} className="py-20 md:py-32 bg-gradient-to-r from-primary to-primary-dark">
-      <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
-        <div
-          className={`space-y-8 transition-all duration-1000 ${isVisible ? "opacity-100 scale-100" : "opacity-0 scale-95"}`}
+    <section className="py-20 bg-purple-900 relative overflow-hidden">
+      {/* Background gradient elements */}
+      <div className="absolute inset-0 overflow-hidden pointer-events-none">
+        <motion.div
+          className="absolute top-0 right-0 w-96 h-96 bg-purple-800 rounded-full blur-3xl opacity-40"
+          animate={{ x: [0, 50, 0], y: [0, 30, 0] }}
+          transition={{ duration: 8, repeat: Infinity, ease: "easeInOut" }}
+        />
+      </div>
+
+      <div className="container mx-auto px-4 md:px-6 relative z-10">
+        <motion.div
+          className="text-center space-y-8 max-w-3xl mx-auto"
+          initial={{ opacity: 0, y: 20 }}
+          whileInView={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.6 }}
+          viewport={{ once: true }}
         >
-          <h2 className="text-5xl md:text-6xl font-bold text-white">Ready to Transform Your Logistics?</h2>
+          {/* Heading */}
+          <motion.h2
+            className="text-4xl md:text-5xl lg:text-6xl font-bold text-white leading-tight"
+            initial={{ opacity: 0, y: 20 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.6, delay: 0.1 }}
+            viewport={{ once: true }}
+          >
+            Ready to Ship Globally?
+          </motion.h2>
 
-          <p className="text-xl text-white/80 max-w-2xl mx-auto">
-            Join thousands of businesses that trust Kargo One for their delivery needs. Let's streamline your operations
-            today.
-          </p>
+          {/* Subheading */}
+          <motion.p
+            className="text-lg text-purple-300 max-w-2xl mx-auto leading-relaxed"
+            initial={{ opacity: 0, y: 20 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.6, delay: 0.2 }}
+            viewport={{ once: true }}
+          >
+            Join thousands of businesses that trust Kargo One for fast, reliable, and affordable international shipping. Get started today.
+          </motion.p>
 
-          <div className="flex flex-col sm:flex-row gap-4 justify-center pt-4">
-            <button className="px-10 py-4 bg-accent hover:bg-accent-dark text-primary font-bold rounded-lg transition-all duration-300 hover:shadow-lg hover:scale-105">
+          {/* CTA Buttons */}
+          <motion.div
+            className="flex flex-col sm:flex-row gap-4 justify-center pt-8"
+            initial={{ opacity: 0, y: 20 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.6, delay: 0.3 }}
+            viewport={{ once: true }}
+          >
+            <Button
+              onClick={() => router.push("/dashboard")}
+              className="px-8 py-3 bg-white text-purple-900 hover:bg-purple-100 font-semibold rounded-lg transition-all"
+            >
               Get Started Now
-            </button>
-            <button className="px-10 py-4 bg-white/20 hover:bg-white/30 text-white font-bold rounded-lg border-2 border-white transition-all duration-300 hover:shadow-lg hover:scale-105">
-              Schedule a Demo
-            </button>
-          </div>
-        </div>
+            </Button>
+            <Button
+              variant="outline"
+              onClick={() => router.push("/track")}
+              className="px-8 py-3 text-white border-white hover:bg-white/10 font-semibold rounded-lg transition-all"
+            >
+              Track Shipment
+            </Button>
+          </motion.div>
+        </motion.div>
       </div>
     </section>
-  )
+  );
 }

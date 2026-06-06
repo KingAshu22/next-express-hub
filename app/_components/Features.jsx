@@ -78,7 +78,7 @@ const itemVariants = {
 
 export default function Features() {
   return (
-    <section id="services" className="py-20 bg-purple-50">
+    <section id="services" className="py-20 bg-gradient-to-b from-white to-blue-50">
       <div className="container mx-auto px-4 md:px-6">
         {/* Section Header */}
         <motion.div
@@ -88,17 +88,17 @@ export default function Features() {
           transition={{ duration: 0.6 }}
           viewport={{ once: true }}
         >
-          <h2 className="text-4xl md:text-5xl font-bold text-purple-900">
+          <h2 className="text-4xl md:text-5xl font-bold text-gray-900">
             Our Services
           </h2>
-          <p className="text-purple-600 max-w-2xl mx-auto">
+          <p className="text-gray-600 max-w-2xl mx-auto">
             Comprehensive shipping solutions for every need
           </p>
         </motion.div>
 
         {/* Features Grid */}
         <motion.div
-          className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4"
+          className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-6"
           variants={containerVariants}
           initial="hidden"
           whileInView="visible"
@@ -108,20 +108,20 @@ export default function Features() {
             <motion.div
               key={index}
               variants={itemVariants}
-              whileHover={{ y: -4, transition: { duration: 0.2 } }}
+              whileHover={{ y: -6, transition: { duration: 0.2 } }}
               className="group"
             >
-              <div className="h-full bg-white rounded-xl p-5 border border-purple-200 hover:border-purple-300 shadow-sm hover:shadow-md transition-all">
+              <div className="h-full bg-white rounded-2xl p-6 border border-blue-100 hover:border-blue-300 shadow-sm hover:shadow-lg transition-all">
                 {/* Icon */}
-                <div className="w-10 h-10 rounded-lg bg-purple-100 flex items-center justify-center mb-4 group-hover:bg-purple-900 group-hover:text-white transition-all">
-                  <feature.icon className="w-5 h-5" />
+                <div className="w-12 h-12 rounded-lg bg-gradient-to-br from-blue-100 to-blue-50 flex items-center justify-center mb-4 group-hover:from-blue-900 group-hover:to-blue-800 group-hover:text-white transition-all">
+                  <feature.icon className="w-6 h-6" />
                 </div>
 
                 {/* Content */}
-                <h3 className="text-sm font-semibold text-purple-900 mb-1">
+                <h3 className="text-base font-semibold text-gray-900 mb-2">
                   {feature.title}
                 </h3>
-                <p className="text-xs text-purple-600 leading-relaxed">
+                <p className="text-sm text-gray-600 leading-relaxed">
                   {feature.description}
                 </p>
               </div>

@@ -1,121 +1,69 @@
 "use client";
 
-import { useState, useEffect, useContext } from "react";
-import { Button } from "@/components/ui/button";
+import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
-import { Search } from "lucide-react";
 import { motion } from "framer-motion";
-import { ThemeContext } from "./ThemeProvider";
-
-const countryCodeMap = {
-  "United States": "US",
-  "United Kingdom": "GB",
-  "Canada": "CA",
-  "Australia": "AU",
-  "UAE": "AE",
-  "Singapore": "SG",
-  "Germany": "DE",
-  "France": "FR",
-  "Japan": "JP",
-  "China": "CN",
-  "Saudi Arabia": "SA",
-  "Netherlands": "NL",
-};
 
 const HeroSection = () => {
   const router = useRouter();
-  const themeContext = useContext(ThemeContext);
-  const colors = themeContext?.colors || {
-    light: 'bg-purple-100',
-    text: 'text-purple-900',
-    button: 'bg-purple-900 hover:bg-purple-800',
-    border: 'border-purple-200',
-  };
   const [trackingNumber, setTrackingNumber] = useState("");
-  const [isLoading, setIsLoading] = useState(false);
   const [currentRateIndex, setCurrentRateIndex] = useState(0);
   const [displayText, setDisplayText] = useState("");
 
   const rates = [
-    { name: "United States", rate: "650" },
-    { name: "United Kingdom", rate: "620" },
-    { name: "Canada", rate: "680" },
-    { name: "Australia", rate: "720" },
-    { name: "UAE", rate: "580" },
-    { name: "Singapore", rate: "640" },
-    { name: "Germany", rate: "630" },
-    { name: "France", rate: "630" },
-    { name: "Japan", rate: "700" },
-    { name: "China", rate: "660" },
-    { name: "Saudi Arabia", rate: "590" },
-    { name: "Netherlands", rate: "640" },
+    "Ship to Germany @ ₹630*/kg",
+    "Ship to USA @ ₹650*/kg",
+    "Ship to UK @ ₹640*/kg",
+    "Ship to Australia @ ₹680*/kg",
+    "Ship to Singapore @ ₹620*/kg",
+    "Ship to UAE @ ₹600*/kg",
   ];
 
-  const currentRate = rates[currentRateIndex];
-  const fullText = `Ship to ${currentRate.name} @ ₹${currentRate.rate}*/kg`;
+  const currentText = rates[currentRateIndex];
 
   // Typewriter effect
   useEffect(() => {
-    if (displayText.length < fullText.length) {
+    if (displayText.length < currentText.length) {
       const timeout = setTimeout(() => {
-        setDisplayText(fullText.slice(0, displayText.length + 1));
+        setDisplayText(currentText.slice(0, displayText.length + 1));
       }, 60);
       return () => clearTimeout(timeout);
+    } else {
+      // After text is fully displayed, wait before rotating
+      const timeout = setTimeout(() => {
+        setCurrentRateIndex((prev) => (prev + 1) % rates.length);
+        setDisplayText("");
+      }, 4000);
+      return () => clearTimeout(timeout);
     }
-  }, [displayText, fullText]);
-
-  // Rotate rates every 5 seconds
-  useEffect(() => {
-    const interval = setInterval(() => {
-      setCurrentRateIndex((prev) => (prev + 1) % rates.length);
-      setDisplayText("");
-    }, 5000);
-    return () => clearInterval(interval);
-  }, [rates.length]);
-
-  const handleTrack = (e) => {
-    e.preventDefault();
-    if (trackingNumber.trim()) {
-      setIsLoading(true);
-      router.push(`/track/${trackingNumber}`);
-      setTimeout(() => setIsLoading(false), 1000);
-    }
-  };
+  }, [displayText, currentText]);
 
   const containerVariants = {
     hidden: { opacity: 0 },
     visible: {
       opacity: 1,
-      transition: {
-        staggerChildren: 0.15,
-        delayChildren: 0.1,
-      },
+      transition: { staggerChildren: 0.2, delayChildren: 0.3 },
     },
   };
 
   const itemVariants = {
     hidden: { opacity: 0, y: 20 },
-    visible: {
-      opacity: 1,
-      y: 0,
-      transition: { duration: 0.7, ease: "easeOut" },
-    },
+    visible: { opacity: 1, y: 0, transition: { duration: 0.8 } },
+  };
+
+  const handleTrack = (e) => {
+    e.preventDefault();
+    if (trackingNumber.trim()) {
+      router.push(`/track?id=${trackingNumber}`);
+    }
   };
 
   return (
-    <section className="relative bg-white overflow-hidden pt-24">
-      {/* Background elements with theme color */}
+    <section className="relative bg-gradient-to-br from-blue-950 via-blue-900 to-blue-800 overflow-hidden pt-24 pb-20">
+      {/* Background Effects */}
       <div className="absolute inset-0 overflow-hidden pointer-events-none">
-        <motion.div
-          className={`absolute top-0 right-0 w-96 h-96 ${colors.light} rounded-full blur-3xl opacity-40`}
-          animate={{ x: [0, 30, 0], y: [0, 30, 0] }}
-          transition={{ duration: 8, repeat: Infinity, ease: "easeInOut" }}
-        />
-        <motion.div
-          className={`absolute bottom-10 left-20 w-96 h-96 ${colors.light} rounded-full blur-3xl opacity-30`}
-          animate={{ x: [0, -30, 0], y: [0, -30, 0] }}
-          transition={{ duration: 10, repeat: Infinity, ease: "easeInOut" }}
-        />
+        <div className="absolute -top-40 -right-40 w-80 h-80 bg-blue-700 rounded-full blur-3xl opacity-20"></div>
+        <div className="absolute -bottom-20 -left-20 w-96 h-96 bg-blue-600 rounded-full blur-3xl opacity-10"></div>
       </div>
 
       <div className="container mx-auto px-4 md:px-6 relative z-10">
@@ -126,118 +74,89 @@ const HeroSection = () => {
           animate="visible"
         >
           {/* Left Content */}
-          <motion.div className="space-y-8" variants={itemVariants}>
+          <motion.div className="space-y-8 text-white" variants={itemVariants}>
             {/* Badge */}
-            <motion.div className="inline-block" variants={itemVariants}>
-              <div className={`flex items-center gap-2 ${colors.light} px-4 py-2 rounded-full ${colors.border} border`}>
-                <span className="text-sm font-medium">Industry-Leading Service Since 2010</span>
+            <div className="inline-block">
+              <div className="flex items-center gap-2 bg-white/10 backdrop-blur-sm px-4 py-2 rounded-full border border-white/20">
+                <div className="w-2 h-2 bg-green-400 rounded-full animate-pulse"></div>
+                <span className="text-sm font-medium text-white">Trusted Since 2010</span>
               </div>
-            </motion.div>
+            </div>
 
-            {/* Main Heading with Typewriter */}
-            <motion.div variants={itemVariants}>
-              <h1 className={`text-4xl md:text-5xl lg:text-6xl font-bold min-h-[4rem] md:min-h-[5rem] leading-tight`}>
-                <span className={`text-transparent bg-clip-text bg-gradient-to-r from-purple-600 to-red-600`}>
-                  {displayText}
+            {/* Main Heading */}
+            <div>
+              <h1 className="text-4xl md:text-5xl lg:text-6xl font-bold leading-tight mb-4">
+                Global Shipping,
+                <span className="block text-transparent bg-clip-text bg-gradient-to-r from-orange-400 to-orange-500 mt-2">
+                  Exceptional Rates
                 </span>
-                <span className="animate-pulse">|</span>
               </h1>
-            </motion.div>
-
-            {/* Search Form */}
-            <motion.form
-              onSubmit={handleTrack}
-              className="space-y-4"
-              variants={itemVariants}
-            >
-              <label htmlFor="tracking" className="block text-sm font-semibold text-gray-700">
-                Track Your Parcel
-              </label>
-              <div className="flex gap-2">
-                <div className="flex-1 relative">
-                  <input
-                    id="tracking"
-                    type="text"
-                    placeholder="Enter tracking number"
-                    value={trackingNumber}
-                    onChange={(e) => setTrackingNumber(e.target.value)}
-                    className="w-full px-4 py-3 rounded-lg border border-gray-300 focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent transition"
-                  />
-                  <Search className="absolute right-3 top-3.5 w-5 h-5 text-gray-400" />
-                </div>
-                <Button
-                  type="submit"
-                  disabled={isLoading}
-                  className={`px-6 py-3 ${colors.button} text-white rounded-lg font-semibold transition transform hover:scale-105 disabled:opacity-50`}
-                >
-                  {isLoading ? "Loading..." : "Track"}
-                </Button>
+              <div className="text-xl md:text-2xl font-semibold text-blue-100 min-h-[3.5rem]">
+                {displayText}
+                <span className="animate-pulse">|</span>
               </div>
-            </motion.form>
+            </div>
+
+            {/* Description */}
+            <p className="text-lg text-blue-100 leading-relaxed max-w-md">
+              Send packages to 220+ countries with real-time tracking, competitive rates, and 24/7 support. Experience seamless international shipping.
+            </p>
+
+            {/* CTA Buttons */}
+            <div className="flex flex-col sm:flex-row gap-4 pt-4">
+              <button
+                onClick={() => router.push("/contact")}
+                className="px-8 py-4 bg-gradient-to-r from-orange-500 to-orange-600 hover:from-orange-600 hover:to-orange-700 text-white font-semibold rounded-lg transition-all duration-300 transform hover:scale-105 shadow-lg"
+              >
+                Start Shipping
+              </button>
+              <button
+                onClick={handleTrack}
+                className="px-8 py-4 bg-white/10 backdrop-blur-sm border border-white/20 text-white font-semibold rounded-lg hover:bg-white/20 transition-all duration-300"
+              >
+                Track Package
+              </button>
+            </div>
 
             {/* Stats */}
-            <motion.div
-              className="grid grid-cols-3 gap-6 pt-8 border-t border-gray-200"
-              variants={itemVariants}
-            >
-              <div className="text-center lg:text-left">
-                <p className="text-2xl md:text-3xl font-bold text-gray-900">10M+</p>
-                <p className="text-sm text-gray-600 mt-1">Parcels Shipped</p>
-              </div>
-              <div className="text-center lg:text-left">
-                <p className="text-2xl md:text-3xl font-bold text-gray-900">220+</p>
-                <p className="text-sm text-gray-600 mt-1">Countries</p>
-              </div>
-              <div className="text-center lg:text-left">
-                <p className="text-2xl md:text-3xl font-bold text-gray-900">99.2%</p>
-                <p className="text-sm text-gray-600 mt-1">Satisfaction</p>
-              </div>
-            </motion.div>
+            <div className="grid grid-cols-3 gap-6 pt-8 border-t border-white/20">
+              <motion.div variants={itemVariants}>
+                <p className="text-3xl font-bold text-white">10M+</p>
+                <p className="text-sm text-blue-200 mt-1">Parcels Shipped</p>
+              </motion.div>
+              <motion.div variants={itemVariants}>
+                <p className="text-3xl font-bold text-white">220+</p>
+                <p className="text-sm text-blue-200 mt-1">Countries Served</p>
+              </motion.div>
+              <motion.div variants={itemVariants}>
+                <p className="text-3xl font-bold text-white">99.2%</p>
+                <p className="text-sm text-blue-200 mt-1">Satisfaction Rate</p>
+              </motion.div>
+            </div>
           </motion.div>
 
-          {/* Right Content - Info Card */}
-          <motion.div
-            className="relative h-full hidden lg:flex items-center justify-center"
-            variants={itemVariants}
-          >
-            <motion.div
-              className="relative w-full max-w-md h-96"
-              animate={{ y: [0, -20, 0] }}
-              transition={{ duration: 4, repeat: Infinity, ease: "easeInOut" }}
-            >
-              {/* Glow effect */}
-              <div className={`absolute inset-0 ${colors.light} rounded-3xl blur-2xl opacity-60`} />
-
-              {/* Main card */}
-              <div className={`relative bg-white rounded-3xl p-8 shadow-2xl ${colors.border} border`}>
-                {/* Top accent line with theme color */}
-                <div className={`absolute top-0 left-0 right-0 h-1 ${colors.primary} rounded-t-3xl`} />
-
-                {/* Content */}
+          {/* Right Side - Illustration Card */}
+          <motion.div className="hidden lg:flex items-center justify-center" variants={itemVariants}>
+            <div className="relative w-full max-w-md">
+              <div className="absolute inset-0 bg-gradient-to-br from-orange-400/20 to-blue-500/20 rounded-3xl blur-2xl"></div>
+              <div className="relative bg-gradient-to-br from-white/10 to-white/5 backdrop-blur-xl rounded-3xl p-8 border border-white/10 shadow-2xl">
+                <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-orange-400 to-orange-500 rounded-t-3xl"></div>
                 <div className="space-y-6">
-                  <motion.div
-                    className={`w-16 h-16 ${colors.light} rounded-full flex items-center justify-center`}
-                    animate={{ rotate: 360 }}
-                    transition={{ duration: 20, repeat: Infinity, ease: "linear" }}
-                  >
-                    <div className={`w-12 h-12 ${colors.primary} rounded-full opacity-20`} />
-                  </motion.div>
-
-                  <div>
-                    <h3 className="text-2xl font-bold text-gray-900 mb-2">
-                      Seamless Global Shipping
-                    </h3>
-                    <p className="text-gray-600 text-sm">
-                      With real-time tracking, competitive pricing, and 24/7 support, we deliver your parcels with excellence.
-                    </p>
+                  <div className="w-24 h-24 mx-auto bg-gradient-to-br from-orange-400 to-orange-500 rounded-full flex items-center justify-center shadow-xl">
+                    <svg className="w-12 h-12 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
+                    </svg>
                   </div>
-
-                  <div className="space-y-3 pt-4">
+                  <div className="space-y-2">
+                    <p className="text-xl font-bold text-white">Fast & Reliable</p>
+                    <p className="text-sm text-blue-100">International Shipping</p>
+                  </div>
+                  <div className="space-y-4 pt-4">
                     {[
-                      "24/7 Customer Support",
-                      "Real-time Parcel Tracking",
-                      "Insured Shipments"
-                    ].map((feature, idx) => (
+                      { icon: "✓", text: "Real-time Tracking" },
+                      { icon: "✓", text: "Insured Shipments" },
+                      { icon: "✓", text: "24/7 Support" },
+                    ].map((item, idx) => (
                       <motion.div
                         key={idx}
                         className="flex items-center gap-3"
@@ -245,30 +164,16 @@ const HeroSection = () => {
                         animate={{ opacity: 1, x: 0 }}
                         transition={{ delay: 0.5 + idx * 0.1 }}
                       >
-                        <div className={`w-5 h-5 rounded-full ${colors.primary} flex items-center justify-center`}>
+                        <div className="w-5 h-5 rounded-full bg-gradient-to-r from-orange-400 to-orange-500 flex items-center justify-center flex-shrink-0">
                           <span className="text-white text-xs font-bold">✓</span>
                         </div>
-                        <span className="text-sm text-gray-700 font-medium">
-                          {feature}
-                        </span>
+                        <span className="text-sm text-blue-100 font-medium">{item.text}</span>
                       </motion.div>
                     ))}
                   </div>
                 </div>
-
-                {/* Floating elements */}
-                <motion.div
-                  className={`absolute -top-4 -right-4 w-12 h-12 ${colors.primary} rounded-full opacity-20`}
-                  animate={{ y: [-5, 5, -5] }}
-                  transition={{ duration: 3, repeat: Infinity }}
-                />
-                <motion.div
-                  className={`absolute -bottom-4 -left-4 w-16 h-16 ${colors.light} rounded-full opacity-20`}
-                  animate={{ y: [5, -5, 5] }}
-                  transition={{ duration: 3.5, repeat: Infinity }}
-                />
               </div>
-            </motion.div>
+            </div>
           </motion.div>
         </motion.div>
       </div>

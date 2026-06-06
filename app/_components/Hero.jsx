@@ -54,7 +54,7 @@ const HeroSection = () => {
   const handleTrack = (e) => {
     e.preventDefault();
     if (trackingNumber.trim()) {
-      router.push(`/track?id=${trackingNumber}`);
+      router.push(`/track/${trackingNumber}`);
     }
   };
 
@@ -102,21 +102,47 @@ const HeroSection = () => {
               Send packages to 220+ countries with real-time tracking, competitive rates, and 24/7 support. Experience seamless international shipping.
             </p>
 
-            {/* CTA Buttons */}
-            <div className="flex flex-col sm:flex-row gap-4 pt-4">
-              <button
-                onClick={() => router.push("/contact")}
-                className="px-8 py-4 bg-gradient-to-r from-orange-500 to-orange-600 hover:from-orange-600 hover:to-orange-700 text-white font-semibold rounded-lg transition-all duration-300 transform hover:scale-105 shadow-lg"
-              >
-                Start Shipping
-              </button>
-              <button
-                onClick={handleTrack}
-                className="px-8 py-4 bg-white/10 backdrop-blur-sm border border-white/20 text-white font-semibold rounded-lg hover:bg-white/20 transition-all duration-300"
-              >
-                Track Package
-              </button>
-            </div>
+            {/* Tracking Search */}
+            <motion.form
+              onSubmit={handleTrack}
+              className="pt-6 space-y-3"
+              variants={itemVariants}
+            >
+              <label className="block text-sm font-semibold text-white">
+                Track Your Parcel
+              </label>
+              <div className="flex flex-col sm:flex-row gap-3">
+                <div className="flex-1 relative">
+                  <input
+                    type="text"
+                    placeholder="Enter your tracking number"
+                    value={trackingNumber}
+                    onChange={(e) => setTrackingNumber(e.target.value)}
+                    className="w-full px-5 py-3 rounded-lg bg-white/95 backdrop-blur-sm text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-orange-400 focus:bg-white transition-all font-medium"
+                  />
+                  <svg
+                    className="absolute right-4 top-1/2 transform -translate-y-1/2 w-5 h-5 text-gray-400"
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={2}
+                      d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"
+                    />
+                  </svg>
+                </div>
+                <button
+                  type="submit"
+                  disabled={!trackingNumber.trim()}
+                  className="px-8 py-3 bg-gradient-to-r from-orange-500 to-orange-600 hover:from-orange-600 hover:to-orange-700 text-white font-bold rounded-lg transition-all duration-300 transform hover:scale-105 shadow-lg disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:scale-100 whitespace-nowrap"
+                >
+                  Search
+                </button>
+              </div>
+            </motion.form>
 
             {/* Stats */}
             <div className="grid grid-cols-3 gap-6 pt-8 border-t border-white/20">

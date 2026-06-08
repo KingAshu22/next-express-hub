@@ -21,7 +21,7 @@ const testimonials = [
   {
     name: "Rens Isac",
     location: "Kerala, India",
-    text: "I had a very smooth experience with Fleet Go Courier Service. I recently sent Ayurvedic medicines from Kerala to Ireland, and everything reached on time and in perfect condition.",
+    text: "I had a very smooth experience with Kargo One Courier Service. I recently sent Ayurvedic medicines from Kerala to Ireland, and everything reached on time and in perfect condition.",
     rating: 5,
     avatar: "https://i.pravatar.cc/150?img=3",
   },

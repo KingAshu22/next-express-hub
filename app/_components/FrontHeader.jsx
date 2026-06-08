@@ -83,10 +83,10 @@ export default function FrontHeader() {
               +91 91520 39557
             </a>
             <button
-              onClick={() => router.push("/contact")}
+              onClick={() => router.push("/dashboard")}
               className="px-6 py-2 bg-yellow-400 hover:bg-yellow-500 text-slate-900 font-bold rounded-lg transition-all duration-300 transform hover:scale-105 shadow-lg"
             >
-              Get a Quote
+              Login
             </button>
           </div>
 

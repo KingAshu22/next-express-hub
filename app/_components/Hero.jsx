@@ -4,7 +4,7 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { motion } from "framer-motion";
 import Image from "next/image";
-import { ArrowRight, Package, Globe, CheckCircle } from "lucide-react";
+import { ArrowRight, Shield, Clock, Globe, Headphones, Package, Truck, Plane, CheckCircle } from "lucide-react";
 
 const HeroSection = () => {
   const router = useRouter();
@@ -21,7 +21,7 @@ const HeroSection = () => {
     hidden: { opacity: 0 },
     visible: {
       opacity: 1,
-      transition: { staggerChildren: 0.15, delayChildren: 0.2 },
+      transition: { staggerChildren: 0.1, delayChildren: 0.2 },
     },
   };
 
@@ -31,157 +31,216 @@ const HeroSection = () => {
   };
 
   return (
-    <section className="relative bg-gradient-to-br from-slate-900 via-blue-900 to-slate-900 overflow-hidden pt-32 pb-0">
-      {/* Animated background elements */}
+    <section className="relative bg-gradient-to-b from-blue-600 via-blue-700 to-blue-800 overflow-hidden pt-24 pb-32">
+      {/* Animated background with dotted world map pattern */}
       <div className="absolute inset-0 overflow-hidden pointer-events-none">
-        <div className="absolute -top-60 -right-60 w-96 h-96 bg-blue-600 rounded-full blur-3xl opacity-10 animate-blob"></div>
-        <div className="absolute -bottom-32 -left-32 w-80 h-80 bg-yellow-500 rounded-full blur-3xl opacity-5 animate-blob animation-delay-2000"></div>
-        <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-72 h-72 bg-blue-700 rounded-full blur-3xl opacity-5"></div>
+        {/* Dotted world map SVG background */}
+        <svg className="absolute w-full h-full opacity-20" viewBox="0 0 1000 600" preserveAspectRatio="xMidYMid slice">
+          {/* Create dotted world map pattern */}
+          <defs>
+            <pattern id="dots" x="10" y="10" width="20" height="20" patternUnits="userSpaceOnUse">
+              <circle cx="10" cy="10" r="2" fill="currentColor" className="text-blue-400"/>
+            </pattern>
+          </defs>
+          <rect width="1000" height="600" fill="url(#dots)" opacity="0.3"/>
+        </svg>
+
+        {/* Delivery route line with pins animation */}
+        <svg className="absolute w-full h-full opacity-40 top-0 left-0" viewBox="0 0 1200 400" preserveAspectRatio="xMidYMid slice">
+          <defs>
+            <linearGradient id="routeGradient" x1="0%" y1="0%" x2="100%" y2="0%">
+              <stop offset="0%" stopColor="#FBBF24" stopOpacity="1" />
+              <stop offset="100%" stopColor="#FCD34D" stopOpacity="0.5" />
+            </linearGradient>
+          </defs>
+          {/* Curved delivery route */}
+          <path d="M 100 300 Q 300 200 500 250 T 900 200" stroke="url(#routeGradient)" strokeWidth="2" strokeDasharray="5,5" fill="none" className="animate-pulse"/>
+          {/* Location pins */}
+          <circle cx="100" cy="300" r="12" fill="#FBBF24"/>
+          <circle cx="100" cy="300" r="8" fill="none" stroke="#FBBF24" strokeWidth="2" className="animate-pulse"/>
+          <circle cx="500" cy="250" r="12" fill="#FBBF24"/>
+          <circle cx="500" cy="250" r="8" fill="none" stroke="#FBBF24" strokeWidth="2" className="animate-pulse"/>
+          <circle cx="900" cy="200" r="12" fill="#FBBF24"/>
+          <circle cx="900" cy="200" r="8" fill="none" stroke="#FBBF24" strokeWidth="2" className="animate-pulse"/>
+        </svg>
+
+        {/* Glow effects */}
+        <div className="absolute top-20 right-32 w-64 h-64 bg-yellow-400 rounded-full blur-3xl opacity-5 animate-pulse"></div>
       </div>
 
       <div className="container mx-auto px-4 md:px-6 relative z-10">
         <motion.div
-          className="grid grid-cols-1 lg:grid-cols-2 gap-8 lg:gap-16 items-center"
+          className="grid grid-cols-1 lg:grid-cols-2 gap-8 lg:gap-12 items-center min-h-[600px]"
           variants={containerVariants}
           initial="hidden"
           animate="visible"
         >
           {/* Left Content */}
-          <motion.div className="space-y-6 text-white pt-8 lg:pt-0" variants={itemVariants}>
+          <motion.div className="space-y-6 text-white" variants={itemVariants}>
             {/* Main Heading */}
             <div className="space-y-4">
               <motion.h1 
-                className="text-5xl md:text-6xl lg:text-7xl font-bold leading-tight"
+                className="text-4xl md:text-5xl lg:text-6xl font-bold leading-tight"
                 variants={itemVariants}
               >
-                Delivering More
-                <span className="block text-yellow-400 mt-2">Than Just Packages</span>
+                Experience
+                <br />
+                <span className="text-yellow-400">Fast & Hassle Free</span>
+                <br />
+                Delivery Worldwide
               </motion.h1>
+              <div className="w-16 h-1 bg-yellow-400 rounded-full"></div>
               <motion.p 
-                className="text-lg md:text-xl text-gray-200 leading-relaxed max-w-lg"
+                className="text-base md:text-lg text-gray-100 leading-relaxed max-w-lg"
                 variants={itemVariants}
               >
-                Fast, reliable and secure logistics solutions tailored for your business and beyond.
+                Enjoy doorstep pickup, secure packing, and trusted delivery to destinations across the globe.
               </motion.p>
             </div>
 
-            {/* CTA Buttons */}
-            <motion.div 
-              className="flex flex-col sm:flex-row gap-4 pt-4"
-              variants={itemVariants}
-            >
+            {/* CTA Button */}
+            <motion.div variants={itemVariants}>
               <button 
                 onClick={() => router.push("/contact")}
-                className="inline-flex items-center justify-center gap-2 px-8 py-4 bg-yellow-400 hover:bg-yellow-500 text-slate-900 font-bold rounded-lg transition-all duration-300 transform hover:scale-105 shadow-lg text-lg group"
+                className="inline-flex items-center justify-center gap-2 px-8 py-4 bg-yellow-400 hover:bg-yellow-500 text-blue-900 font-bold rounded-full transition-all duration-300 transform hover:scale-105 shadow-lg text-base group"
               >
-                Schedule a Pickup
-                <ArrowRight className="w-5 h-5 group-hover:translate-x-1 transition-transform" />
-              </button>
-              <button 
-                onClick={() => router.push("/track")}
-                className="inline-flex items-center justify-center gap-2 px-8 py-4 border-2 border-gray-300 hover:border-white text-white font-bold rounded-lg transition-all duration-300 text-lg group"
-              >
-                Track Your Shipment
+                Get a Quote
                 <ArrowRight className="w-5 h-5 group-hover:translate-x-1 transition-transform" />
               </button>
             </motion.div>
 
-            {/* Stats Grid */}
+            {/* Stats Grid - Bottom */}
             <motion.div 
-              className="grid grid-cols-3 gap-6 pt-12 border-t border-gray-600"
+              className="grid grid-cols-2 md:grid-cols-4 gap-4 pt-8 border-t border-blue-400/30"
               variants={itemVariants}
             >
-              <div className="space-y-1">
+              <div className="space-y-2">
                 <div className="flex items-center gap-2">
-                  <Package className="w-6 h-6 text-yellow-400" />
-                  <p className="text-3xl font-bold text-white">10M+</p>
+                  <Shield className="w-5 h-5 text-yellow-400" />
                 </div>
-                <p className="text-sm text-gray-300">Deliveries</p>
+                <p className="text-sm font-semibold text-white">Secure Packing</p>
               </div>
-              <div className="space-y-1">
+              <div className="space-y-2">
                 <div className="flex items-center gap-2">
-                  <Globe className="w-6 h-6 text-yellow-400" />
-                  <p className="text-3xl font-bold text-white">220+</p>
+                  <Clock className="w-5 h-5 text-yellow-400" />
                 </div>
-                <p className="text-sm text-gray-300">Countries</p>
+                <p className="text-sm font-semibold text-white">On-Time Delivery</p>
               </div>
-              <div className="space-y-1">
+              <div className="space-y-2">
                 <div className="flex items-center gap-2">
-                  <CheckCircle className="w-6 h-6 text-yellow-400" />
-                  <p className="text-3xl font-bold text-white">99.9%</p>
+                  <Globe className="w-5 h-5 text-yellow-400" />
                 </div>
-                <p className="text-sm text-gray-300">On-time Delivery</p>
+                <p className="text-sm font-semibold text-white">Worldwide Coverage</p>
+              </div>
+              <div className="space-y-2">
+                <div className="flex items-center gap-2">
+                  <Headphones className="w-5 h-5 text-yellow-400" />
+                </div>
+                <p className="text-sm font-semibold text-white">24/7 Support</p>
               </div>
             </motion.div>
           </motion.div>
 
-          {/* Right Side - Hero Image */}
+          {/* Right Side - Hero Image with Delivery Card */}
           <motion.div 
-            className="relative w-full h-96 md:h-[500px] lg:h-[600px]"
+            className="relative w-full h-full flex flex-col items-center justify-center gap-6"
             variants={itemVariants}
-            initial={{ opacity: 0, scale: 0.95 }}
-            animate={{ opacity: 1, scale: 1 }}
+            initial={{ opacity: 0, scale: 0.95, x: 20 }}
+            animate={{ opacity: 1, scale: 1, x: 0 }}
             transition={{ duration: 0.8, ease: "easeOut" }}
           >
-            <Image
-              src="/kargo-hero.png"
-              alt="Kargo One - Express Delivery with Truck and Globe"
-              fill
-              className="object-contain object-right"
-              priority
-            />
-          </motion.div>
-        </motion.div>
-
-        {/* Tracking Widget */}
-        <motion.div 
-          className="mt-16 md:mt-24 -mb-8 md:-mb-16 relative z-20"
-          initial={{ opacity: 0, y: 40 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.8, delay: 0.4 }}
-        >
-          <div className="bg-white/95 backdrop-blur-md rounded-2xl shadow-2xl p-6 md:p-8 max-w-2xl mx-auto">
-            <h3 className="text-slate-900 font-semibold text-lg md:text-xl mb-4">Track Your Shipment</h3>
-            <form onSubmit={handleTrack} className="flex flex-col sm:flex-row gap-3">
-              <div className="flex-1 relative">
-                <input
-                  type="text"
-                  placeholder="Enter Tracking ID"
-                  value={trackingNumber}
-                  onChange={(e) => setTrackingNumber(e.target.value)}
-                  className="w-full px-5 py-3 rounded-lg bg-gray-50 text-slate-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-yellow-400 focus:bg-white transition-all border border-gray-200 font-medium"
-                />
+            {/* Delivery Status Card */}
+            <motion.div 
+              className="absolute top-20 left-0 md:relative bg-white/95 backdrop-blur-md rounded-2xl shadow-2xl p-6 w-80 z-20"
+              initial={{ opacity: 0, y: -20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.8, delay: 0.3 }}
+              whileHover={{ y: -10, transition: { duration: 0.3 } }}
+            >
+              <div className="flex justify-between items-start mb-4">
+                <div>
+                  <p className="text-sm text-gray-600 font-medium">Estimated Delivery Date</p>
+                  <p className="text-xs text-gray-500 mt-1">Thursday</p>
+                </div>
+                <div className="text-right">
+                  <div className="flex items-center gap-1">
+                    <span className="text-yellow-500 text-lg font-bold">kargo</span>
+                    <span className="text-blue-600 font-bold">one</span>
+                  </div>
+                </div>
               </div>
-              <button
-                type="submit"
-                disabled={!trackingNumber.trim()}
-                className="px-8 py-3 bg-yellow-400 hover:bg-yellow-500 text-slate-900 font-bold rounded-lg transition-all duration-300 transform hover:scale-105 shadow-lg disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:scale-100 whitespace-nowrap flex items-center justify-center gap-2 group"
-              >
-                Track Now
-                <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
-              </button>
-            </form>
-          </div>
+
+              <h3 className="text-3xl font-bold text-blue-900 mb-2">10 Dec 2026</h3>
+              <p className="text-sm text-blue-600 font-semibold mb-4">Your Order Is <span className="text-blue-600">Out for Delivery</span></p>
+
+              {/* Progress bar with icons */}
+              <div className="mb-4">
+                <div className="flex justify-between mb-2">
+                  <div className="flex flex-col items-center flex-1">
+                    <div className="w-8 h-8 rounded-full bg-yellow-400 flex items-center justify-center mb-1">
+                      <Package className="w-4 h-4 text-white" />
+                    </div>
+                    <p className="text-xs text-gray-700 font-medium">Confirmed</p>
+                  </div>
+                  <div className="flex flex-col items-center flex-1">
+                    <div className="w-8 h-8 rounded-full bg-yellow-400 flex items-center justify-center mb-1">
+                      <Truck className="w-4 h-4 text-white" />
+                    </div>
+                    <p className="text-xs text-gray-700 font-medium">In Transit</p>
+                  </div>
+                  <div className="flex flex-col items-center flex-1">
+                    <div className="w-8 h-8 rounded-full bg-blue-600 flex items-center justify-center mb-1">
+                      <Plane className="w-4 h-4 text-white" />
+                    </div>
+                    <p className="text-xs text-blue-600 font-semibold">Out for Delivery</p>
+                  </div>
+                  <div className="flex flex-col items-center flex-1">
+                    <div className="w-8 h-8 rounded-full bg-gray-300 flex items-center justify-center mb-1">
+                      <CheckCircle className="w-4 h-4 text-gray-500" />
+                    </div>
+                    <p className="text-xs text-gray-500 font-medium">Delivered</p>
+                  </div>
+                </div>
+                {/* Progress line */}
+                <div className="flex gap-1 mt-2">
+                  <div className="flex-1 h-1 bg-yellow-400 rounded"></div>
+                  <div className="flex-1 h-1 bg-yellow-400 rounded"></div>
+                  <div className="flex-1 h-1 bg-blue-600 rounded"></div>
+                  <div className="flex-1 h-1 bg-gray-300 rounded"></div>
+                </div>
+              </div>
+            </motion.div>
+
+            {/* Main Hero Image - Airplane and Person */}
+            <motion.div 
+              className="relative w-full h-96 md:h-[500px] mt-12 md:mt-0"
+              initial={{ opacity: 0, scale: 0.9 }}
+              animate={{ opacity: 1, scale: 1 }}
+              transition={{ duration: 0.8, delay: 0.2 }}
+            >
+              <Image
+                src="/hero-delivery.png"
+                alt="Kargo One - Express Delivery with Airplane and Delivery Person"
+                fill
+                className="object-contain object-right md:object-center"
+                priority
+              />
+            </motion.div>
+          </motion.div>
         </motion.div>
       </div>
 
       <style jsx>{`
-        @keyframes blob {
+        @keyframes pulse {
           0%, 100% {
-            transform: translate(0px, 0px) scale(1);
+            opacity: 1;
           }
-          33% {
-            transform: translate(30px, -50px) scale(1.1);
-          }
-          66% {
-            transform: translate(-20px, 20px) scale(0.9);
+          50% {
+            opacity: 0.6;
           }
         }
-        .animate-blob {
-          animation: blob 7s infinite;
-        }
-        .animation-delay-2000 {
-          animation-delay: 2s;
+        .animate-pulse {
+          animation: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
         }
       `}</style>
     </section>

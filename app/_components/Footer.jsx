@@ -1,35 +1,27 @@
 "use client";
 
 import Link from "next/link";
-import Image from "next/image";
-import { Mail, Phone, MapPin, Facebook, Twitter, Linkedin } from "lucide-react";
-import { useContext } from "react";
-import { ThemeContext } from "./ThemeProvider";
+import { Mail, Phone, MapPin, Facebook, Twitter, Linkedin, Instagram } from "lucide-react";
 
 export default function Footer() {
   const currentYear = new Date().getFullYear();
-  const themeContext = useContext(ThemeContext);
-  const colors = themeContext?.colors || { footer: 'bg-purple-900' };
 
   const address = "Shop no 10, Ground floor Prakashwadi CHS Beside Summit Business park, Gundavali, Andheri East, Mumbai, Maharashtra 400093";
   const branches = ["Hyderabad", "Bangalore", "Kerala"];
 
   return (
-    <footer className={`${colors.footer} text-white`}>
+    <footer className="bg-slate-900 text-white">
       {/* Main Footer */}
       <div className="container mx-auto px-4 md:px-6 py-16">
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-12">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-8 md:gap-12">
           {/* Brand Column */}
           <div className="space-y-4">
-            <Image
-              src="/logo.jpg"
-              alt="Kargo Logo"
-              width={140}
-              height={40}
-              className="h-10 w-auto"
-            />
-            <p className="text-sm text-white/80 leading-relaxed">
-              Trusted international shipping solutions for businesses and individuals worldwide.
+            <div className="flex flex-col">
+              <span className="text-lg font-bold tracking-tight">kargo<span className="text-yellow-400">one</span></span>
+              <span className="text-xs text-gray-300 font-medium">— EXPRESS NOW —</span>
+            </div>
+            <p className="text-sm text-gray-300 leading-relaxed">
+              Your trusted logistics partner, delivering excellence across the globe.
             </p>
           </div>
 
@@ -38,23 +30,28 @@ export default function Footer() {
             <h3 className="text-sm font-semibold text-white uppercase tracking-widest">Services</h3>
             <ul className="space-y-2 text-sm">
               <li>
-                <Link href="#" className="text-white/70 hover:text-white transition-colors">
-                  International Shipping
-                </Link>
-              </li>
-              <li>
-                <Link href="#" className="text-white/70 hover:text-white transition-colors">
+                <Link href="#services" className="text-gray-300 hover:text-yellow-400 transition-colors">
                   Express Delivery
                 </Link>
               </li>
               <li>
-                <Link href="#" className="text-white/70 hover:text-white transition-colors">
-                  Cargo Services
+                <Link href="#services" className="text-gray-300 hover:text-yellow-400 transition-colors">
+                  Air Freight
                 </Link>
               </li>
               <li>
-                <Link href="#" className="text-white/70 hover:text-white transition-colors">
-                  Track Shipment
+                <Link href="#services" className="text-gray-300 hover:text-yellow-400 transition-colors">
+                  Sea Freight
+                </Link>
+              </li>
+              <li>
+                <Link href="#services" className="text-gray-300 hover:text-yellow-400 transition-colors">
+                  Warehousing
+                </Link>
+              </li>
+              <li>
+                <Link href="#services" className="text-gray-300 hover:text-yellow-400 transition-colors">
+                  Surface Transport
                 </Link>
               </li>
             </ul>
@@ -65,85 +62,106 @@ export default function Footer() {
             <h3 className="text-sm font-semibold text-white uppercase tracking-widest">Company</h3>
             <ul className="space-y-2 text-sm">
               <li>
-                <Link href="/about" className="text-white/70 hover:text-white transition-colors">
+                <Link href="/about" className="text-gray-300 hover:text-yellow-400 transition-colors">
                   About Us
                 </Link>
               </li>
               <li>
-                <Link href="/contact" className="text-white/70 hover:text-white transition-colors">
-                  Contact
+                <Link href="/contact" className="text-gray-300 hover:text-yellow-400 transition-colors">
+                  Contact Us
                 </Link>
               </li>
               <li>
-                <Link href="/privacy-policy" className="text-white/70 hover:text-white transition-colors">
+                <Link href="/blogs" className="text-gray-300 hover:text-yellow-400 transition-colors">
+                  Blog
+                </Link>
+              </li>
+              <li>
+                <Link href="/privacy-policy" className="text-gray-300 hover:text-yellow-400 transition-colors">
                   Privacy Policy
                 </Link>
               </li>
               <li>
-                <Link href="/terms-of-service" className="text-white/70 hover:text-white transition-colors">
+                <Link href="/terms-of-service" className="text-gray-300 hover:text-yellow-400 transition-colors">
                   Terms of Service
                 </Link>
               </li>
+            </ul>
+          </div>
+
+          {/* Support Column */}
+          <div className="space-y-4">
+            <h3 className="text-sm font-semibold text-white uppercase tracking-widest">Support</h3>
+            <ul className="space-y-2 text-sm">
               <li>
-                <Link href="/blogs" className="text-white/70 hover:text-white transition-colors">
-                  Blog
+                <Link href="/track" className="text-gray-300 hover:text-yellow-400 transition-colors">
+                  Track Shipment
                 </Link>
+              </li>
+              <li>
+                <a href="mailto:support@kargoone.com" className="text-gray-300 hover:text-yellow-400 transition-colors">
+                  Help Center
+                </a>
+              </li>
+              <li>
+                <Link href="#" className="text-gray-300 hover:text-yellow-400 transition-colors">
+                  FAQs
+                </Link>
+              </li>
+              <li>
+                <a href="mailto:info@kargoone.com" className="text-gray-300 hover:text-yellow-400 transition-colors">
+                  Contact Support
+                </a>
               </li>
             </ul>
           </div>
 
           {/* Contact Column */}
           <div className="space-y-4">
-            <h3 className="text-sm font-semibold text-white uppercase tracking-widest">Contact</h3>
+            <h3 className="text-sm font-semibold text-white uppercase tracking-widest">Contact Us</h3>
             <div className="space-y-3 text-sm">
               <div className="flex items-start gap-3">
-                <Phone className="w-4 h-4 text-white/70 mt-0.5 flex-shrink-0" />
-                <p className="text-white/70">+91 91520 39557</p>
+                <MapPin className="w-4 h-4 text-yellow-400 mt-0.5 flex-shrink-0" />
+                <div>
+                  <p className="text-gray-300">116 2nd Ave N, Hurley, WI 54534, USA</p>
+                </div>
               </div>
               <div className="flex items-start gap-3">
-                <MapPin className="w-4 h-4 text-white/70 mt-0.5 flex-shrink-0" />
-                <p className="text-white/70">{address}</p>
+                <Phone className="w-4 h-4 text-yellow-400 mt-0.5 flex-shrink-0" />
+                <a href="tel:+918882940780" className="text-gray-300 hover:text-yellow-400 transition-colors">
+                  888-294-0780
+                </a>
               </div>
               <div className="flex items-start gap-3">
-                <Mail className="w-4 h-4 text-white/70 mt-0.5 flex-shrink-0" />
-                <p className="text-white/70">support@kargoone.com</p>
+                <Mail className="w-4 h-4 text-yellow-400 mt-0.5 flex-shrink-0" />
+                <a href="mailto:info@kargoone.com" className="text-gray-300 hover:text-yellow-400 transition-colors">
+                  info@kargoone.com
+                </a>
               </div>
             </div>
-          </div>
-        </div>
-
-        {/* Branches Section */}
-        <div className="mt-12 pt-8 border-t border-white/20">
-          <h3 className="text-sm font-semibold text-white uppercase tracking-widest mb-4">Our Branches</h3>
-          <div className="flex flex-wrap gap-4">
-            {branches.map((branch, index) => (
-              <div key={index} className="flex items-center gap-2">
-                <span className="text-white/70">{branch}</span>
-                {index < branches.length - 1 && (
-                  <span className="text-white/40">|</span>
-                )}
-              </div>
-            ))}
           </div>
         </div>
       </div>
 
       {/* Bottom Bar */}
-      <div className="border-t border-white/20">
+      <div className="border-t border-slate-800">
         <div className="container mx-auto px-4 md:px-6 py-8">
-          <div className="flex flex-col md:flex-row items-center justify-between gap-4 text-sm text-white/70">
+          <div className="flex flex-col md:flex-row items-center justify-between gap-4 text-sm text-gray-400">
             <p>
-              &copy; {currentYear} Designed & Developed by Exprova.com
+              &copy; {currentYear} Kargo One. All rights reserved.
             </p>
             <div className="flex items-center gap-4">
-              <Link href="#" className="hover:text-white transition-colors">
+              <Link href="#" className="hover:text-yellow-400 transition-colors">
                 <Facebook className="w-4 h-4" />
               </Link>
-              <Link href="#" className="hover:text-white transition-colors">
+              <Link href="#" className="hover:text-yellow-400 transition-colors">
+                <Linkedin className="w-4 h-4" />
+              </Link>
+              <Link href="#" className="hover:text-yellow-400 transition-colors">
                 <Twitter className="w-4 h-4" />
               </Link>
-              <Link href="#" className="hover:text-white transition-colors">
-                <Linkedin className="w-4 h-4" />
+              <Link href="#" className="hover:text-yellow-400 transition-colors">
+                <Instagram className="w-4 h-4" />
               </Link>
             </div>
           </div>

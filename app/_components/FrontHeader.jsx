@@ -17,7 +17,6 @@ export default function FrontHeader() {
     { label: "Services", href: "#services", submenu: true },
     { label: "About Us", href: "/about" },
     { label: "Track Shipment", href: "/track" },
-    { label: "Pricing", href: "#pricing" },
     { label: "Blog", href: "/blogs" },
     { label: "Contact Us", href: "/contact" },
   ];
@@ -32,15 +31,18 @@ export default function FrontHeader() {
   ];
 
   return (
-    <header className="fixed top-0 left-0 right-0 bg-slate-900/95 backdrop-blur-xl z-50 border-b border-slate-800">
+    <header className="fixed top-0 left-0 right-0 bg-white-900 backdrop-blur-lg z-50 rounded-xl border-2 my-4 mx-8  border-blue-800">
       <div className="container mx-auto px-4 md:px-6">
         <div className="flex items-center justify-between h-20">
           {/* Logo */}
           <Link href="/" className="flex items-center gap-2 hover:opacity-80 transition-opacity">
-            <div className="flex flex-col">
-              <span className="text-xl font-bold text-white tracking-tight">kargo<span className="text-yellow-400">one</span></span>
-              <span className="text-xs text-gray-300 font-medium">— EXPRESS NOW —</span>
-            </div>
+            <Image
+              src="/kargoone-logo.png"
+              alt="Kargo One Logo"
+              width={220}
+              height={140}
+              className="object-contain"
+            />
           </Link>
 
           {/* Desktop Navigation */}
@@ -49,7 +51,7 @@ export default function FrontHeader() {
               <div key={link.href} className="relative group">
                 <button
                   onClick={() => !link.submenu && router.push(link.href)}
-                  className="text-gray-200 hover:text-white px-3 py-2 rounded-md text-sm font-medium transition-colors flex items-center gap-1 group"
+                  className="text-yellow-400 hover:text-white px-3 py-2 rounded-md text-sm font-medium transition-colors flex items-center gap-1 group"
                 >
                   {link.label}
                   {link.submenu && <ChevronDown className="w-4 h-4" />}
@@ -74,11 +76,11 @@ export default function FrontHeader() {
           {/* Desktop Actions */}
           <div className="hidden lg:flex items-center gap-4">
             <a 
-              href="tel:+918882940780"
-              className="flex items-center gap-2 text-gray-200 hover:text-yellow-400 transition-colors font-medium"
+              href="tel:+919152039557"
+              className="flex items-center gap-2 text-red-500 hover:text-yellow-400 transition-colors font-medium"
             >
               <Phone className="w-4 h-4" />
-              888-294-0780
+              +91 91520 39557
             </a>
             <button
               onClick={() => router.push("/contact")}
@@ -148,11 +150,11 @@ export default function FrontHeader() {
             ))}
             <div className="border-t border-slate-700 pt-4 mt-4 px-4 space-y-3">
               <a 
-                href="tel:+918882940780"
-                className="flex items-center gap-2 text-gray-200 hover:text-yellow-400 transition-colors font-medium text-sm"
+                href="tel:+919152039557"
+                className="flex items-center gap-2 text-red-400 font-bold hover:text-yellow-400 transition-colors font-medium text-sm"
               >
                 <Phone className="w-4 h-4" />
-                888-294-0780
+                +91 91520 39557
               </a>
               <button
                 onClick={() => {

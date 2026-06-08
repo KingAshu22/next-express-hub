@@ -31,7 +31,7 @@ const HeroSection = () => {
   };
 
   return (
-    <section className="relative bg-gradient-to-br from-slate-900 via-blue-900 to-slate-900 overflow-hidden pt-32 pb-0">
+    <section className="relative bg-gradient-to-br from-slate-300 via-blue-900 to-slate-900 overflow-hidden pt-32 pb-0">
       {/* Animated background elements */}
       <div className="absolute inset-0 overflow-hidden pointer-events-none">
         <div className="absolute -top-60 -right-60 w-96 h-96 bg-blue-600 rounded-full blur-3xl opacity-10 animate-blob"></div>
@@ -48,7 +48,6 @@ const HeroSection = () => {
         >
           {/* Left Content */}
           <motion.div className="space-y-6 text-white pt-8 lg:pt-0" variants={itemVariants}>
-            {/* Main Heading */}
             <div className="space-y-4">
               <motion.h1 
                 className="text-5xl md:text-6xl lg:text-7xl font-bold leading-tight"
@@ -65,7 +64,6 @@ const HeroSection = () => {
               </motion.p>
             </div>
 
-            {/* CTA Buttons */}
             <motion.div 
               className="flex flex-col sm:flex-row gap-4 pt-4"
               variants={itemVariants}
@@ -86,7 +84,6 @@ const HeroSection = () => {
               </button>
             </motion.div>
 
-            {/* Stats Grid */}
             <motion.div 
               className="grid grid-cols-3 gap-6 pt-12 border-t border-gray-600"
               variants={itemVariants}
@@ -115,19 +112,19 @@ const HeroSection = () => {
             </motion.div>
           </motion.div>
 
-          {/* Right Side - Hero Image */}
+          {/* Right Side - Hero Image (slightly bigger but contained) */}
           <motion.div 
-            className="relative w-full h-96 md:h-[500px] lg:h-[600px]"
+            className="relative w-full h-96 md:h-[500px] lg:h-[650px]"
             variants={itemVariants}
-            initial={{ opacity: 0, scale: 0.95 }}
-            animate={{ opacity: 1, scale: 1 }}
+            initial={{ opacity: 0, scale: 0.8 }}
+            animate={{ opacity: 1, scale: 1.1 }}
             transition={{ duration: 0.8, ease: "easeOut" }}
           >
             <Image
-              src="/kargo-hero.png"
+              src="/kargo-hero-2.png"
               alt="Kargo One - Express Delivery with Truck and Globe"
               fill
-              className="object-contain object-right"
+              className="object-contain object-center"
               priority
             />
           </motion.div>
@@ -135,7 +132,7 @@ const HeroSection = () => {
 
         {/* Tracking Widget */}
         <motion.div 
-          className="mt-16 md:mt-24 -mb-8 md:-mb-16 relative z-20"
+          className="-mt-40 md:mt-24 relative z-20"
           initial={{ opacity: 0, y: 40 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.8, delay: 0.4 }}
@@ -163,27 +160,13 @@ const HeroSection = () => {
             </form>
           </div>
         </motion.div>
+
+        {/* Spacer to make the widget sit on top of the white strip below */}
+        <div className="h-16 md:h-20" />
       </div>
 
-      <style jsx>{`
-        @keyframes blob {
-          0%, 100% {
-            transform: translate(0px, 0px) scale(1);
-          }
-          33% {
-            transform: translate(30px, -50px) scale(1.1);
-          }
-          66% {
-            transform: translate(-20px, 20px) scale(0.9);
-          }
-        }
-        .animate-blob {
-          animation: blob 7s infinite;
-        }
-        .animation-delay-2000 {
-          animation-delay: 2s;
-        }
-      `}</style>
+      {/* White strip at the bottom (sits behind the lower half of tracking widget) */}
+      <div className="absolute bottom-0 left-0 right-0 h-24 md:h-32 bg-white z-0" />
     </section>
   );
 };

@@ -131,12 +131,12 @@ export default function WhyChooseUs() {
             viewport={{ once: true }}
           >
             <div className="relative rounded-2xl overflow-hidden shadow-2xl h-96 md:h-[500px] bg-gradient-to-br from-blue-600 to-slate-900 flex items-center justify-center group cursor-pointer">
-              <Image
+              {/* <Image
                 src="https://images.unsplash.com/photo-1553531088-d3cf44b60df2?w=800&q=80"
                 alt="Kargo One Package Delivery"
                 fill
                 className="object-cover group-hover:scale-105 transition-transform duration-300"
-              />
+              /> */}
               
               {/* Play Button Overlay */}
               <motion.button

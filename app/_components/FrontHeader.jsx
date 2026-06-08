@@ -158,12 +158,12 @@ export default function FrontHeader() {
               </a>
               <button
                 onClick={() => {
-                  router.push("/contact");
+                  router.push("/login");
                   setMobileMenuOpen(false);
                 }}
                 className="w-full px-6 py-2 bg-yellow-400 hover:bg-yellow-500 text-slate-900 font-bold rounded-lg transition-all"
               >
-                Get a Quote
+                Login
               </button>
             </div>
           </motion.div>

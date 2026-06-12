@@ -11,7 +11,7 @@ export async function GET(request, { params }) {
     
     // Updated select to exclude Tech440 password as well
     const vendor = await VendorIntegration.findById(id)
-      .select("-xpressionCredentials.password -itdCredentials.password -itdCredentials.cachedToken -tech440Credentials.password")
+      .select("-xpressionCredentials.password -itdCredentials.password -itdCredentials.cachedToken -tech440Credentials.password -m5cCredentials.password -m5cCredentials.cachedToken")
     
     if (!vendor) {
       return new Response(
@@ -189,6 +189,32 @@ export async function PUT(request, { params }) {
       
       vendor.markModified("dhlCredentials")
     }
+
+    if (vendor.softwareType === "m5c" && body.m5cCredentials) {
+      const newCreds = body.m5cCredentials
+      if (!vendor.m5cCredentials) vendor.m5cCredentials = {}
+
+      if (newCreds.apiUrl !== undefined) vendor.m5cCredentials.apiUrl = newCreds.apiUrl
+      if (newCreds.username !== undefined) vendor.m5cCredentials.username = newCreds.username
+      if (newCreds.accountCode !== undefined) vendor.m5cCredentials.accountCode = newCreds.accountCode
+      if (newCreds.accessKey !== undefined) vendor.m5cCredentials.accessKey = newCreds.accessKey
+
+      if (newCreds.password && newCreds.password.trim() !== "") {
+        vendor.m5cCredentials.password = newCreds.password
+      }
+
+      if (newCreds.services !== undefined) vendor.m5cCredentials.services = newCreds.services
+
+      if (
+        newCreds.username !== undefined ||
+        (newCreds.password && newCreds.password.trim() !== "")
+      ) {
+        vendor.m5cCredentials.cachedToken = null
+        vendor.m5cCredentials.tokenExpiresAt = null
+      }
+
+      vendor.markModified("m5cCredentials")
+    }
     
     // Debug: Log what we're saving
     console.log("Saving vendor...", {
@@ -214,6 +240,10 @@ export async function PUT(request, { params }) {
     // Remove Tech440 sensitive data
     if (responseData.tech440Credentials) {
       delete responseData.tech440Credentials.password
+    }
+    if (responseData.m5cCredentials) {
+      delete responseData.m5cCredentials.password
+      delete responseData.m5cCredentials.cachedToken
     }
     
     return new Response(

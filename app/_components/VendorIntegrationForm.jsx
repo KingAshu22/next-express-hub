@@ -49,6 +49,17 @@ export default function VendorIntegrationForm({
       apiKey: "",
       services: [{ serviceName: "Express", serviceCode: "TP05", packageCode: "NDX" }],
     },
+    dhl: {
+      apiKey: "",
+    },
+    m5c: {
+      apiUrl: "http://apiv2.m5clogs.com",
+      username: "",
+      password: "",
+      accountCode: "",
+      accessKey: "",
+      services: [{ serviceName: "M5C Express", serviceCode: "", goodsDesc: "NDox", thirdPartyLabel: false }],
+    },
   })
   
   // Load edit data if provided
@@ -93,6 +104,16 @@ export default function VendorIntegrationForm({
         },
         dhl: {
           apiKey: editData.dhlCredentials?.apiKey || "",
+        },
+        m5c: {
+          apiUrl: editData.m5cCredentials?.apiUrl || "http://apiv2.m5clogs.com",
+          username: editData.m5cCredentials?.username || "",
+          password: "",
+          accountCode: editData.m5cCredentials?.accountCode || "",
+          accessKey: editData.m5cCredentials?.accessKey || "",
+          services: editData.m5cCredentials?.services?.length > 0
+            ? editData.m5cCredentials.services
+            : [{ serviceName: "M5C Express", serviceCode: "", goodsDesc: "NDox", thirdPartyLabel: false }],
         },
       }
       
@@ -177,6 +198,26 @@ export default function VendorIntegrationForm({
       handleCredentialChange("tech440", "services", newServices)
     }
   }
+
+  const handleM5CServiceChange = (index, field, value) => {
+    const newServices = [...formData.m5c.services]
+    newServices[index] = { ...newServices[index], [field]: value }
+    handleCredentialChange("m5c", "services", newServices)
+  }
+
+  const addM5CService = () => {
+    handleCredentialChange("m5c", "services", [
+      ...formData.m5c.services,
+      { serviceName: "", serviceCode: "", goodsDesc: "NDox", thirdPartyLabel: false },
+    ])
+  }
+
+  const removeM5CService = (index) => {
+    if (formData.m5c.services.length > 1) {
+      const newServices = formData.m5c.services.filter((_, i) => i !== index)
+      handleCredentialChange("m5c", "services", newServices)
+    }
+  }
   
   const handleSubmit = async (e) => {
     e.preventDefault()
@@ -224,6 +265,15 @@ export default function VendorIntegrationForm({
         apiKey: formData.tech440.apiKey,
         services: formData.tech440.services.filter(s => s.serviceName),
       }
+      } else if (formData.softwareType === "m5c") {
+        payload.m5cCredentials = {
+          apiUrl: formData.m5c.apiUrl,
+          username: formData.m5c.username,
+          password: formData.m5c.password,
+          accountCode: formData.m5c.accountCode,
+          accessKey: formData.m5c.accessKey,
+          services: formData.m5c.services.filter(s => s.serviceName && s.serviceCode),
+        }
       }
       
       console.log("Submitting payload:", JSON.stringify(payload, null, 2))
@@ -275,6 +325,24 @@ export default function VendorIntegrationForm({
             email: "",
             password: "",
             services: [...DEFAULT_ITD_SERVICES],
+          },
+          tech440: {
+            apiUrl: "https://transitpl.com/api",
+            username: "",
+            password: "",
+            apiKey: "",
+            services: [{ serviceName: "Express", serviceCode: "TP05", packageCode: "NDX" }],
+          },
+          dhl: {
+            apiKey: "",
+          },
+          m5c: {
+            apiUrl: "http://apiv2.m5clogs.com",
+            username: "",
+            password: "",
+            accountCode: "",
+            accessKey: "",
+            services: [{ serviceName: "M5C Express", serviceCode: "", goodsDesc: "NDox", thirdPartyLabel: false }],
           },
         })
       }
@@ -383,6 +451,18 @@ export default function VendorIntegrationForm({
               className="mr-2"
             />
             <span className="text-sm">DHL Express</span>
+          </label>
+          <label className="flex items-center">
+            <input
+              type="radio"
+              name="softwareType"
+              value="m5c"
+              checked={formData.softwareType === "m5c"}
+              onChange={handleInputChange}
+              disabled={!!editData}
+              className="mr-2"
+            />
+            <span className="text-sm">M5C</span>
           </label>
         </div>
         {editData && (
@@ -815,6 +895,110 @@ export default function VendorIntegrationForm({
                   <option value="DOC">DOC</option>
                 </select>
                 <button type="button" onClick={() => removeTech440Service(index)} className="px-3 text-red-600">✕</button>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {formData.softwareType === "m5c" && (
+        <div className="space-y-4 p-4 bg-cyan-50 rounded-lg">
+          <h3 className="font-semibold text-cyan-800">M5C Credentials</h3>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">API URL *</label>
+              <input
+                type="url"
+                value={formData.m5c.apiUrl}
+                onChange={(e) => handleCredentialChange("m5c", "apiUrl", e.target.value)}
+                required
+                className="w-full px-3 py-2 border border-gray-300 rounded-md"
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Account Code *</label>
+              <input
+                type="text"
+                value={formData.m5c.accountCode}
+                onChange={(e) => handleCredentialChange("m5c", "accountCode", e.target.value)}
+                required={!editData}
+                className="w-full px-3 py-2 border border-gray-300 rounded-md"
+                placeholder="e.g. TEST"
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Username *</label>
+              <input
+                type="text"
+                value={formData.m5c.username}
+                onChange={(e) => handleCredentialChange("m5c", "username", e.target.value)}
+                required={!editData}
+                className="w-full px-3 py-2 border border-gray-300 rounded-md"
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                Password {editData ? "(leave blank to keep existing)" : "*"}
+              </label>
+              <input
+                type="password"
+                value={formData.m5c.password}
+                onChange={(e) => handleCredentialChange("m5c", "password", e.target.value)}
+                required={!editData}
+                className="w-full px-3 py-2 border border-gray-300 rounded-md"
+                placeholder={editData ? "(unchanged)" : "Enter password"}
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Tracking Access Key</label>
+              <input
+                type="text"
+                value={formData.m5c.accessKey}
+                onChange={(e) => handleCredentialChange("m5c", "accessKey", e.target.value)}
+                className="w-full px-3 py-2 border border-gray-300 rounded-md"
+              />
+            </div>
+          </div>
+
+          <div className="mt-4">
+            <div className="flex justify-between items-center mb-2">
+              <label className="block text-sm font-medium text-gray-700">Services</label>
+              <button type="button" onClick={addM5CService} className="text-sm text-cyan-700 hover:text-cyan-900">+ Add Service</button>
+            </div>
+            {formData.m5c.services.map((service, index) => (
+              <div key={index} className="flex flex-wrap gap-2 mb-2">
+                <input
+                  type="text"
+                  value={service.serviceName}
+                  onChange={(e) => handleM5CServiceChange(index, "serviceName", e.target.value)}
+                  className="flex-1 min-w-40 px-3 py-2 border border-gray-300 rounded-md"
+                  placeholder="Service Name"
+                />
+                <input
+                  type="text"
+                  value={service.serviceCode}
+                  onChange={(e) => handleM5CServiceChange(index, "serviceCode", e.target.value)}
+                  className="w-32 px-3 py-2 border border-gray-300 rounded-md"
+                  placeholder="Code"
+                  maxLength={4}
+                />
+                <select
+                  value={service.goodsDesc || "NDox"}
+                  onChange={(e) => handleM5CServiceChange(index, "goodsDesc", e.target.value)}
+                  className="w-28 px-3 py-2 border border-gray-300 rounded-md"
+                >
+                  <option value="NDox">NDox</option>
+                  <option value="Dox">Dox</option>
+                </select>
+                <label className="flex items-center gap-2 px-3 py-2 border border-gray-300 rounded-md text-sm">
+                  <input
+                    type="checkbox"
+                    checked={!!service.thirdPartyLabel}
+                    onChange={(e) => handleM5CServiceChange(index, "thirdPartyLabel", e.target.checked)}
+                  />
+                  Third Party Label
+                </label>
+                <button type="button" onClick={() => removeM5CService(index)} className="px-3 text-red-600">X</button>
               </div>
             ))}
           </div>

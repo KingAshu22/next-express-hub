@@ -272,6 +272,100 @@ async function fetchTech440Tracking(awbNumber, credentials) {
   }
 }
 
+const joinUrl = (baseUrl, path = "") => {
+  if (!baseUrl) return path || ""
+  if (!path) return baseUrl
+  return `${baseUrl.replace(/\/+$/, "")}/${path.replace(/^\/+/, "")}`
+}
+
+async function fetchM5CTracking(awbNumber, credentials) {
+  const url = joinUrl(credentials.apiUrl, "/api/Track/GetTrackings")
+  const payload = {
+    ValidateAccount: [
+      {
+        AccountCode: credentials.accountCode,
+        Username: credentials.username,
+        Password: credentials.password,
+        AccessKey: credentials.accessKey || "",
+      },
+    ],
+    Awbno: awbNumber,
+  }
+
+  const response = await fetch(url, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(payload),
+  })
+
+  const result = await response.json().catch(() => ({}))
+  if (!response.ok) {
+    throw new Error(`M5C tracking API error: ${response.status}`)
+  }
+
+  const message =
+    result.messages?.[0] ||
+    result.Messages?.[0] ||
+    result.message?.[0] ||
+    {}
+  const responseFlag = String(message.Response ?? message.response ?? "")
+  const errorCode = String(message.ErrorCode ?? message.errorCode ?? "")
+
+  if (
+    responseFlag === "0" ||
+    (errorCode && errorCode !== "100") ||
+    /invalid|failed/i.test(message.ErrorDescription || message["Error Description"] || "")
+  ) {
+    throw new Error(
+      message.ErrorDescription ||
+        message["Error Description"] ||
+        "M5C tracking failed"
+    )
+  }
+
+  const details =
+    result.trackDetail?.[0] ||
+    result.TrackDetail?.[0] ||
+    result.trackDetails?.[0] ||
+    result.TrackDetails?.[0] ||
+    {}
+
+  const events = (details.Event || details.event || details.Events || []).map((evt) => ({
+    timestamp: evt.EventDate ? new Date(`${evt.EventDate} ${evt.EventTime || ""}`).getTime() : 0,
+    EventDate: evt.EventDate,
+    EventTime: evt.EventTime,
+    EventDate1: formatDate(evt.EventDate),
+    EventTime1: formatTime(evt.EventTime),
+    EventCode: evt.EventCode || evt["Event Code"],
+    Location: evt.Location || evt.location || "",
+    Status: evt.EventDescription || evt["Event Description"] || evt.Status || "Update",
+    Remark: evt.Remark || "",
+  }))
+
+  return {
+    success: true,
+    softwareType: "m5c",
+    tracking: [
+      {
+        AWBNo: details.Awbno || details.AwbNo || awbNumber,
+        BookingDate: details.ShipDate,
+        Destination: details.Destination,
+        Sector: details.Sector,
+        Consignee: details.Consignee,
+        Forwarder: details.Forwarder,
+        ForwardingNo: details["Forwarding No"] || details.ForwardingNo,
+        StatusCode: details.StatusCode,
+        Status: details.Status,
+        DeliveryDate: details.DeliveryDate || details["Delivery Date"],
+        DeliveryTime: details.DeliveryTime || details["Delivery Time"],
+        ReceiverName: details.ReceiverName || details["Receiver Name"],
+      },
+    ],
+    events,
+    rawResponse: result,
+  }
+}
+
 // Helper to format date like "8th March 2023"
 function formatDate(dateStr) {
   if (!dateStr) return ""
@@ -378,6 +472,8 @@ export async function POST(request) {
       result = await fetchDHLTracking(awbNumber, vendor.dhlCredentials)
     } else if (vendor.softwareType === "tech440") {
       result = await fetchTech440Tracking(awbNumber, vendor.tech440Credentials)
+    } else if (vendor.softwareType === "m5c") {
+      result = await fetchM5CTracking(awbNumber, vendor.m5cCredentials)
     } else {
       return new Response(
         JSON.stringify({ success: false, error: `Unknown software type: ${vendor.softwareType}` }),

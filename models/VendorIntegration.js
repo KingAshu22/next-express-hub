@@ -21,6 +21,13 @@ const Tech440ServiceSchema = new mongoose.Schema({
   packageCode: { type: String, default: "NDX" }, // "NDX" or "DOC"
 })
 
+const M5CServiceSchema = new mongoose.Schema({
+  serviceName: { type: String, required: true },
+  serviceCode: { type: String, required: true },
+  goodsDesc: { type: String, default: "NDox" },
+  thirdPartyLabel: { type: Boolean, default: false },
+})
+
 // Xpression credentials schema
 const XpressionCredentialsSchema = new mongoose.Schema({
   apiUrl: { 
@@ -83,6 +90,21 @@ const Tech440CredentialsSchema = new mongoose.Schema({
   services: [Tech440ServiceSchema],
 })
 
+const M5CCredentialsSchema = new mongoose.Schema({
+  apiUrl: {
+    type: String,
+    required: true,
+    default: "http://apiv2.m5clogs.com",
+  },
+  username: { type: String, required: true },
+  password: { type: String, required: true },
+  accountCode: { type: String, required: true },
+  accessKey: { type: String, default: "" },
+  services: [M5CServiceSchema],
+  cachedToken: { type: String, default: null },
+  tokenExpiresAt: { type: Date, default: null },
+})
+
 // Main Vendor Integration schema
 const VendorIntegrationSchema = new mongoose.Schema(
   {
@@ -100,7 +122,7 @@ const VendorIntegrationSchema = new mongoose.Schema(
     },
     softwareType: { 
       type: String, 
-      enum: ["xpression", "itd", "dhl", "tech440"], 
+      enum: ["xpression", "itd", "dhl", "tech440", "skynet", "skart", "m5c"], 
       required: true 
     },
     isActive: { type: Boolean, default: true },
@@ -121,6 +143,11 @@ const VendorIntegrationSchema = new mongoose.Schema(
 
     tech440Credentials: {
       type: Tech440CredentialsSchema,
+      default: null,
+    },
+
+    m5cCredentials: {
+      type: M5CCredentialsSchema,
       default: null,
     },
     
@@ -162,6 +189,15 @@ VendorIntegrationSchema.virtual("allServices").get(function () {
       code: s.serviceCode,
       apiCode: s.serviceCode,
       packageCode: s.packageCode,
+    }))
+  }
+  if (this.softwareType === "m5c" && this.m5cCredentials) {
+    return this.m5cCredentials.services.map(s => ({
+      name: s.serviceName,
+      code: s.serviceCode,
+      apiCode: s.serviceCode,
+      goodsDesc: s.goodsDesc,
+      thirdPartyLabel: s.thirdPartyLabel,
     }))
   }
   return []

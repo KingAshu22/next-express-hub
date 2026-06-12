@@ -837,6 +837,8 @@ export default function AWBTrackingPage({ params }) {
   const [selectedService, setSelectedService] = useState(null)
   const [customService, setCustomService] = useState("")
   const [selectedProductCode, setSelectedProductCode] = useState("SPX")
+  const [vendorServicesLoading, setVendorServicesLoading] = useState(false)
+  const [vendorServicesError, setVendorServicesError] = useState(null)
 
   // Tech440 State
   const [tech440Rates, setTech440Rates] = useState([])
@@ -922,10 +924,11 @@ export default function AWBTrackingPage({ params }) {
     setTimeout(() => setCopied(false), 2000)
   }
 
-  const handleVendorSelect = (vendor) => {
+  const handleVendorSelect = async (vendor) => {
     setSelectedVendor(vendor)
     setSelectedService(null)
     setCustomService("")
+    setVendorServicesError(null)
     setTech440Rates([])
     setTech440RateError(null)
     setManualServiceCode("")
@@ -944,6 +947,35 @@ export default function AWBTrackingPage({ params }) {
       setSelectedProductCode("SPX")
     } else {
       setSelectedProductCode("NONDOX")
+    }
+
+    if (vendor.softwareType !== "m5c") return
+
+    try {
+      setVendorServicesLoading(true)
+      const response = await fetch(`/api/vendor-integrations/${vendor._id}/services`)
+      const result = await response.json()
+
+      if (!response.ok || !result.success) {
+        throw new Error(result.error || "Failed to fetch M5C services")
+      }
+
+      const services = result.data?.services || []
+      const vendorWithLiveServices = { ...vendor, services }
+      setSelectedVendor(vendorWithLiveServices)
+      setVendors((prev) =>
+        prev.map((item) =>
+          item._id === vendor._id ? vendorWithLiveServices : item
+        )
+      )
+
+      if (services.length === 0) {
+        setVendorServicesError("No M5C services were returned for this account.")
+      }
+    } catch (err) {
+      setVendorServicesError(err.message || "Failed to fetch M5C services")
+    } finally {
+      setVendorServicesLoading(false)
     }
   }
 
@@ -1148,6 +1180,11 @@ export default function AWBTrackingPage({ params }) {
   }
 
   const getVendorColor = (softwareType, isSelected) => {
+    if (softwareType === "m5c") {
+      return isSelected
+        ? "border-cyan-500 bg-cyan-50 text-cyan-700 shadow-md"
+        : "border-gray-200 bg-white text-gray-700 hover:border-cyan-300 hover:bg-cyan-50/50"
+    }
     if (softwareType === "tech440") {
       return isSelected 
         ? "border-purple-500 bg-purple-50 text-purple-700 shadow-md"
@@ -1165,6 +1202,7 @@ export default function AWBTrackingPage({ params }) {
   }
 
   const getVendorIconBg = (softwareType, isSelected) => {
+    if (softwareType === "m5c") return isSelected ? "bg-cyan-100" : "bg-gray-100"
     if (softwareType === "tech440") return isSelected ? "bg-purple-100" : "bg-gray-100"
     if (softwareType === "itd") return isSelected ? "bg-emerald-100" : "bg-gray-100"
     return softwareType === "xpression"
@@ -1173,6 +1211,7 @@ export default function AWBTrackingPage({ params }) {
   }
 
   const getServiceBgColor = (softwareType) => {
+    if (softwareType === "m5c") return "bg-cyan-50 border-cyan-100"
     if (softwareType === "tech440") return "bg-purple-50 border-purple-100"
     if (softwareType === "itd") return "bg-emerald-50 border-emerald-100"
     return softwareType === "xpression"
@@ -1181,6 +1220,7 @@ export default function AWBTrackingPage({ params }) {
   }
 
   const getButtonColor = (softwareType) => {
+    if (softwareType === "m5c") return "bg-cyan-600 hover:bg-cyan-700"
     if (softwareType === "tech440") return "bg-purple-600 hover:bg-purple-700"
     if (softwareType === "itd") return "bg-emerald-600 hover:bg-emerald-700"
     return softwareType === "xpression"
@@ -1445,9 +1485,10 @@ export default function AWBTrackingPage({ params }) {
                               <div className="flex items-center gap-2 mt-0.5">
                                 <span className={`text-xs px-1.5 py-0.5 rounded ${
                                   vendor.softwareType === "tech440" ? "bg-purple-100 text-purple-700" :
+                                  vendor.softwareType === "m5c" ? "bg-cyan-100 text-cyan-700" :
                                   vendor.softwareType === "xpression" ? "bg-blue-100 text-blue-700" : "bg-emerald-100 text-emerald-700"
                                 }`}>
-                                  {vendor.softwareType === "tech440" ? "Tech440" : (vendor.softwareType === "xpression" ? "Xpression" : "ITD")}
+                                  {vendor.softwareType === "tech440" ? "Tech440" : (vendor.softwareType === "m5c" ? "M5C" : (vendor.softwareType === "xpression" ? "Xpression" : "ITD"))}
                                 </span>
                                 <span className="text-xs text-gray-400">
                                   {vendor.services?.length || 0} services
@@ -1596,34 +1637,71 @@ export default function AWBTrackingPage({ params }) {
                       ) : (
                         // --- STANDARD VENDOR SERVICES (ITD & XPRESSION) ---
                         <div className="space-y-4">
+                          {selectedVendor.softwareType === "m5c" && (
+                            <div className="flex items-center gap-2 text-sm text-cyan-800">
+                              {vendorServicesLoading ? (
+                                <>
+                                  <Loader2 className="h-4 w-4 animate-spin" />
+                                  Fetching live M5C services...
+                                </>
+                              ) : (
+                                <>
+                                  <RefreshCw className="h-4 w-4" />
+                                  M5C services are loaded from the live service list.
+                                </>
+                              )}
+                            </div>
+                          )}
+
+                          {vendorServicesError && (
+                            <div className="p-3 bg-amber-50 border border-amber-200 rounded-lg text-sm text-amber-800">
+                              {vendorServicesError}
+                            </div>
+                          )}
+
                           <div className="grid grid-cols-1 lg:grid-cols-12 gap-4 items-end">
                             <div className="lg:col-span-4">
                               <label className="block text-sm font-medium text-gray-700 mb-2">
                                 Select Service
                               </label>
                               <select
-                                value={selectedService?.serviceName || ""}
+                                value={selectedService?.serviceCode || selectedService?.serviceName || ""}
                                 onChange={(e) => {
                                   if (e.target.value === "other") {
                                     handleServiceSelect("other")
                                   } else {
                                     const service = selectedVendor.services.find(
-                                      (s) => s.serviceName === e.target.value
+                                      (s) => (s.serviceCode || s.serviceName) === e.target.value
                                     )
                                     handleServiceSelect(service)
                                   }
                                 }}
+                                disabled={vendorServicesLoading}
                                 className="w-full px-4 py-2.5 rounded-lg border border-gray-200 bg-white"
                               >
-                                <option value="">Choose service...</option>
+                                <option value="">
+                                  {vendorServicesLoading ? "Loading services..." : "Choose service..."}
+                                </option>
                                 {selectedVendor.services?.map((service, idx) => (
-                                  <option key={idx} value={service.serviceName}>
-                                    {service.serviceName}
+                                  <option key={`${service.serviceCode || service.serviceName}-${idx}`} value={service.serviceCode || service.serviceName}>
+                                    {service.serviceCode ? `${service.serviceCode} - ` : ""}{service.serviceName}{service.sector ? ` (${service.sector})` : ""}
                                   </option>
                                 ))}
                                 <option value="other">Other (Custom)</option>
                               </select>
                             </div>
+
+                            {selectedVendor.softwareType === "m5c" && selectedService && selectedService.serviceName !== "other" && (
+                              <div className="lg:col-span-5">
+                                <div className="rounded-lg border border-cyan-200 bg-white px-4 py-3 text-sm text-cyan-900">
+                                  <p className="font-medium">{selectedService.serviceName}</p>
+                                  <p className="mt-1 text-cyan-700">
+                                    Code: <span className="font-mono">{selectedService.serviceCode}</span>
+                                    {selectedService.sector ? ` | Sector: ${selectedService.sector}` : ""}
+                                  </p>
+                                </div>
+                              </div>
+                            )}
 
                             {selectedService?.serviceName === "other" && (
                               <div className="lg:col-span-3">

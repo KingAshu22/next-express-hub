@@ -8,6 +8,28 @@ export default function VendorIntegrationList({ onEdit, onRefresh }) {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState("")
   const [filter, setFilter] = useState("all") // all, xpression, itd
+
+  const getSoftwareLabel = (softwareType) => {
+    const labels = {
+      xpression: "Xpression",
+      itd: "ITD",
+      tech440: "Tech440",
+      dhl: "DHL",
+      m5c: "M5C",
+    }
+    return labels[softwareType] || softwareType
+  }
+
+  const getSoftwareBadgeClass = (softwareType) => {
+    const classes = {
+      xpression: "bg-blue-100 text-blue-700",
+      itd: "bg-green-100 text-green-700",
+      tech440: "bg-purple-100 text-purple-700",
+      dhl: "bg-red-100 text-red-700",
+      m5c: "bg-cyan-100 text-cyan-700",
+    }
+    return classes[softwareType] || "bg-gray-100 text-gray-700"
+  }
   
   const fetchVendors = async () => {
     setLoading(true)
@@ -122,6 +144,16 @@ export default function VendorIntegrationList({ onEdit, onRefresh }) {
           >
             ITD
           </button>
+          <button
+            onClick={() => setFilter("m5c")}
+            className={`px-3 py-1 rounded text-sm ${
+              filter === "m5c"
+                ? "bg-cyan-600 text-white"
+                : "bg-gray-100 text-gray-600 hover:bg-gray-200"
+            }`}
+          >
+            M5C
+          </button>
         </div>
       </div>
       
@@ -147,12 +179,8 @@ export default function VendorIntegrationList({ onEdit, onRefresh }) {
                     <span className="px-2 py-0.5 text-xs font-medium rounded bg-gray-100 text-gray-600">
                       {vendor.vendorCode}
                     </span>
-                    <span className={`px-2 py-0.5 text-xs font-medium rounded ${
-                      vendor.softwareType === "xpression"
-                        ? "bg-blue-100 text-blue-700"
-                        : "bg-green-100 text-green-700"
-                    }`}>
-                      {vendor.softwareType === "xpression" ? "Xpression" : "ITD"}
+                    <span className={`px-2 py-0.5 text-xs font-medium rounded ${getSoftwareBadgeClass(vendor.softwareType)}`}>
+                      {getSoftwareLabel(vendor.softwareType)}
                     </span>
                     <span className={`px-2 py-0.5 text-xs font-medium rounded ${
                       vendor.isActive
@@ -177,6 +205,11 @@ export default function VendorIntegrationList({ onEdit, onRefresh }) {
                     {vendor.softwareType === "itd" && vendor.itdCredentials && (
                       <span>
                         {vendor.itdCredentials.services?.length || 0} services configured
+                      </span>
+                    )}
+                    {vendor.softwareType === "m5c" && vendor.m5cCredentials && (
+                      <span>
+                        {vendor.m5cCredentials.services?.length || 0} services configured
                       </span>
                     )}
                   </div>

@@ -595,9 +595,6 @@ function EnhancedShippingPage(
       <div class="shipping-label${isLastLabel ? ' last-label' : ''}">
         <div class="label-header">
           <div class="header-brand">
-            <div class="header-logo-shell">
-              <img src="${logoUrl}" alt="Sunex logo" class="logo-img" onerror="this.style.display='none'" />
-            </div>
           </div>
           <div class="header-destination">
             <div class="header-destination-label">Receiver Country</div>
@@ -609,17 +606,6 @@ function EnhancedShippingPage(
         <div class="meta-pills">
           <span class="meta-pill">BOX ${boxIndex + 1} OF ${labelCount}</span>
           <span class="meta-pill">${safeText(shipmentType).toUpperCase()}</span>
-        </div>
-
-        <div class="metrics-grid">
-          <div class="metric-card">
-            <span class="metric-label">Ship Weight</span>
-            <span class="metric-value">${weightDisplay}</span>
-          </div>
-          <div class="metric-card">
-            <span class="metric-label">Ship Date</span>
-            <span class="metric-value">${formattedDate}</span>
-          </div>
         </div>
 
         <div class="awb-focus-card">
@@ -795,11 +781,6 @@ function EnhancedShippingPage(
     return `
       <div class="a4-label">
         <div class="a4-header">
-          <div class="a4-brand">
-            <div class="a4-header-logo">
-              <img src="${logoUrl}" alt="Sunex logo" class="a4-logo-img" onerror="this.style.display='none'" />
-            </div>
-          </div>
           <div class="a4-header-destination">
             <div class="a4-header-destination-label">Receiver Country</div>
             <div class="a4-header-destination-main">${receiverCountry}</div>
@@ -810,17 +791,6 @@ function EnhancedShippingPage(
         <div class="a4-meta-pills">
           <span class="a4-meta-pill">BOX ${boxIndex + 1}/${labelCount}</span>
           <span class="a4-meta-pill">${safeText(shipmentType).toUpperCase()}</span>
-        </div>
-
-        <div class="a4-metrics-grid">
-          <div class="a4-metric-card">
-            <span class="a4-metric-label">Weight</span>
-            <span class="a4-metric-value">${weightDisplay}</span>
-          </div>
-          <div class="a4-metric-card">
-            <span class="a4-metric-label">Date</span>
-            <span class="a4-metric-value">${formattedDate}</span>
-          </div>
         </div>
 
         <div class="a4-awb-focus-card">

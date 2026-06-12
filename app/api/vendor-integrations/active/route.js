@@ -7,7 +7,7 @@ export async function GET(request) {
     await connectToDB()
     
     const vendors = await VendorIntegration.find({ isActive: true })
-      .select("-xpressionCredentials.password -itdCredentials.password -itdCredentials.cachedToken")
+      .select("-xpressionCredentials.password -itdCredentials.password -itdCredentials.cachedToken -m5cCredentials.password -m5cCredentials.cachedToken")
       .sort({ vendorName: 1 })
     
     // Format vendors with their services
@@ -36,6 +36,19 @@ export async function GET(request) {
         }))
         credentials = {
           apiUrl: vendor.itdCredentials.apiUrl,
+        }
+      }
+
+      if (vendor.softwareType === "m5c" && vendor.m5cCredentials) {
+        services = vendor.m5cCredentials.services.map(s => ({
+          serviceName: s.serviceName,
+          serviceCode: s.serviceCode,
+          goodsDesc: s.goodsDesc || "NDox",
+          thirdPartyLabel: !!s.thirdPartyLabel,
+        }))
+        credentials = {
+          apiUrl: vendor.m5cCredentials.apiUrl,
+          accountCode: vendor.m5cCredentials.accountCode,
         }
       }
       

@@ -145,6 +145,48 @@ async function getITDToken(credentials, vendorId) {
   }
 }
 
+async function getM5CToken(vendor) {
+  const creds = vendor.m5cCredentials
+
+  if (
+    creds.cachedToken &&
+    creds.tokenExpiresAt &&
+    Date.now() < new Date(creds.tokenExpiresAt).getTime() - 300000
+  ) {
+    return creds.cachedToken
+  }
+
+  const response = await fetch(joinUrl(creds.apiUrl, "/token"), {
+    method: "POST",
+    headers: { "Content-Type": "application/x-www-form-urlencoded" },
+    body: new URLSearchParams({
+      UserName: creds.username,
+      Password: creds.password,
+      grant_type: "password",
+    }).toString(),
+  })
+
+  const result = await response.json().catch(() => ({}))
+
+  if (!response.ok || !result.access_token) {
+    throw new Error(
+      result.error_description ||
+      result.error ||
+      `M5C token API error: ${response.statusText}`
+    )
+  }
+
+  const expiresInSeconds = Number(result.expires_in || 86400)
+  await VendorIntegration.findByIdAndUpdate(vendor._id, {
+    "m5cCredentials.cachedToken": result.access_token,
+    "m5cCredentials.tokenExpiresAt": new Date(
+      Date.now() + expiresInSeconds * 1000
+    ),
+  })
+
+  return result.access_token
+}
+
 const cleanPhone = (phone) => {
   if (!phone) return "0000000000"
   const cleaned = phone.replace(/\D/g, "")
@@ -241,8 +283,8 @@ async function fetchSKartCountryDetails(creds, countryName) {
   if (!result.success && !result.data && !result.result) {
     throw new Error(
       result?.message ||
-        result?.error ||
-        `SKart country lookup returned an error for "${normalizedCountry}"`
+      result?.error ||
+      `SKart country lookup returned an error for "${normalizedCountry}"`
     )
   }
 
@@ -292,9 +334,9 @@ const getSKartBookingType = (awb) => {
 const getSKartShipmentType = (awb, serviceData) => {
   const productCode = String(
     serviceData?.productCode ||
-      serviceData?.packageCode ||
-      serviceData?.serviceCode ||
-      ""
+    serviceData?.packageCode ||
+    serviceData?.serviceCode ||
+    ""
   ).toUpperCase()
 
   if (["DOC", "DOX"].includes(productCode) || awb.parcelType === "Document") {
@@ -333,10 +375,10 @@ const getSKartCourierId = (serviceData) => {
   const raw = serviceData?.raw || {}
   return String(
     raw.courier_id ??
-      raw.courierId ??
-      serviceData?.courierId ??
-      serviceData?.serviceCode ??
-      ""
+    raw.courierId ??
+    serviceData?.courierId ??
+    serviceData?.serviceCode ??
+    ""
   ).trim()
 }
 
@@ -344,10 +386,10 @@ const getSKartDestinationCountryId = (serviceData, countryDetails = null) => {
   const raw = serviceData?.raw || {}
   return String(
     raw.destination_country_id ??
-      raw.destinationCountryId ??
-      serviceData?.destinationCountryId ??
-      countryDetails?.country_id ??
-      ""
+    raw.destinationCountryId ??
+    serviceData?.destinationCountryId ??
+    countryDetails?.country_id ??
+    ""
   ).trim()
 }
 
@@ -865,8 +907,8 @@ async function sendToXpression(awb, vendor, serviceData) {
   ) {
     throw new Error(
       responseData.Error?.[0]?.ErrorMessage ||
-        responseData.APIError ||
-        "Failed to generate AWB"
+      responseData.APIError ||
+      "Failed to generate AWB"
     )
   }
 
@@ -1180,9 +1222,9 @@ async function sendToSKart(awb, vendor, serviceData, customSender, skartKycDocum
     ),
     consignee_company_name: truncate(
       awb.receiver?.companyName ||
-        awb.receiver?.company ||
-        awb.receiver?.name ||
-        "Consignee",
+      awb.receiver?.company ||
+      awb.receiver?.name ||
+      "Consignee",
       120
     ),
     consignee_mobile_number: "+" + cleanPhone(awb.receiver?.contact || ""),
@@ -1382,6 +1424,284 @@ async function sendToSKart(awb, vendor, serviceData, customSender, skartKycDocum
   }
 }
 
+const getM5CKycType = (kycType, kycNo = "", gstNo = "") => {
+  if (gstNo) return "GSTIN (Normal)"
+  const mapped = KYC_TYPE_MAP[kycType] || kycType || "PAN Number"
+  const normalizedNo = String(kycNo || "").trim().toUpperCase()
+
+  if (/^[A-Z]{5}[0-9]{4}[A-Z]$/.test(normalizedNo)) return "PAN Number"
+  if (mapped === "PAN Number") return "PAN Number"
+  if (mapped === "Passport Number") return "Passport Number"
+  if (mapped === "Voter Id") return "Voter Id"
+  if (mapped === "GSTIN (Normal)") return "GSTIN (Normal)"
+  return "PAN Number"
+}
+
+const getM5CCountryName = (country) => {
+  const code = getCountryCode(country)
+  if (code === "US") return "USA"
+  if (code === "GB") return "UK"
+  return String(country || "").trim().toUpperCase()
+}
+
+const getM5CServiceCode = (serviceData = {}) =>
+  String(
+    serviceData.serviceCode ||
+    serviceData.apiServiceCode ||
+    serviceData.productCode ||
+    serviceData.code ||
+    ""
+  ).trim()
+
+const getM5CKycNo = (sender = {}) => {
+  const gst = String(sender?.gst || "").trim().toUpperCase()
+  if (gst) return gst
+
+  const rawKyc = String(
+    sender?.kyc?.kyc ||
+    sender?.kyc?.number ||
+    sender?.kycNo ||
+    ""
+  ).trim().toUpperCase()
+
+  if (/^[A-Z]{5}[0-9]{4}[A-Z]$/.test(rawKyc)) return rawKyc
+
+  // M5C docs do not list Aadhaar as an accepted KYC type. Avoid sending a
+  // mismatched PAN type with a 12-digit Aadhaar number.
+  return "AAAAA0000A"
+}
+
+const sanitizeM5CPostalCode = (value, countryName = "") => {
+  const countryCode = getCountryCode(countryName)
+  const normalized = String(value || "").replace(/[^a-zA-Z0-9]/g, "").toUpperCase()
+
+  if (countryCode === "CA" && normalized.length === 6) {
+    return `${normalized.slice(0, 3)} ${normalized.slice(3)}`
+  }
+
+  return normalized || "00000"
+}
+
+const redactM5CPayload = (payload = {}) => ({
+  ...payload,
+  Password: payload.Password ? "***" : payload.Password,
+  ValidateAccount: Array.isArray(payload.ValidateAccount)
+    ? payload.ValidateAccount.map((account) => ({
+      ...account,
+      Password: account.Password ? "***" : account.Password,
+      AccessKey: account.AccessKey ? "***" : account.AccessKey,
+    }))
+    : payload.ValidateAccount,
+})
+
+const buildM5CDescriptions = (awb) => {
+  const descriptions = []
+
+    ; (awb.boxes || []).forEach((box, boxIndex) => {
+      const items = box.items?.length
+        ? box.items
+        : [{ name: awb.parcelType === "Document" ? "Documents" : "Shipment Item", quantity: 1, price: 0 }]
+
+      items.forEach((item) => {
+        const qty = Number(item.quantity || 1)
+        const rate = Number(item.price || 0)
+        descriptions.push({
+          Box: boxIndex + 1,
+          Content: truncate(item.name || "Shipment Item", 150),
+          HSNCode: truncate(item.hsnCode || "00000000", 8),
+          Qty: qty,
+          Rate: rate,
+          Amt: Number((qty * rate).toFixed(2)),
+        })
+      })
+    })
+
+  return descriptions.length
+    ? descriptions
+    : [
+      {
+        Box: 1,
+        Content: "Shipment Item",
+        HSNCode: "00000000",
+        Qty: 1,
+        Rate: 0,
+        Amt: 0,
+      },
+    ]
+}
+
+async function sendToM5C(awb, vendor, serviceData, customSender) {
+  const creds = vendor.m5cCredentials
+  const sender = customSender || awb.sender
+  const { totalWeight, totalValue } = collectShipmentTotals(awb)
+  const descriptions = buildM5CDescriptions(awb)
+  const firstDescription = descriptions[0]?.Content || "Shipment Item"
+  const serviceCode = getM5CServiceCode(serviceData)
+  const senderKycNo = getM5CKycNo(sender)
+
+  if (!serviceCode) {
+    throw new Error("M5C service code is missing. Please select an M5C service.")
+  }
+
+  const volWeights = (awb.boxes?.length ? awb.boxes : [{}]).map((box) => ({
+    Length: String(Number(box.length || 0)),
+    Width: String(Number(box.breadth || box.width || 0)),
+    Height: String(Number(box.height || 0)),
+    Pcs: String(Number(box.pcs || 1)),
+    PcsWt: String(Number(box.actualWeight || totalWeight || 0.1)),  // ✅ PcsWt not PcsWeight
+  }))
+
+  const shipment = {
+    ReferenceNumber: awb.trackingNumber,
+    ThirdPartyLabel: !!serviceData.thirdPartyLabel,
+    ConsignorName: truncate(sender?.name || sender?.companyName || "Consignor", 35),
+    ConsignorAddressLine1: truncate(sender?.address || "-", 35),
+    ConsignorAddressLine2: truncate(sender?.address2 || "", 35),
+    ConsignorCity: truncate(sender?.city || "City", 35),
+    ConsignorPostCode: truncate(sanitizeM5CPostalCode(sender?.zip, sender?.country), 7),
+    ConsignorState: truncate(sender?.state || "State", 35),
+    ConsignorPhoneNo: truncate(cleanPhone(sender?.contact), 25),
+    // ✅ Use GSTType/GSTIN instead of KYCType/KYCNo
+    GSTType: getM5CKycType(sender?.kyc?.type, senderKycNo, sender?.gst),
+    GSTIN: truncate(senderKycNo, 20),
+    ConsigneeName: truncate(awb.receiver?.name || awb.receiver?.companyName || "Consignee", 35),
+    ConsigneeContactPerson: truncate(awb.receiver?.name || "Consignee", 35),
+    ConsigneeAddressLine1: truncate(awb.receiver?.address || "-", 35),
+    ConsigneeAddressLine2: truncate(awb.receiver?.address2 || "", 35),
+    ConsigneeCity: truncate(awb.receiver?.city || "City", 30),
+    ConsigneeZipCode: truncate(
+      sanitizeM5CPostalCode(awb.receiver?.zip, awb.receiver?.country),
+      10
+    ),
+    ConsigneeState: truncate(getStateCode(awb.receiver?.country, awb.receiver?.state), 2),
+    ConsigneePhoneNo: truncate(cleanPhone(awb.receiver?.contact), 12),
+    ConsigneeCountry: getM5CCountryName(awb.receiver?.country),
+    // ✅ Removed: DestinationCountry, ConsignorCountry (not in sample)
+    ServiceCode: truncate(serviceCode, 4),
+    GoodsDesc:
+      serviceData.goodsDesc ||
+      (awb.parcelType === "Document" ? "Dox" : "NDox"),
+    NumofItems: String(awb.boxes?.length || 1),       // ✅ String as per sample
+    ActWeight: String(Number(Math.max(totalWeight || 0.1, 0.1).toFixed(3))),  // ✅ String
+    VolWeights: volWeights,
+    CustomsValue: String(Number(Math.max(totalValue || 0, 0).toFixed(2))),    // ✅ String
+    CustomsCurrencyCode:
+      awb.exportDetails?.currency ||
+      awb.currency ||
+      serviceData.currency ||
+      "USD",
+    Handling: serviceData.handling || "N",
+    CSB: serviceData.csb || "N",
+    Descriptions: descriptions,
+    ShipmentContent: truncate(firstDescription, 60),
+  }
+
+  // ✅ Correct top-level structure: ValidateAccount + Shipment array
+  const payload = {
+    ValidateAccount: [
+      {
+        AccountCode: creds.accountCode,
+        Username: creds.username,
+        Password: creds.password,
+        AccessKey: creds.accessKey || "",
+      },
+    ],
+    Shipment: [shipment],
+  }
+
+  const endpoint = joinUrl(creds.apiUrl, "/api/Shipping/AddShipment")
+  console.log("[M5C] Booking endpoint:", endpoint)
+  console.log(
+    "[M5C] Booking Payload:",
+    JSON.stringify(redactM5CPayload(payload), null, 2)
+  )
+
+  // ✅ No Authorization header - credentials are inside the payload
+  const response = await fetch(endpoint, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify(payload),
+  })
+
+  const result = await response.json().catch(() => ({}))
+  console.log("[M5C] Booking Response:", JSON.stringify(result, null, 2))
+
+  if (result.ExceptionMessage || result.Message === "An error has occurred.") {
+    throw new Error(
+      `M5C booking failed: ${result.ExceptionMessage ||
+      result.Message ||
+      "M5C returned an internal server error"
+      }`
+    )
+  }
+
+  const shipmentResponse =
+    result.ShipmentResponses?.[0] ||
+    result.shipmentResponses?.[0] ||
+    result.Response?.ShipmentResponses?.[0] ||
+    result
+
+  const details =
+    shipmentResponse.shipmentDetails?.[0] ||
+    shipmentResponse.ShipmentDetails?.[0] ||
+    shipmentResponse.shipmentDetail?.[0] ||
+    {}
+
+  const successCode = String(
+    shipmentResponse.Code || shipmentResponse.code || shipmentResponse.ErrorCode || ""
+  )
+  const status = String(shipmentResponse.Status || shipmentResponse.status || "")
+
+  if (!response.ok || (successCode && successCode !== "100") || /fail|error/i.test(status)) {
+    throw new Error(
+      shipmentResponse.Description ||
+      shipmentResponse.description ||
+      result.ErrorDescription ||
+      result.message ||
+      `M5C booking failed with HTTP ${response.status}`
+    )
+  }
+
+  const pdfBase64 =
+    details.PDFBase64 ||
+    details.PdfBase64 ||
+    details.pdfBase64 ||
+    shipmentResponse.PDFBase64 ||
+    ""
+
+  const labels = pdfBase64
+    ? [
+      {
+        type: "shipping_label",
+        name: "M5C Shipping Label",
+        filename: "m5c_shipping_label.pdf",
+        data: pdfBase64,
+      },
+    ]
+    : []
+
+  return {
+    awbNumber:
+      details.AwbNo ||
+      details.AWBNo ||
+      details.awbNo ||
+      details.Tracking ||
+      details.tracking ||
+      awb.trackingNumber,
+    labels,
+    metadata: {
+      service: details.Service || details.service,
+      forwarder: details.Forwarder || details.forwarder,
+      tracking: details.Tracking || details.tracking,
+      trackingNo2: details["Tracking No 2"] || details.TrackingNo2,
+      amount: details.Amount || details.amount,
+    },
+    rawResponse: result,
+  }
+}
+
 export async function POST(request) {
   try {
     await connectToDB()
@@ -1472,6 +1792,13 @@ export async function POST(request) {
         serviceData,
         customSenderDetails,
         skartKycDocumentLink
+      )
+    } else if (vendor.softwareType === "m5c") {
+      result = await sendToM5C(
+        awb,
+        vendor,
+        serviceData,
+        customSenderDetails
       )
     } else {
       return new Response(

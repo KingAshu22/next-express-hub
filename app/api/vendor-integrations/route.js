@@ -17,7 +17,7 @@ export async function GET(request) {
     if (isActive !== null) query.isActive = isActive === "true"
 
     const vendors = await VendorIntegration.find(query)
-      .select("-xpressionCredentials.password -itdCredentials.password -itdCredentials.cachedToken")
+      .select("-xpressionCredentials.password -itdCredentials.password -itdCredentials.cachedToken -m5cCredentials.password -m5cCredentials.cachedToken")
       .sort({ createdAt: -1 })
 
     return new Response(
@@ -54,6 +54,7 @@ export async function POST(request) {
       xpressionCredentials,
       itdCredentials,
       tech440Credentials,
+      m5cCredentials,
     } = body
 
     // Validation
@@ -129,6 +130,18 @@ export async function POST(request) {
     }
   }
 
+    if (softwareType === "m5c") {
+      if (!m5cCredentials?.username || !m5cCredentials?.password || !m5cCredentials?.accountCode) {
+        return new Response(
+          JSON.stringify({
+            success: false,
+            error: "M5C username, password, and account code are required",
+          }),
+          { status: 400, headers: { "Content-Type": "application/json" } }
+        )
+      }
+    }
+
     // Create vendor integration
     const vendorData = {
       vendorName,
@@ -179,6 +192,17 @@ export async function POST(request) {
     }
   }
 
+    if (softwareType === "m5c") {
+      vendorData.m5cCredentials = {
+        apiUrl: m5cCredentials.apiUrl || "http://apiv2.m5clogs.com",
+        username: m5cCredentials.username,
+        password: m5cCredentials.password,
+        accountCode: m5cCredentials.accountCode,
+        accessKey: m5cCredentials.accessKey || "",
+        services: m5cCredentials.services || [],
+      }
+    }
+
     const vendor = await VendorIntegration.create(vendorData)
 
     // Remove sensitive data from response
@@ -194,6 +218,10 @@ export async function POST(request) {
       delete responseData.tech440Credentials.password
       delete responseData.tech440Credentials.apiKey // optional to strip api key
   }
+    if (responseData.m5cCredentials) {
+      delete responseData.m5cCredentials.password
+      delete responseData.m5cCredentials.cachedToken
+    }
 
     return new Response(
       JSON.stringify({

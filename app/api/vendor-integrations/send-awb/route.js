@@ -1055,7 +1055,6 @@ async function sendToTech440(awb, vendor, serviceData, customSender) {
         country: sender.country,
         document_type: sender.kyc?.type || "aadhar no",
         document_no: sender.kyc?.number || "000000000000",
-        document: "BASE64_PLACEHOLDER",
       },
       weight: {
         value: String(totalWeight),

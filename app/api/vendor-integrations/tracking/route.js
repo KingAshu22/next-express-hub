@@ -199,8 +199,6 @@ async function fetchTech440Tracking(awbNumber, credentials) {
   const url = `${credentials.apiUrl}/track`
   const authHeader = `Basic ${Buffer.from(`${credentials.username}:${credentials.password}`).toString('base64')}`
 
-  // Docs say "GET" but Body with JSON. We will use POST to ensure body is sent.
-  // If strict GET is required, change method to "GET".
   const response = await fetch(url, {
     method: "POST",
     headers: {
@@ -224,7 +222,6 @@ async function fetchTech440Tracking(awbNumber, credentials) {
   const data = result.data || {}
 
   // Normalize Events
-  // Input: "2024-03-02 06:47:00"
   const events = (data.tracking_details || []).map(evt => {
     let timestamp = 0
     let datePart = ""
@@ -253,9 +250,9 @@ async function fetchTech440Tracking(awbNumber, credentials) {
 
   // Normalize Tracking Info
   const normalizedTracking = [{
-    AWBNo: data.tracking_code, // Or fwd_awb_no
+    AWBNo: data.tracking_code,
     Status: data.status,
-    Origin: "India", // Usually inferred
+    Origin: "India",
     Destination: data.destination,
     Weight: data.weight,
     Pieces: data.number_of_box,
@@ -276,6 +273,38 @@ const joinUrl = (baseUrl, path = "") => {
   if (!baseUrl) return path || ""
   if (!path) return baseUrl
   return `${baseUrl.replace(/\/+$/, "")}/${path.replace(/^\/+/, "")}`
+}
+
+// ─── KEY FIX: Parse M5C ISO date + separate time string correctly ───────────
+function parseM5CDateTime(isoDateStr, timeStr) {
+  try {
+    if (!isoDateStr) return { timestamp: 0, datePart: "", timePart: "" }
+
+    // isoDateStr = "2026-06-15T00:00:00"  →  take only the date part "2026-06-15"
+    const datePart = isoDateStr.split("T")[0]
+
+    // timeStr = "15:00:00"
+    // Combine as "2026-06-15T15:00:00" so JS Date parses it correctly
+    const combinedStr = timeStr
+      ? `${datePart}T${timeStr}`
+      : `${datePart}T00:00:00`
+
+    const dateObj = new Date(combinedStr)
+
+    if (isNaN(dateObj.getTime())) {
+      return { timestamp: 0, datePart: "", timePart: "" }
+    }
+
+    return {
+      timestamp: dateObj.getTime(),
+      // "15th June 2026"
+      datePart: formatDate(datePart),
+      // "3:00 PM"
+      timePart: formatTime(timeStr),
+    }
+  } catch {
+    return { timestamp: 0, datePart: "", timePart: "" }
+  }
 }
 
 async function fetchM5CTracking(awbNumber, credentials) {
@@ -303,44 +332,79 @@ async function fetchM5CTracking(awbNumber, credentials) {
     throw new Error(`M5C tracking API error: ${response.status}`)
   }
 
+  // API response is an array, so grab the first element
+  const root = Array.isArray(result) ? result[0] : result
+
   const message =
-    result.messages?.[0] ||
-    result.Messages?.[0] ||
-    result.message?.[0] ||
+    root.messages?.[0] ||
+    root.Messages?.[0] ||
+    root.message?.[0] ||
     {}
+
   const responseFlag = String(message.Response ?? message.response ?? "")
   const errorCode = String(message.ErrorCode ?? message.errorCode ?? "")
 
   if (
     responseFlag === "0" ||
-    (errorCode && errorCode !== "100") ||
-    /invalid|failed/i.test(message.ErrorDescription || message["Error Description"] || "")
+    (errorCode &&
+      errorCode !== "100" &&
+      errorCode.toLowerCase() !== "success") ||
+    /invalid|failed/i.test(
+      message.ErrorDescription || message["Error Description"] || ""
+    )
   ) {
     throw new Error(
       message.ErrorDescription ||
-        message["Error Description"] ||
-        "M5C tracking failed"
+      message["Error Description"] ||
+      "M5C tracking failed"
     )
   }
 
+  // trackDetails is inside root
   const details =
-    result.trackDetail?.[0] ||
-    result.TrackDetail?.[0] ||
-    result.trackDetails?.[0] ||
-    result.TrackDetails?.[0] ||
+    root.trackDetails?.[0] ||
+    root.TrackDetails?.[0] ||
+    root.trackDetail?.[0] ||
+    root.TrackDetail?.[0] ||
     {}
 
-  const events = (details.Event || details.event || details.Events || []).map((evt) => ({
-    timestamp: evt.EventDate ? new Date(`${evt.EventDate} ${evt.EventTime || ""}`).getTime() : 0,
-    EventDate: evt.EventDate,
-    EventTime: evt.EventTime,
-    EventDate1: formatDate(evt.EventDate),
-    EventTime1: formatTime(evt.EventTime),
-    EventCode: evt.EventCode || evt["Event Code"],
-    Location: evt.Location || evt.location || "",
-    Status: evt.EventDescription || evt["Event Description"] || evt.Status || "Update",
-    Remark: evt.Remark || "",
-  }))
+  // Event array is at ROOT level (not inside trackDetails) — confirmed by API response
+  const eventArray =
+    root.Event ||
+    root.event ||
+    root.Events ||
+    root.events ||
+    details.Event ||
+    details.event ||
+    details.Events ||
+    details.events ||
+    []
+
+  const events = eventArray.map((evt) => {
+    // ── Use the dedicated parser that handles ISO date + separate time ──
+    const { timestamp, datePart, timePart } = parseM5CDateTime(
+      evt.EventDate,
+      evt.EventTime
+    )
+
+    return {
+      timestamp,
+      // Keep raw values for debugging if needed
+      EventDate: evt.EventDate,
+      EventTime: evt.EventTime,
+      // These are what your frontend timeline renders
+      EventDate1: datePart,
+      EventTime1: timePart,
+      EventCode: evt.EventCode || evt["Event Code"] || "",
+      Location: evt.Location || evt.location || "",
+      Status:
+        evt.EventDescription ||
+        evt["Event Description"] ||
+        evt.Status ||
+        "Update",
+      Remark: evt.Remark || "",
+    }
+  })
 
   return {
     success: true,
@@ -348,7 +412,8 @@ async function fetchM5CTracking(awbNumber, credentials) {
     tracking: [
       {
         AWBNo: details.Awbno || details.AwbNo || awbNumber,
-        BookingDate: details.ShipDate,
+        // API returns "Shipdate" (lowercase 'd'), handle both cases
+        BookingDate: details.Shipdate || details.ShipDate,
         Destination: details.Destination,
         Sector: details.Sector,
         Consignee: details.Consignee,
@@ -366,20 +431,26 @@ async function fetchM5CTracking(awbNumber, credentials) {
   }
 }
 
-// Helper to format date like "8th March 2023"
+// ─── Helper: format date string "2026-06-15" → "15th June 2026" ─────────────
 function formatDate(dateStr) {
   if (!dateStr) return ""
   try {
-    const date = new Date(dateStr)
+    // Strip time portion if present (handles both "2026-06-15" and "2026-06-15T00:00:00")
+    const cleanDate = dateStr.split("T")[0]
+
+    // Parse as local date to avoid UTC shift (e.g. "2026-06-15" → June 15, not June 14)
+    const [year, month, day] = cleanDate.split("-").map(Number)
+    const date = new Date(year, month - 1, day)
+
     if (isNaN(date.getTime())) return dateStr
 
-    const day = date.getDate()
-    const month = date.toLocaleString("en-US", { month: "long" })
-    const year = date.getFullYear()
+    const d = date.getDate()
+    const monthName = date.toLocaleString("en-US", { month: "long" })
+    const y = date.getFullYear()
 
-    const suffix = (d) => {
-      if (d > 3 && d < 21) return "th"
-      switch (d % 10) {
+    const suffix = (n) => {
+      if (n > 3 && n < 21) return "th"
+      switch (n % 10) {
         case 1: return "st"
         case 2: return "nd"
         case 3: return "rd"
@@ -387,21 +458,26 @@ function formatDate(dateStr) {
       }
     }
 
-    return `${day}${suffix(day)} ${month} ${year}`
+    return `${d}${suffix(d)} ${monthName} ${y}`
   } catch {
     return dateStr
   }
 }
 
-// Helper to format time like "12:50 PM"
+// ─── Helper: format time string "15:00:00" → "3:00 PM" ──────────────────────
 function formatTime(timeStr) {
   if (!timeStr) return ""
   try {
-    const [hours, minutes] = timeStr.split(":")
-    const h = parseInt(hours, 10)
-    const m = minutes || "00"
+    // Handles "15:00:00" or "15:00"
+    const parts = timeStr.split(":")
+    const h = parseInt(parts[0], 10)
+    const m = parts[1] || "00"
+
+    if (isNaN(h)) return timeStr
+
     const period = h >= 12 ? "PM" : "AM"
     const hour12 = h % 12 || 12
+
     return `${hour12}:${m} ${period}`
   } catch {
     return timeStr

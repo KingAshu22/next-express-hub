@@ -15,6 +15,23 @@ import {
 export default function Footer() {
   const currentYear = new Date().getFullYear();
 
+  const exportServices = [
+    "Self Express Courier",
+    "Self Economy Courier",
+    "FedEx | UPS | DHL | Aramex",
+    "Medicine Express",
+    "Express Baggage Services",
+    "Student Express",
+    "Relocation Express",
+    "International E-commerce",
+    "Cargo Shipments",
+  ];
+
+  const importServices = [
+    "Personal Goods (C-C)",
+    "Business Import (B-B)",
+  ];
+
   return (
     <footer className="bg-slate-900 text-white">
       {/* Main Footer */}
@@ -68,106 +85,100 @@ export default function Footer() {
             </div>
           </div>
 
-          {/* Services Column */}
-          <div className="space-y-4 lg:col-span-2">
+          {/* Export Services Column */}
+          <div className="space-y-4 lg:col-span-3">
             <h3 className="text-sm font-semibold text-white uppercase tracking-widest">
-              Services
+              Export Services
             </h3>
             <ul className="space-y-2 text-sm">
-              <li>
-                <Link
-                  href="#services"
-                  className="text-gray-300 hover:text-yellow-400 transition-colors"
-                >
-                  Express Delivery
-                </Link>
-              </li>
-              <li>
-                <Link
-                  href="#services"
-                  className="text-gray-300 hover:text-yellow-400 transition-colors"
-                >
-                  Air Freight
-                </Link>
-              </li>
-              <li>
-                <Link
-                  href="#services"
-                  className="text-gray-300 hover:text-yellow-400 transition-colors"
-                >
-                  Sea Freight
-                </Link>
-              </li>
-              <li>
-                <Link
-                  href="#services"
-                  className="text-gray-300 hover:text-yellow-400 transition-colors"
-                >
-                  Warehousing
-                </Link>
-              </li>
-              <li>
-                <Link
-                  href="#services"
-                  className="text-gray-300 hover:text-yellow-400 transition-colors"
-                >
-                  Surface Transport
-                </Link>
-              </li>
+              {exportServices.map((service, idx) => (
+                <li key={idx}>
+                  <Link
+                    href="#services"
+                    className="text-gray-300 hover:text-yellow-400 transition-colors flex items-center gap-2 group"
+                  >
+                    <span className="w-1 h-1 rounded-full bg-gray-600 group-hover:bg-yellow-400 transition-colors" />
+                    {service}
+                  </Link>
+                </li>
+              ))}
             </ul>
           </div>
 
-          {/* Company Column */}
-          <div className="space-y-4 lg:col-span-2">
-            <h3 className="text-sm font-semibold text-white uppercase tracking-widest">
-              Company
-            </h3>
-            <ul className="space-y-2 text-sm">
-              <li>
-                <Link
-                  href="/about"
-                  className="text-gray-300 hover:text-yellow-400 transition-colors"
-                >
-                  About Us
-                </Link>
-              </li>
-              <li>
-                <Link
-                  href="/contact"
-                  className="text-gray-300 hover:text-yellow-400 transition-colors"
-                >
-                  Contact Us
-                </Link>
-              </li>
-              <li>
-                <Link
-                  href="/blogs"
-                  className="text-gray-300 hover:text-yellow-400 transition-colors"
-                >
-                  Blog
-                </Link>
-              </li>
-              <li>
-                <Link
-                  href="/privacy-policy"
-                  className="text-gray-300 hover:text-yellow-400 transition-colors"
-                >
-                  Privacy Policy
-                </Link>
-              </li>
-              <li>
-                <Link
-                  href="/terms-of-service"
-                  className="text-gray-300 hover:text-yellow-400 transition-colors"
-                >
-                  Terms of Service
-                </Link>
-              </li>
-            </ul>
+          {/* Import Services + Company Column */}
+          <div className="space-y-6 lg:col-span-2">
+            {/* Import Services */}
+            <div className="space-y-4">
+              <h3 className="text-sm font-semibold text-white uppercase tracking-widest">
+                Import Services
+              </h3>
+              <ul className="space-y-2 text-sm">
+                {importServices.map((service, idx) => (
+                  <li key={idx}>
+                    <Link
+                      href="#services"
+                      className="text-gray-300 hover:text-yellow-400 transition-colors flex items-center gap-2 group"
+                    >
+                      <span className="w-1 h-1 rounded-full bg-gray-600 group-hover:bg-yellow-400 transition-colors" />
+                      {service}
+                    </Link>
+                  </li>
+                ))}
+              </ul>
+            </div>
+
+            {/* Company */}
+            <div className="space-y-4">
+              <h3 className="text-sm font-semibold text-white uppercase tracking-widest">
+                Company
+              </h3>
+              <ul className="space-y-2 text-sm">
+                <li>
+                  <Link
+                    href="/about"
+                    className="text-gray-300 hover:text-yellow-400 transition-colors"
+                  >
+                    About Us
+                  </Link>
+                </li>
+                <li>
+                  <Link
+                    href="/contact"
+                    className="text-gray-300 hover:text-yellow-400 transition-colors"
+                  >
+                    Contact Us
+                  </Link>
+                </li>
+                <li>
+                  <Link
+                    href="/blogs"
+                    className="text-gray-300 hover:text-yellow-400 transition-colors"
+                  >
+                    Blog
+                  </Link>
+                </li>
+                <li>
+                  <Link
+                    href="/privacy-policy"
+                    className="text-gray-300 hover:text-yellow-400 transition-colors"
+                  >
+                    Privacy Policy
+                  </Link>
+                </li>
+                <li>
+                  <Link
+                    href="/terms-of-service"
+                    className="text-gray-300 hover:text-yellow-400 transition-colors"
+                  >
+                    Terms of Service
+                  </Link>
+                </li>
+              </ul>
+            </div>
           </div>
 
           {/* Get In Touch Column */}
-          <div className="space-y-4 lg:col-span-3">
+          <div className="space-y-4 lg:col-span-2">
             <h3 className="text-sm font-semibold text-white uppercase tracking-widest">
               Get In Touch
             </h3>
@@ -259,7 +270,18 @@ export default function Footer() {
       <div className="border-t border-slate-800">
         <div className="container mx-auto px-4 md:px-6 py-6">
           <div className="flex flex-col md:flex-row items-center justify-between gap-4 text-sm text-gray-400">
-            <p>&copy; {currentYear} Kargo One. All rights reserved. Designed & Developed by <a href="https://exprova.com" target="_blank" rel="noreferrer" className="text-red-400">Exprova.com</a></p>
+            <p>
+              &copy; {currentYear} Kargo One. All rights reserved. Designed &
+              Developed by{" "}
+              <a
+                href="https://exprova.com"
+                target="_blank"
+                rel="noreferrer"
+                className="text-red-400 hover:text-yellow-400 transition-colors"
+              >
+                Exprova.com
+              </a>
+            </p>
             <div className="flex items-center gap-6">
               <Link
                 href="/privacy-policy"

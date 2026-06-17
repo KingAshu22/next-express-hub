@@ -16,45 +16,64 @@ export default function Hero() {
   ];
 
   return (
-    <section className="relative bg-gradient-to-br from-blue-800 via-blue-900 to-blue-950 overflow-hidden pt-28 md:pt-32 pb-12">
-      {/* World Map Dotted Background */}
-      <div
-        className="absolute inset-0 opacity-20 pointer-events-none"
-        style={{
-          backgroundImage:
-            "radial-gradient(circle, rgba(255,255,255,0.4) 1px, transparent 1px)",
-          backgroundSize: "20px 20px",
-        }}
-      />
+    <section className="relative overflow-hidden flex items-center min-h-screen lg:min-h-0 lg:pt-32 lg:pb-12 lg:h-auto lg:min-h-[820px] pt-28">
+      {/* ============ MOBILE BACKGROUND (SVG) ============ */}
+      <div className="absolute inset-0 z-0 lg:hidden">
+        <Image
+          src="/hero-mobile.gif"
+          alt="Kargo One Mobile Background"
+          fill
+          priority
+          className="object-cover object-center w-full h-full"
+        />
+        {/* Mobile overlay for text readability */}
+        <div className="absolute inset-0 bg-gradient-to-b from-blue-950/70 via-blue-900/40 to-blue-950/70" />
+      </div>
 
-      {/* Soft glows */}
-      <div className="absolute top-20 right-20 w-96 h-96 bg-blue-500 rounded-full blur-3xl opacity-20" />
-      <div className="absolute bottom-0 left-10 w-80 h-80 bg-yellow-400 rounded-full blur-3xl opacity-10" />
+      {/* ============ DESKTOP BACKGROUND (GIF) ============ */}
+      <div className="absolute inset-0 z-0 hidden lg:block">
+        <Image
+          src="/hero.gif"
+          alt="Kargo One Worldwide Delivery"
+          fill
+          unoptimized
+          priority
+          className="object-cover object-center"
+        />
+        {/* Desktop left-side dark overlay for readability */}
+        <div className="absolute inset-0 bg-gradient-to-r from-blue-950/85 via-blue-900/60 to-transparent" />
+        {/* Bottom subtle fade */}
+        <div className="absolute inset-x-0 bottom-0 h-32 bg-gradient-to-t from-blue-950/40 to-transparent" />
+      </div>
 
-      <div className="container mx-auto px-4 md:px-8 relative z-10">
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-10 lg:gap-8 items-center">
+      {/* Soft glows (desktop only) */}
+      <div className="absolute top-20 right-20 w-96 h-96 bg-blue-500 rounded-full blur-3xl opacity-20 z-0 hidden lg:block" />
+      <div className="absolute bottom-0 left-10 w-80 h-80 bg-yellow-400 rounded-full blur-3xl opacity-10 z-0 hidden lg:block" />
+
+      <div className="container mx-auto px-4 md:px-8 relative z-10 w-full">
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-10 lg:gap-8 items-center -mt-48 lg:-mt-0">
           {/* Left Content */}
           <motion.div
             initial={{ opacity: 0, x: -40 }}
             animate={{ opacity: 1, x: 0 }}
             transition={{ duration: 0.7 }}
-            className="text-white space-y-6"
+            className="text-white space-y-6 text-center lg:text-left"
           >
-            <h1 className="text-4xl md:text-5xl lg:text-6xl font-bold leading-tight">
+            <h1 className="text-4xl md:text-5xl lg:text-6xl font-bold leading-tight drop-shadow-2xl">
               Experience{" "}
               <span className="text-yellow-400">Fast & Hassle</span> Free
               <br />
               Delivery Worldwide
             </h1>
 
-            <div className="w-16 h-1 bg-yellow-400 rounded-full" />
+            <div className="w-16 h-1 bg-yellow-400 rounded-full mx-auto lg:mx-0" />
 
-            <p className="text-base md:text-lg text-blue-100 max-w-lg leading-relaxed">
+            <p className="text-base md:text-lg text-blue-50 max-w-lg mx-auto lg:mx-0 leading-relaxed drop-shadow-lg">
               Enjoy doorstep pickup, secure packing, and trusted delivery to
               destinations across the globe.
             </p>
 
-            <div className="flex flex-wrap gap-4 pt-2">
+            <div className="flex flex-wrap gap-2 lg:gap-4 pt-2 justify-center lg:justify-start">
               <button
                 onClick={() => router.push("/contact")}
                 className="inline-flex items-center gap-2 px-7 py-3.5 bg-yellow-400 hover:bg-yellow-500 text-slate-900 font-bold rounded-xl transition-all shadow-xl hover:shadow-2xl hover:scale-105 group"
@@ -66,7 +85,7 @@ export default function Hero() {
               </button>
               <button
                 onClick={() => router.push("/track")}
-                className="inline-flex items-center gap-2 px-7 py-3.5 border-2 border-white/30 hover:border-white text-white font-semibold rounded-xl transition-all hover:bg-white/10"
+                className="inline-flex items-center gap-2 px-7 py-3.5 border-2 border-white/40 hover:border-white text-white font-semibold rounded-xl transition-all hover:bg-white/10 backdrop-blur-sm"
               >
                 Track Shipment
                 <ArrowRight className="w-4 h-4" />
@@ -81,70 +100,22 @@ export default function Hero() {
                   initial={{ opacity: 0, y: 20 }}
                   animate={{ opacity: 1, y: 0 }}
                   transition={{ delay: 0.4 + i * 0.1 }}
-                  className="flex items-center gap-3"
+                  className="flex items-center gap-3 justify-center lg:justify-start"
                 >
-                  <div className="w-10 h-10 rounded-full border-2 border-yellow-400/40 flex items-center justify-center flex-shrink-0">
+                  <div className="w-10 h-10 rounded-full border-2 border-yellow-400/60 bg-blue-950/40 backdrop-blur-sm flex items-center justify-center flex-shrink-0">
                     <f.icon className="w-5 h-5 text-yellow-400" />
                   </div>
-                  <div className="text-sm">
-                    <p className="text-white font-semibold leading-tight">
+                  <div className="text-sm text-left">
+                    <p className="text-white font-semibold leading-tight drop-shadow-md">
                       {f.label}
                     </p>
-                    <p className="text-blue-200 text-xs">{f.sub}</p>
+                    <p className="text-blue-100 text-xs drop-shadow-md">
+                      {f.sub}
+                    </p>
                   </div>
                 </motion.div>
               ))}
             </div>
-          </motion.div>
-
-          {/* Right Visual */}
-          <motion.div
-            initial={{ opacity: 0, scale: 0.9 }}
-            animate={{ opacity: 1, scale: 1 }}
-            transition={{ duration: 0.8 }}
-            className="relative h-[400px] md:h-[520px] lg:h-[600px]"
-          >
-            <Image
-              src="/kargo-hero-2.png"
-              alt="Kargo One Delivery"
-              fill
-              className="object-contain object-center"
-              priority
-            />
-
-            {/* Floating Tracking Card */}
-            <motion.div
-              initial={{ opacity: 0, y: 30 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.6, duration: 0.6 }}
-              className="absolute bottom-6 left-2 md:left-0 bg-white rounded-2xl shadow-2xl p-4 md:p-5 w-64 md:w-72 hidden sm:block"
-            >
-              <p className="text-xs font-semibold text-blue-700">
-                Estimated Delivery Date
-              </p>
-              <p className="text-xs text-slate-500 mt-1">Thursday</p>
-              <p className="text-2xl md:text-3xl font-bold text-blue-700 mt-1">
-                10 Dec 2026
-              </p>
-              <p className="text-xs text-slate-600 mt-2">
-                Your Order Is{" "}
-                <span className="text-blue-700 font-semibold">
-                  Out for Delivery
-                </span>
-              </p>
-              <div className="flex items-center justify-between mt-4">
-                {["Confirmed", "In Transit", "Out", "Delivered"].map((s, i) => (
-                  <div key={i} className="flex flex-col items-center flex-1">
-                    <div
-                      className={`w-3 h-3 rounded-full ${
-                        i <= 2 ? "bg-yellow-400" : "bg-gray-300"
-                      }`}
-                    />
-                    <p className="text-[10px] text-slate-600 mt-1">{s}</p>
-                  </div>
-                ))}
-              </div>
-            </motion.div>
           </motion.div>
         </div>
       </div>

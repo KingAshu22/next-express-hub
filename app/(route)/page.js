@@ -8,6 +8,8 @@ import Services from "../_components/Services";
 import WhyChooseUs from "../_components/WhyChooseUs";
 import CtaSection from "../_components/CtaSection";
 import Testimonials from "../_components/testimonial";
+import DeliveryCountries from "../_components/DeliveryCountries";
+import ShippableItems from "../_components/ShipableItems";
 
 export default function Home() {
   return (
@@ -17,6 +19,8 @@ export default function Home() {
       <FloatingContactButtons />
       <Services />
       <WhyChooseUs />
+      <DeliveryCountries />
+      <ShippableItems />
       <Testimonials />
       <CtaSection />
       <Footer />

@@ -41,6 +41,7 @@ export default function FrontHeader() {
   const navLinks = [
     { label: "Home", href: "/" },
     { label: "Services", href: "#services", dropdown: "services" },
+    { label: "Import Services", href: "#import", },
     { label: "Solutions", href: "#solutions", dropdown: "solutions" },
     { label: "About Us", href: "/about" },
     { label: "Contact Us", href: "/contact" },
@@ -136,10 +137,10 @@ export default function FrontHeader() {
                 Track Shipment
               </button>
               <button
-                onClick={() => router.push("/contact")}
+                onClick={() => router.push("/dashboard")}
                 className="inline-flex items-center gap-2 px-5 py-2.5 bg-yellow-400 hover:bg-yellow-500 text-slate-900 font-semibold text-sm rounded-xl transition-all shadow-md hover:shadow-lg group"
               >
-                Get a Quote
+                Login
                 <ArrowRight className="w-4 h-4 group-hover:translate-x-0.5 transition-transform" />
               </button>
             </div>
@@ -250,12 +251,12 @@ export default function FrontHeader() {
                     </button>
                     <button
                       onClick={() => {
-                        router.push("/contact");
+                        router.push("/dashobard");
                         setMobileMenuOpen(false);
                       }}
                       className="w-full flex items-center justify-center gap-2 px-5 py-2.5 bg-yellow-400 hover:bg-yellow-500 text-slate-900 font-semibold text-sm rounded-xl"
                     >
-                      Get a Quote
+                      Login
                       <ArrowRight className="w-4 h-4" />
                     </button>
                   </div>

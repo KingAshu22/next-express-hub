@@ -1,174 +1,153 @@
 "use client";
 
-import { useState } from "react";
-import { useRouter } from "next/navigation";
 import { motion } from "framer-motion";
+import { useRouter } from "next/navigation";
 import Image from "next/image";
-import { ArrowRight, Package, Globe, CheckCircle } from "lucide-react";
+import { ArrowRight, Shield, Clock, Globe2, Headphones } from "lucide-react";
 
-const HeroSection = () => {
+export default function Hero() {
   const router = useRouter();
-  const [trackingNumber, setTrackingNumber] = useState("");
 
-  const handleTrack = (e) => {
-    e.preventDefault();
-    if (trackingNumber.trim()) {
-      router.push(`/track/${trackingNumber}`);
-    }
-  };
-
-  const containerVariants = {
-    hidden: { opacity: 0 },
-    visible: {
-      opacity: 1,
-      transition: { staggerChildren: 0.15, delayChildren: 0.2 },
-    },
-  };
-
-  const itemVariants = {
-    hidden: { opacity: 0, y: 20 },
-    visible: { opacity: 1, y: 0, transition: { duration: 0.6, ease: "easeOut" } },
-  };
+  const features = [
+    { icon: Shield, label: "Secure", sub: "Packing" },
+    { icon: Clock, label: "On-Time", sub: "Delivery" },
+    { icon: Globe2, label: "Worldwide", sub: "Coverage" },
+    { icon: Headphones, label: "24/7", sub: "Support" },
+  ];
 
   return (
-    <section className="relative bg-gradient-to-br from-slate-300 via-blue-900 to-slate-900 overflow-hidden pt-32 pb-0">
-      {/* Animated background elements */}
-      <div className="absolute inset-0 overflow-hidden pointer-events-none">
-        <div className="absolute -top-60 -right-60 w-96 h-96 bg-blue-600 rounded-full blur-3xl opacity-10 animate-blob"></div>
-        <div className="absolute -bottom-32 -left-32 w-80 h-80 bg-yellow-500 rounded-full blur-3xl opacity-5 animate-blob animation-delay-2000"></div>
-        <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-72 h-72 bg-blue-700 rounded-full blur-3xl opacity-5"></div>
-      </div>
+    <section className="relative bg-gradient-to-br from-blue-800 via-blue-900 to-blue-950 overflow-hidden pt-28 md:pt-32 pb-12">
+      {/* World Map Dotted Background */}
+      <div
+        className="absolute inset-0 opacity-20 pointer-events-none"
+        style={{
+          backgroundImage:
+            "radial-gradient(circle, rgba(255,255,255,0.4) 1px, transparent 1px)",
+          backgroundSize: "20px 20px",
+        }}
+      />
 
-      <div className="container mx-auto px-4 md:px-6 relative z-10">
-        <motion.div
-          className="grid grid-cols-1 lg:grid-cols-2 gap-8 lg:gap-16 items-center"
-          variants={containerVariants}
-          initial="hidden"
-          animate="visible"
-        >
+      {/* Soft glows */}
+      <div className="absolute top-20 right-20 w-96 h-96 bg-blue-500 rounded-full blur-3xl opacity-20" />
+      <div className="absolute bottom-0 left-10 w-80 h-80 bg-yellow-400 rounded-full blur-3xl opacity-10" />
+
+      <div className="container mx-auto px-4 md:px-8 relative z-10">
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-10 lg:gap-8 items-center">
           {/* Left Content */}
-          <motion.div className="space-y-6 text-white pt-8 lg:pt-0" variants={itemVariants}>
-            <div className="space-y-4">
-              <motion.h1 
-                className="text-5xl md:text-6xl lg:text-7xl font-bold leading-tight"
-                variants={itemVariants}
+          <motion.div
+            initial={{ opacity: 0, x: -40 }}
+            animate={{ opacity: 1, x: 0 }}
+            transition={{ duration: 0.7 }}
+            className="text-white space-y-6"
+          >
+            <h1 className="text-4xl md:text-5xl lg:text-6xl font-bold leading-tight">
+              Experience{" "}
+              <span className="text-yellow-400">Fast & Hassle</span> Free
+              <br />
+              Delivery Worldwide
+            </h1>
+
+            <div className="w-16 h-1 bg-yellow-400 rounded-full" />
+
+            <p className="text-base md:text-lg text-blue-100 max-w-lg leading-relaxed">
+              Enjoy doorstep pickup, secure packing, and trusted delivery to
+              destinations across the globe.
+            </p>
+
+            <div className="flex flex-wrap gap-4 pt-2">
+              <button
+                onClick={() => router.push("/contact")}
+                className="inline-flex items-center gap-2 px-7 py-3.5 bg-yellow-400 hover:bg-yellow-500 text-slate-900 font-bold rounded-xl transition-all shadow-xl hover:shadow-2xl hover:scale-105 group"
               >
-                Delivering More
-                <span className="block text-yellow-400 mt-2">Than Just Packages</span>
-              </motion.h1>
-              <motion.p 
-                className="text-lg md:text-xl text-gray-200 leading-relaxed max-w-lg"
-                variants={itemVariants}
+                Get a Quote
+                <span className="w-7 h-7 rounded-full bg-slate-900 flex items-center justify-center group-hover:translate-x-1 transition-transform">
+                  <ArrowRight className="w-4 h-4 text-yellow-400" />
+                </span>
+              </button>
+              <button
+                onClick={() => router.push("/track")}
+                className="inline-flex items-center gap-2 px-7 py-3.5 border-2 border-white/30 hover:border-white text-white font-semibold rounded-xl transition-all hover:bg-white/10"
               >
-                Fast, reliable and secure logistics solutions tailored for your business and beyond.
-              </motion.p>
+                Track Shipment
+                <ArrowRight className="w-4 h-4" />
+              </button>
             </div>
 
-            <motion.div 
-              className="flex flex-col sm:flex-row gap-4 pt-4"
-              variants={itemVariants}
-            >
-              <button 
-                onClick={() => router.push("/contact")}
-                className="inline-flex items-center justify-center gap-2 px-8 py-4 bg-yellow-400 hover:bg-yellow-500 text-slate-900 font-bold rounded-lg transition-all duration-300 transform hover:scale-105 shadow-lg text-lg group"
-              >
-                Schedule a Pickup
-                <ArrowRight className="w-5 h-5 group-hover:translate-x-1 transition-transform" />
-              </button>
-              <button 
-                onClick={() => router.push("/track")}
-                className="inline-flex items-center justify-center gap-2 px-8 py-4 border-2 border-gray-300 hover:border-white text-white font-bold rounded-lg transition-all duration-300 text-lg group"
-              >
-                Track Your Shipment
-                <ArrowRight className="w-5 h-5 group-hover:translate-x-1 transition-transform" />
-              </button>
-            </motion.div>
-
-            <motion.div 
-              className="grid grid-cols-3 gap-6 pt-12 border-t border-gray-600"
-              variants={itemVariants}
-            >
-              <div className="space-y-1">
-                <div className="flex items-center gap-2">
-                  <Package className="w-6 h-6 text-yellow-400" />
-                  <p className="text-3xl font-bold text-white">10M+</p>
-                </div>
-                <p className="text-sm text-gray-300">Deliveries</p>
-              </div>
-              <div className="space-y-1">
-                <div className="flex items-center gap-2">
-                  <Globe className="w-6 h-6 text-yellow-400" />
-                  <p className="text-3xl font-bold text-white">220+</p>
-                </div>
-                <p className="text-sm text-gray-300">Countries</p>
-              </div>
-              <div className="space-y-1">
-                <div className="flex items-center gap-2">
-                  <CheckCircle className="w-6 h-6 text-yellow-400" />
-                  <p className="text-3xl font-bold text-white">99.9%</p>
-                </div>
-                <p className="text-sm text-gray-300">On-time Delivery</p>
-              </div>
-            </motion.div>
+            {/* Feature Strip */}
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-4 pt-8">
+              {features.map((f, i) => (
+                <motion.div
+                  key={i}
+                  initial={{ opacity: 0, y: 20 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ delay: 0.4 + i * 0.1 }}
+                  className="flex items-center gap-3"
+                >
+                  <div className="w-10 h-10 rounded-full border-2 border-yellow-400/40 flex items-center justify-center flex-shrink-0">
+                    <f.icon className="w-5 h-5 text-yellow-400" />
+                  </div>
+                  <div className="text-sm">
+                    <p className="text-white font-semibold leading-tight">
+                      {f.label}
+                    </p>
+                    <p className="text-blue-200 text-xs">{f.sub}</p>
+                  </div>
+                </motion.div>
+              ))}
+            </div>
           </motion.div>
 
-          {/* Right Side - Hero Image (slightly bigger but contained) */}
-          <motion.div 
-            className="relative w-full h-96 md:h-[500px] lg:h-[650px]"
-            variants={itemVariants}
-            initial={{ opacity: 0, scale: 0.8 }}
-            animate={{ opacity: 1, scale: 1.1 }}
-            transition={{ duration: 0.8, ease: "easeOut" }}
+          {/* Right Visual */}
+          <motion.div
+            initial={{ opacity: 0, scale: 0.9 }}
+            animate={{ opacity: 1, scale: 1 }}
+            transition={{ duration: 0.8 }}
+            className="relative h-[400px] md:h-[520px] lg:h-[600px]"
           >
             <Image
               src="/kargo-hero-2.png"
-              alt="Kargo One - Express Delivery with Truck and Globe"
+              alt="Kargo One Delivery"
               fill
               className="object-contain object-center"
               priority
             />
-          </motion.div>
-        </motion.div>
 
-        {/* Tracking Widget */}
-        <motion.div 
-          className="-mt-40 md:mt-24 relative z-20"
-          initial={{ opacity: 0, y: 40 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.8, delay: 0.4 }}
-        >
-          <div className="bg-white/95 backdrop-blur-md rounded-2xl shadow-2xl p-6 md:p-8 max-w-2xl mx-auto">
-            <h3 className="text-slate-900 font-semibold text-lg md:text-xl mb-4">Track Your Shipment</h3>
-            <form onSubmit={handleTrack} className="flex flex-col sm:flex-row gap-3">
-              <div className="flex-1 relative">
-                <input
-                  type="text"
-                  placeholder="Enter Tracking ID"
-                  value={trackingNumber}
-                  onChange={(e) => setTrackingNumber(e.target.value)}
-                  className="w-full px-5 py-3 rounded-lg bg-gray-50 text-slate-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-yellow-400 focus:bg-white transition-all border border-gray-200 font-medium"
-                />
+            {/* Floating Tracking Card */}
+            <motion.div
+              initial={{ opacity: 0, y: 30 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.6, duration: 0.6 }}
+              className="absolute bottom-6 left-2 md:left-0 bg-white rounded-2xl shadow-2xl p-4 md:p-5 w-64 md:w-72 hidden sm:block"
+            >
+              <p className="text-xs font-semibold text-blue-700">
+                Estimated Delivery Date
+              </p>
+              <p className="text-xs text-slate-500 mt-1">Thursday</p>
+              <p className="text-2xl md:text-3xl font-bold text-blue-700 mt-1">
+                10 Dec 2026
+              </p>
+              <p className="text-xs text-slate-600 mt-2">
+                Your Order Is{" "}
+                <span className="text-blue-700 font-semibold">
+                  Out for Delivery
+                </span>
+              </p>
+              <div className="flex items-center justify-between mt-4">
+                {["Confirmed", "In Transit", "Out", "Delivered"].map((s, i) => (
+                  <div key={i} className="flex flex-col items-center flex-1">
+                    <div
+                      className={`w-3 h-3 rounded-full ${
+                        i <= 2 ? "bg-yellow-400" : "bg-gray-300"
+                      }`}
+                    />
+                    <p className="text-[10px] text-slate-600 mt-1">{s}</p>
+                  </div>
+                ))}
               </div>
-              <button
-                type="submit"
-                disabled={!trackingNumber.trim()}
-                className="px-8 py-3 bg-yellow-400 hover:bg-yellow-500 text-slate-900 font-bold rounded-lg transition-all duration-300 transform hover:scale-105 shadow-lg disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:scale-100 whitespace-nowrap flex items-center justify-center gap-2 group"
-              >
-                Track Now
-                <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
-              </button>
-            </form>
-          </div>
-        </motion.div>
-
-        {/* Spacer to make the widget sit on top of the white strip below */}
-        <div className="h-16 md:h-20" />
+            </motion.div>
+          </motion.div>
+        </div>
       </div>
-
-      {/* White strip at the bottom (sits behind the lower half of tracking widget) */}
-      <div className="absolute bottom-0 left-0 right-0 h-24 md:h-32 bg-white z-0" />
     </section>
   );
-};
-
-export default HeroSection;
+}

@@ -1,38 +1,21 @@
-"use client";
+import RefundsCancellationClient from "./RefundsCancellationClient";
 
-import Footer from "@/app/_components/Footer";
-import FrontHeader from "@/app/_components/FrontHeader";
+export const metadata = {
+  title: "Refunds & Cancellation Policy | Kargo One",
+  description:
+    "Learn about Kargo One's refund and cancellation policy for international courier shipments, including timelines for cancellations and refunds.",
+  alternates: { canonical: "https://kargoone.com/refunds-cancellation-policy" },
+  robots: { index: true, follow: true },
+  openGraph: {
+    title: "Refunds & Cancellation Policy | Kargo One",
+    description:
+      "Kargo One's policy on shipment cancellations and refund timelines.",
+    url: "https://kargoone.com/refunds-cancellation-policy",
+    siteName: "Kargo One",
+    type: "website",
+  },
+};
 
 export default function RefundsCancellationPage() {
-    return (
-        <>
-            <FrontHeader />
-            <main className="bg-[#f8f9ff] min-h-screen py-12 px-4 mt-12">
-                <div className="max-w-4xl mx-auto bg-white rounded-2xl shadow-lg p-6 md:p-12">
-                    <h1 className="text-3xl md:text-4xl font-extrabold text-[#232C65] mb-2">
-                        Refunds & Cancellation Policy
-                    </h1>
-                    <div className="w-32 h-2 bg-yellow-400 rounded mb-6" />
-
-                    <section className="space-y-8 text-gray-800 text-justify">
-
-                        <div>
-                            <h2 className="text-xl font-bold text-[#2563eb] mb-2">Returns</h2>
-                            <p>
-                                We do not accept RTOs once the shipment has been received at our hub. In case the shipment is in transit to our hub, and you wish to cancel, please write to us at support@shipglobal.in or call our customer care at +91 97699 93011 / +91 91520 39557 with details.
-                            </p>
-                        </div>
-
-                        <div>
-                            <h2 className="text-xl font-bold text-[#2563eb] mb-2">Cancellation</h2>
-                            <p>
-                                You can cancel the order anytime before it gets in-warded at our hub. Once you request for cancellation of your order, it will take 1-2 business days for the cancellation to reflect in our systems. The same will be notified to you by email. We will refund the entire amount within 7-10 working days.
-                            </p>
-                        </div>
-                    </section>
-                </div>
-            </main>
-            <Footer />
-        </>
-    );
+  return <RefundsCancellationClient />;
 }

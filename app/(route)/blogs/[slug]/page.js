@@ -1,132 +1,157 @@
-"use client";
+import Link from "next/link";
+import { notFound } from "next/navigation";
+import FrontHeader from "../../../_components/FrontHeader";
+import Footer from "../../../_components/Footer";
+import FloatingContactButtons from "../../../_components/FloatingContactButtons";
+import { connectToDB } from "../../../_utils/mongodb";
+import Blog from "@/models/Blog";
+import { Calendar, Clock, ArrowLeft } from "lucide-react";
 
-import { useState, useEffect } from "react";
-import { useParams, useRouter } from "next/navigation";
-import DOMPurify from "dompurify";
-import Head from "next/head";
+const SITE_URL = "https://kargoone.com";
 
-export default function BlogPost() {
-  const [blog, setBlog] = useState(null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState("");
-  const params = useParams();
-  const router = useRouter();
+function stripHtml(html = "") {
+  return html.replace(/<[^>]*>/g, " ").replace(/\s+/g, " ").trim();
+}
 
-  const slug = params?.slug; // ✅ use slug, not code
+function estimateReadTime(content = "") {
+  const words = stripHtml(content).split(" ").filter(Boolean).length;
+  return Math.max(1, Math.round(words / 200));
+}
 
-  useEffect(() => {
-    if (slug) {
-      fetchBlog(slug);
-    }
-  }, [slug]);
+async function getBlog(slug) {
+  await connectToDB();
+  return Blog.findOne({ slug }).lean();
+}
 
-  const fetchBlog = async (slugValue) => {
-    try {
-      const response = await fetch(`/api/blogs/slug/${slugValue}`);
-      if (!response.ok) throw new Error("Blog post not found");
-
-      const blogData = await response.json();
-      setBlog(blogData);
-    } catch (err) {
-      setError(err.message);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  if (loading) {
-    return (
-      <div className="flex justify-center items-center min-h-screen">
-        <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-blue-500"></div>
-      </div>
-    );
-  }
-
-  if (error) {
-    return (
-      <div className="container mx-auto px-4 py-8">
-        <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded">
-          {error}
-        </div>
-        <button
-          onClick={() => router.push("/blogs")}
-          className="mt-4 bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded-md"
-        >
-          Back to Blog List
-        </button>
-      </div>
-    );
-  }
+export async function generateMetadata({ params }) {
+  const { slug } = await params;
+  const blog = await getBlog(slug);
 
   if (!blog) {
-    return (
-      <div className="container mx-auto px-4 py-8 text-center">
-        <h2 className="text-2xl font-bold">Blog post not found</h2>
-        <button
-          onClick={() => router.push("/blogs")}
-          className="mt-4 bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded-md"
-        >
-          Back to Blog List
-        </button>
-      </div>
-    );
+    return { title: "Blog post not found | Kargo One" };
   }
 
-  return (
-    <>
-      {/* ✅ SEO with Next.js Head */}
-      <Head>
-        <title>{blog.metaTitle || blog.title}</title>
-        {blog.metaDesc && (
-          <meta name="description" content={blog.metaDesc} />
-        )}
-        {blog.keywords && blog.keywords.length > 0 && (
-          <meta name="keywords" content={blog.keywords.join(", ")} />
-        )}
-      </Head>
+  const title = blog.metaTitle || blog.title;
+  const description =
+    blog.metaDesc || stripHtml(blog.content || "").slice(0, 160);
+  const url = `${SITE_URL}/blogs/${blog.slug}`;
 
-      <div className="container mx-auto px-4 py-8 max-w-4xl">
-        <article className="bg-white rounded-lg shadow-md p-6 md:p-8">
+  return {
+    title: `${title} | Kargo One`,
+    description,
+    keywords: blog.keywords?.length ? blog.keywords : undefined,
+    alternates: { canonical: url },
+    openGraph: {
+      title,
+      description,
+      url,
+      siteName: "Kargo One",
+      type: "article",
+      publishedTime: blog.createdAt,
+      modifiedTime: blog.updatedAt,
+    },
+    twitter: {
+      card: "summary_large_image",
+      title,
+      description,
+    },
+  };
+}
+
+export default async function BlogPost({ params }) {
+  const { slug } = await params;
+  const blog = await getBlog(slug);
+
+  if (!blog) {
+    notFound();
+  }
+
+  const jsonLd = {
+    "@context": "https://schema.org",
+    "@type": "BlogPosting",
+    headline: blog.title,
+    datePublished: blog.createdAt,
+    dateModified: blog.updatedAt,
+    keywords: blog.keywords?.join(", "),
+    publisher: {
+      "@type": "Organization",
+      name: "Kargo One",
+      url: SITE_URL,
+    },
+    mainEntityOfPage: `${SITE_URL}/blogs/${blog.slug}`,
+  };
+
+  return (
+    <main className="min-h-screen bg-white">
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
+      />
+      <FrontHeader />
+      <FloatingContactButtons />
+
+      <div className="container mx-auto px-4 py-8 pt-28 md:pt-32 max-w-4xl">
+        <Link
+          href="/blogs"
+          className="inline-flex items-center gap-1.5 text-purple-900 font-semibold hover:text-purple-700 mb-6 text-sm"
+        >
+          <ArrowLeft className="w-4 h-4" /> Back to Blog
+        </Link>
+
+        <article className="bg-white rounded-xl shadow-sm border border-gray-200 p-6 md:p-10">
           <header className="mb-8">
-            <h1 className="text-3xl md:text-4xl font-bold mb-4">{blog.title}</h1>
+            <h1 className="text-3xl md:text-4xl font-bold text-gray-900 mb-4">
+              {blog.title}
+            </h1>
+
+            <div className="flex items-center gap-4 text-sm text-gray-500 mb-6">
+              {blog.createdAt && (
+                <span className="inline-flex items-center gap-1.5">
+                  <Calendar className="w-4 h-4" />
+                  {new Date(blog.createdAt).toLocaleDateString("en-US", {
+                    year: "numeric",
+                    month: "long",
+                    day: "numeric",
+                  })}
+                </span>
+              )}
+              <span className="inline-flex items-center gap-1.5">
+                <Clock className="w-4 h-4" />
+                {estimateReadTime(blog.content)} min read
+              </span>
+            </div>
 
             {blog.keywords?.length > 0 && (
-              <div className="flex flex-wrap gap-2 mb-6">
-                {blog.keywords.map((keyword, index) => (
+              <div className="flex flex-wrap gap-2 mb-6 pb-6 border-b border-gray-200">
+                {blog.keywords.map((keyword) => (
                   <span
-                    key={index}
-                    className="bg-blue-100 text-blue-800 text-sm px-3 py-1 rounded-full"
+                    key={keyword}
+                    className="bg-purple-100 text-purple-900 text-xs font-medium px-3 py-1 rounded-full"
                   >
                     {keyword}
                   </span>
                 ))}
               </div>
             )}
-
-            <div className="border-t border-b border-gray-200 py-4 mb-8">
-              <time className="text-gray-500 text-sm">
-                Published on {new Date(blog.createdAt).toLocaleDateString()}
-              </time>
-            </div>
           </header>
 
           <div
-            className="prose prose-lg max-w-none"
-            dangerouslySetInnerHTML={{
-              __html: DOMPurify.sanitize(blog.content),
-            }}
+            className="prose max-w-none"
+            dangerouslySetInnerHTML={{ __html: blog.content }}
           />
 
           <footer className="mt-12 pt-6 border-t border-gray-200">
-            <button
-              onClick={() => router.back()}
-              className="bg-gray-500 hover:bg-gray-600 text-white px-6 py-2 rounded-md"
+            <Link
+              href="/blogs"
+              className="inline-flex items-center gap-1.5 bg-gray-100 hover:bg-gray-200 text-gray-800 px-5 py-2.5 rounded-lg font-medium transition-colors"
             >
-              ← Back to Blog
-            </button>
+              <ArrowLeft className="w-4 h-4" /> Back to Blog List
+            </Link>
           </footer>
         </article>
       </div>
-    </>
+
+      <Footer />
+    </main>
   );
 }

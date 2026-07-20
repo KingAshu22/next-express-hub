@@ -61,9 +61,29 @@ export default function VendorIntegrationList({ onEdit, onRefresh }) {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ isActive: !currentStatus }),
       })
-      
+
       const result = await response.json()
-      
+
+      if (result.success) {
+        fetchVendors()
+      } else {
+        alert(result.error)
+      }
+    } catch (err) {
+      alert(err.message)
+    }
+  }
+
+  const handleToggleRateFetch = async (vendorId, currentValue) => {
+    try {
+      const response = await fetch(`/api/vendor-integrations/${vendorId}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ rateFetchEnabled: !currentValue }),
+      })
+
+      const result = await response.json()
+
       if (result.success) {
         fetchVendors()
       } else {
@@ -189,6 +209,13 @@ export default function VendorIntegrationList({ onEdit, onRefresh }) {
                     }`}>
                       {vendor.isActive ? "Active" : "Inactive"}
                     </span>
+                    <span className={`px-2 py-0.5 text-xs font-medium rounded ${
+                      vendor.rateFetchEnabled !== false
+                        ? "bg-indigo-100 text-indigo-700"
+                        : "bg-gray-200 text-gray-600"
+                    }`}>
+                      {vendor.rateFetchEnabled !== false ? "Rate Fetch On" : "Rate Fetch Off"}
+                    </span>
                   </div>
                   
                   {vendor.description && (
@@ -226,6 +253,17 @@ export default function VendorIntegrationList({ onEdit, onRefresh }) {
                     }`}
                   >
                     {vendor.isActive ? "Deactivate" : "Activate"}
+                  </button>
+                  <button
+                    onClick={() => handleToggleRateFetch(vendor._id, vendor.rateFetchEnabled !== false)}
+                    title="Controls whether this vendor's live rates appear on the Get Rates comparison page"
+                    className={`px-3 py-1 text-sm rounded ${
+                      vendor.rateFetchEnabled !== false
+                        ? "bg-indigo-100 text-indigo-700 hover:bg-indigo-200"
+                        : "bg-gray-100 text-gray-700 hover:bg-gray-200"
+                    }`}
+                  >
+                    {vendor.rateFetchEnabled !== false ? "Hide Rates" : "Show Rates"}
                   </button>
                   <button
                     onClick={() => onEdit(vendor)}

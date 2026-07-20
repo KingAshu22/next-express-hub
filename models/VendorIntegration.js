@@ -126,6 +126,11 @@ const VendorIntegrationSchema = new mongoose.Schema(
       required: true 
     },
     isActive: { type: Boolean, default: true },
+    // Controls only whether this vendor's live rates are fetched/shown on the
+    // Get Rates comparison page — independent of `isActive` (which also gates
+    // AWB booking/tracking). A vendor can stay active for bookings while its
+    // rates are hidden from the comparison tool, or vice versa.
+    rateFetchEnabled: { type: Boolean, default: true },
     description: { type: String, default: "" },
     
     xpressionCredentials: {

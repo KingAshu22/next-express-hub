@@ -88,6 +88,7 @@ export async function PUT(request, { params }) {
     if (body.vendorCode !== undefined) vendor.vendorCode = body.vendorCode.toUpperCase()
     if (body.description !== undefined) vendor.description = body.description
     if (body.isActive !== undefined) vendor.isActive = body.isActive
+    if (body.rateFetchEnabled !== undefined) vendor.rateFetchEnabled = body.rateFetchEnabled
     
     // Update Xpression credentials
     if (vendor.softwareType === "xpression" && body.xpressionCredentials) {

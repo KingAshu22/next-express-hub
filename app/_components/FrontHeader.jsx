@@ -44,6 +44,7 @@ export default function FrontHeader() {
     { label: "Import Services", href: "#import", },
     { label: "Solutions", href: "#solutions", dropdown: "solutions" },
     { label: "About Us", href: "/about" },
+    { label: "Blogs", href: "/blogs" },
     { label: "Contact Us", href: "/contact" },
   ];
 

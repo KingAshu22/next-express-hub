@@ -2,12 +2,12 @@
  * Finds the best-matching postal zone for a given ZIP/postal code.
  *
  * Matching rules (in priority order):
- * 1. Prefix match: the entered ZIP starts with a zone's stored `zipCode`
- *    (this also covers exact matches, since an exact match is just a
- *    prefix equal to the full ZIP). When multiple zones' prefixes match,
- *    the longest (most specific) prefix wins.
+ * 1. Contains match: the entered ZIP contains a zone's stored `zipCode`
+ *    as a substring anywhere in it (this also covers exact and prefix
+ *    matches). When multiple zones' codes match, the longest (most
+ *    specific) match wins.
  * 2. Range match: the entered ZIP falls within a zone's `zipFrom`-`zipTo`
- *    numeric range. Used only when no prefix match is found.
+ *    numeric range. Used only when no contains match is found.
  *
  * @param {string} zipCode - ZIP/postal code entered by the user.
  * @param {Array} postalZones - Array of { zone, zipCode, zipFrom, zipTo, ... }.
@@ -24,10 +24,10 @@ export function findMatchingPostalZone(zipCode, postalZones) {
 
   for (const pz of postalZones) {
     if (!pz.zipCode) continue;
-    const prefix = String(pz.zipCode).trim().toUpperCase();
-    if (prefix && normalizedZip.startsWith(prefix) && prefix.length > bestSpecificity) {
+    const code = String(pz.zipCode).trim().toUpperCase();
+    if (code && normalizedZip.includes(code) && code.length > bestSpecificity) {
       bestMatch = pz;
-      bestSpecificity = prefix.length;
+      bestSpecificity = code.length;
     }
   }
 

@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { connectToDB } from "@/app/_utils/mongodb";
 import Rate from "@/models/Rate";
+import { findMatchingPostalZone } from "@/app/_utils/postalZoneMatch";
 
 export async function GET(req) { 
   try {
@@ -146,30 +147,8 @@ export async function GET(req) {
             return false;
           }
           
-          // 3. Check if ZIP code exists in postal zones
-          const hasMatchingZip = (rate.postalZones || []).some(pz => {
-            // Exact match
-            if (pz.zipCode && pz.zipCode === zipCode) {
-              return true;
-            }
-            
-            // Range match
-            if (pz.zipFrom && pz.zipTo) {
-              // Try numeric comparison first
-              const zipNum = parseInt(zipCode.replace(/\D/g, ""), 10);
-              const fromNum = parseInt(String(pz.zipFrom).replace(/\D/g, ""), 10);
-              const toNum = parseInt(String(pz.zipTo).replace(/\D/g, ""), 10);
-              
-              if (!isNaN(zipNum) && !isNaN(fromNum) && !isNaN(toNum)) {
-                return zipNum >= fromNum && zipNum <= toNum;
-              }
-              
-              // Fallback to string comparison for alphanumeric codes
-              return zipCode >= pz.zipFrom && zipCode <= pz.zipTo;
-            }
-            
-            return false;
-          });
+          // 3. Check if ZIP code exists in postal zones (prefix or range match)
+          const hasMatchingZip = !!findMatchingPostalZone(zipCode, rate.postalZones);
           
           if (!hasMatchingZip) {
             console.log(`[API/SERVICES] Skipping ${rate.originalName} - ZIP ${zipCode} not found in postal zones`);

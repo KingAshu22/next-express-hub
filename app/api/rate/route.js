@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { connectToDB } from "@/app/_utils/mongodb";
 import Rate from "@/models/Rate";
+import { findMatchingPostalZone } from "@/app/_utils/postalZoneMatch";
 
 export async function GET(req) {
     const { searchParams } = new URL(req.url);
@@ -114,54 +115,23 @@ export async function GET(req) {
             // Find zone by ZIP code
             console.log(`DEBUG: Searching for ZIP ${zipCode} in ${postalZones?.length || 0} postal zones`);
             
-            for (const pz of postalZones || []) {
-                let matches = false;
-                
-                // Exact match
-                if (pz.zipCode) {
-                    matches = pz.zipCode === zipCode;
-                    if (matches) {
-                        console.log(`DEBUG: Exact match found for ZIP ${zipCode}`);
-                    }
-                }
-                
-                // Range match
-                if (!matches && pz.zipFrom && pz.zipTo) {
-                    // Try numeric comparison
-                    const zipNum = parseInt(zipCode.replace(/\D/g, ""), 10);
-                    const fromNum = parseInt(String(pz.zipFrom).replace(/\D/g, ""), 10);
-                    const toNum = parseInt(String(pz.zipTo).replace(/\D/g, ""), 10);
-                    
-                    if (!isNaN(zipNum) && !isNaN(fromNum) && !isNaN(toNum)) {
-                        matches = zipNum >= fromNum && zipNum <= toNum;
-                    } else {
-                        // Fallback to string comparison for alphanumeric codes
-                        matches = zipCode >= pz.zipFrom && zipCode <= pz.zipTo;
-                    }
-                    
-                    if (matches) {
-                        console.log(`DEBUG: Range match found for ZIP ${zipCode} in ${pz.zipFrom}-${pz.zipTo}`);
-                    }
-                }
+            const matchedPostalZone = findMatchingPostalZone(zipCode, postalZones);
 
-                if (matches) {
-                    selectedZone = pz.zone;
-                    
-                    // Parse extra charges
-                    if (pz.extraCharges) {
-                        if (Array.isArray(pz.extraCharges)) {
-                            zoneExtraCharges = pz.extraCharges;
-                        } else if (typeof pz.extraCharges === "object") {
-                            zoneExtraCharges = Object.entries(pz.extraCharges).map(([name, value]) => ({
-                                chargeName: name, 
-                                chargeType: "perKg", 
-                                chargeValue: parseFloat(value) || 0
-                            }));
-                        }
+            if (matchedPostalZone) {
+                selectedZone = matchedPostalZone.zone;
+                console.log(`DEBUG [SUCCESS]: Found ZIP ${zipCode} in zone ${selectedZone} (matched on "${matchedPostalZone.zipCode || `${matchedPostalZone.zipFrom}-${matchedPostalZone.zipTo}`}")`);
+
+                // Parse extra charges
+                if (matchedPostalZone.extraCharges) {
+                    if (Array.isArray(matchedPostalZone.extraCharges)) {
+                        zoneExtraCharges = matchedPostalZone.extraCharges;
+                    } else if (typeof matchedPostalZone.extraCharges === "object") {
+                        zoneExtraCharges = Object.entries(matchedPostalZone.extraCharges).map(([name, value]) => ({
+                            chargeName: name,
+                            chargeType: "perKg",
+                            chargeValue: parseFloat(value) || 0
+                        }));
                     }
-                    
-                    console.log(`DEBUG [SUCCESS]: Found ZIP ${zipCode} in zone ${selectedZone}`);
-                    break;
                 }
             }
 

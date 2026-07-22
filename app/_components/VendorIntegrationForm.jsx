@@ -464,6 +464,18 @@ export default function VendorIntegrationForm({
             />
             <span className="text-sm">M5C</span>
           </label>
+          <label className="flex items-center">
+            <input
+              type="radio"
+              name="softwareType"
+              value="skynet"
+              checked={formData.softwareType === "skynet"}
+              onChange={handleInputChange}
+              disabled={!!editData}
+              className="mr-2"
+            />
+            <span className="text-sm">SkyNet</span>
+          </label>
         </div>
         {editData && (
           <p className="text-xs text-gray-500 mt-1">Software type cannot be changed after creation</p>
@@ -1004,7 +1016,17 @@ export default function VendorIntegrationForm({
           </div>
         </div>
       )}
-      
+
+      {formData.softwareType === "skynet" && (
+        <div className="space-y-2 p-4 bg-teal-50 rounded-lg">
+          <h3 className="font-semibold text-teal-800">SkyNet</h3>
+          <p className="text-sm text-gray-600">
+            No credentials required — tracking uses SkyNet's public Skylink
+            tracking API (skynetww.com) directly, keyed off the AWB number.
+          </p>
+        </div>
+      )}
+
       {/* Form Actions */}
       <div className="flex justify-end gap-3 pt-4 border-t">
         {onCancel && (

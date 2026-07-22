@@ -201,47 +201,38 @@ const parseInternalDate = (dateInput) => {
   return 0
 }
 
-const parseParcelsAppDate = (dateStr, timeStr) => {
+// SkyNet gives EventDate="25-Feb-2026" and EventTime="19:21:45"
+const parseSkyNetDate = (dateStr, timeStr) => {
   if (!dateStr) return 0
-
   try {
-    const dateParts = dateStr.match(/(\d{1,2})\s+(\w+)\s+(\d{4})/)
-    
-    if (dateParts) {
-      const day = parseInt(dateParts[1], 10)
-      const monthStr = dateParts[2]
-      const year = parseInt(dateParts[3], 10)
-      
-      const months = {
-        'jan': 0, 'feb': 1, 'mar': 2, 'apr': 3, 'may': 4, 'jun': 5,
-        'jul': 6, 'aug': 7, 'sep': 8, 'oct': 9, 'nov': 10, 'dec': 11
-      }
-      
-      const month = months[monthStr.toLowerCase().substring(0, 3)]
-      
-      let hours = 0
-      let minutes = 0
-      
-      if (timeStr) {
-        const timeParts = timeStr.match(/(\d{1,2}):(\d{2})/)
-        if (timeParts) {
-          hours = parseInt(timeParts[1], 10)
-          minutes = parseInt(timeParts[2], 10)
-        }
-      }
-      
-      const dateObj = new Date(year, month, day, hours, minutes)
-      return dateObj.getTime()
+    const months = {
+      jan: 0, feb: 1, mar: 2, apr: 3, may: 4, jun: 5,
+      jul: 6, aug: 7, sep: 8, oct: 9, nov: 10, dec: 11,
     }
-  } catch (e) {
-    console.error("ParcelsApp date parsing error:", e)
-  }
-  
-  return 0
+    const parts = dateStr.split("-")
+    if (parts.length !== 3) return 0
+    const day = parseInt(parts[0], 10)
+    const month = months[parts[1].toLowerCase()]
+    const year = parseInt(parts[2], 10)
+    if (isNaN(day) || isNaN(year) || month === undefined) return 0
+
+    let hours = 0, minutes = 0, seconds = 0
+    if (timeStr) {
+      const t = timeStr.split(":")
+      hours = parseInt(t[0], 10) || 0
+      minutes = parseInt(t[1], 10) || 0
+      seconds = t[2] ? parseInt(t[2], 10) : 0
+    }
+    return new Date(year, month, day, hours, minutes, seconds).getTime()
+  } catch { return 0 }
 }
 
 const parseEventTimestamp = (event, softwareType) => {
   try {
+    if (softwareType === "skynet" || (event.EventDate && event.EventDate.includes("-") && /[A-Za-z]/.test(event.EventDate))) {
+      const ts = parseSkyNetDate(event.EventDate, event.EventTime)
+      if (ts > 0) return ts
+    }
     if (softwareType === "xpression" || softwareType === "itd") {
       const dateStr = event.EventDate1 || event.EventDate
       const timeStr = event.EventTime1 || event.EventTime || "12:00 AM"
@@ -486,9 +477,8 @@ function AllAWBsMISPage() {
       const forwardingLink = awb?.forwardingLink || ""
       const forwardingCarrier = detectCarrierFromLink(forwardingLink)
       const isDHLForwarding = forwardingNumber && forwardingLink.includes("dhl") && forwardingCarrier === "dhl"
-      const isUPSForwarding = forwardingNumber && forwardingLink && !isDHLForwarding
-      
-      return hasVendorIntegration || isDHLForwarding || isUPSForwarding
+
+      return hasVendorIntegration || isDHLForwarding
     })
 
     const totalTrackable = trackableAwbs.length
@@ -535,13 +525,15 @@ function AllAWBsMISPage() {
     const forwardingLink = awb?.forwardingLink || ""
     const forwardingCarrier = detectCarrierFromLink(forwardingLink)
     const isDHLForwarding = forwardingNumber && forwardingLink.includes("dhl") && forwardingCarrier === "dhl"
-    const isUPSForwarding = forwardingNumber && forwardingLink && !isDHLForwarding
 
-    const shouldTrack = (hasVendorIntegration || isDHLForwarding) && !isUPSForwarding
-    const shouldTrackForwarding = !isDHLForwarding && isUPSForwarding && forwardingNumber
+    // "SkyNet" (any case) in the C Note vendor name always means: track via
+    // fetchSkyNetTracking using the C Note number, regardless of what's in the
+    // VendorIntegration DB (SkyNet's public API needs no vendor record at all).
+    const isSkynetCNote = /skynet/i.test(String(awb?.cNoteVendorName || ""))
+
+    const shouldTrack = hasVendorIntegration || isDHLForwarding
 
     try {
-      // Try vendor tracking first
       if (shouldTrack) {
         let payload = {}
 
@@ -553,8 +545,12 @@ function AllAWBsMISPage() {
         } else {
           payload = {
             awbNumber: awb?.cNoteNumber,
-            vendorId: awb?.integratedVendorId,
+            // Skip vendorId for SkyNet so a stale/unrelated integratedVendorId can't
+            // hijack the lookup — forceSoftwareType alone routes this straight to
+            // fetchSkyNetTracking on the backend.
+            vendorId: isSkynetCNote ? undefined : awb?.integratedVendorId,
             vendorName: awb?.cNoteVendorName,
+            forceSoftwareType: isSkynetCNote ? "skynet" : undefined,
           }
         }
 
@@ -575,33 +571,6 @@ function AllAWBsMISPage() {
             timestamp,
             source: "vendor",
             rawEvents: result.events,
-          }
-        }
-      }
-
-      // Try forwarding tracking
-      if (shouldTrackForwarding) {
-        const response = await fetch("/api/vendor-integrations/tracking/forwarding", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            trackingNumber: forwardingNumber,
-          }),
-        })
-
-        const result = await response.json()
-
-        if (result.success && result.events && result.events.length > 0) {
-          const latestEvent = result.events[0]
-          const timestamp = parseParcelsAppDate(latestEvent.date, latestEvent.time)
-          return {
-            status: latestEvent.status?.trim() || "Update",
-            location: latestEvent.location?.trim() || "",
-            timestamp,
-            source: "forwarding",
-            rawEvents: result.events,
-            estimatedDelivery: result.estimatedDelivery,
-            daysInTransit: result.daysInTransit,
           }
         }
       }

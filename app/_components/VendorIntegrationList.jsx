@@ -16,6 +16,7 @@ export default function VendorIntegrationList({ onEdit, onRefresh }) {
       tech440: "Tech440",
       dhl: "DHL",
       m5c: "M5C",
+      skynet: "SkyNet",
     }
     return labels[softwareType] || softwareType
   }
@@ -27,6 +28,7 @@ export default function VendorIntegrationList({ onEdit, onRefresh }) {
       tech440: "bg-purple-100 text-purple-700",
       dhl: "bg-red-100 text-red-700",
       m5c: "bg-cyan-100 text-cyan-700",
+      skynet: "bg-teal-100 text-teal-700",
     }
     return classes[softwareType] || "bg-gray-100 text-gray-700"
   }
@@ -173,6 +175,16 @@ export default function VendorIntegrationList({ onEdit, onRefresh }) {
             }`}
           >
             M5C
+          </button>
+          <button
+            onClick={() => setFilter("skynet")}
+            className={`px-3 py-1 rounded text-sm ${
+              filter === "skynet"
+                ? "bg-teal-600 text-white"
+                : "bg-gray-100 text-gray-600 hover:bg-gray-200"
+            }`}
+          >
+            SkyNet
           </button>
         </div>
       </div>

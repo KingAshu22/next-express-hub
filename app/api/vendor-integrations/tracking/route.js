@@ -3,10 +3,112 @@ import { connectToDB } from "@/app/_utils/mongodb"
 import VendorIntegration from "@/models/VendorIntegration"
 import Awb from "@/models/Awb"
 
+const joinUrl = (baseUrl, path = "") => {
+  if (!baseUrl) return path || ""
+  if (!path) return baseUrl
+  return `${baseUrl.replace(/\/+$/, "")}/${path.replace(/^\/+/, "")}`
+}
+
+const escapeRegExp = (value = "") =>
+  String(value).replace(/[.*+?^${}()|[\]\\]/g, "\\$&")
+
+const buildSKartHeaders = (creds) => {
+  const headers = { "Content-Type": "application/json" }
+  if (creds.apiKey) headers["x-api-key"] = creds.apiKey
+  if (creds.authToken) headers.Authorization = `Bearer ${creds.authToken}`
+  return headers
+}
+
+const SHREE_MARUTI_DEFAULT_TRACKING_URL = "https://apis-hubops.innofulfill.com/tracking/v2"
+const SHREE_MARUTI_VENDOR_PATTERN = /shree\s*maruti/i
+const SUNEX_ANDHERI_HUB = "SunEx Services - Andheri HUB"
+const SHREE_MARUTI_PICKUP_LOCATION =
+  "SHOP 34, KENORITA GARMENT HUB, CAVES ROAD, WES.EX. HIGHWAY JOGESHWARI. EAST MUMBAI - 400060, , 400060, JOGESHWARI, MAHARASHTRA, India"
+
+const isShreeMarutiVendorName = (vendorName = "") =>
+  SHREE_MARUTI_VENDOR_PATTERN.test(String(vendorName))
+
+const SKYNET_TRACKING_URL = "https://www.skynetww.com/api/track-skylink"
+const SKYNET_VENDOR_PATTERN = /sky\s*net/i
+
+const isSkynetVendorName = (vendorName = "") =>
+  SKYNET_VENDOR_PATTERN.test(String(vendorName))
+
+const sanitizeShreeMarutiLocation = (location = "") => {
+  const normalized = String(location || "").replace(/\s+/g, " ").trim()
+  const pickupLocation = SHREE_MARUTI_PICKUP_LOCATION.replace(/\s+/g, " ").trim()
+  return normalized === pickupLocation ? SUNEX_ANDHERI_HUB : location
+}
+
+const normalizeXpressionArray = (value) => {
+  if (!value) return []
+  if (Array.isArray(value)) return value
+  return [value]
+}
+
+const pickFirst = (source, keys) => {
+  for (const key of keys) {
+    const value = source?.[key]
+    if (value !== undefined && value !== null && String(value).trim() !== "") {
+      return value
+    }
+  }
+  return ""
+}
+
+const normalizeXpressionTrackingRow = (row = {}, awbNumber = "") => ({
+  AWBNo: pickFirst(row, ["AWBNo", "AWBNO", "AwbNo", "awbNo", "AWB", "DocketNo"]) || awbNumber,
+  BookingDate: pickFirst(row, ["BookingDate", "BookDate", "PickupDate", "ShipmentDate", "Date"]),
+  Origin: pickFirst(row, ["Origin", "OriginName", "OriginCity", "From"]),
+  Destination: pickFirst(row, ["Destination", "DestinationName", "DestinationCity", "To"]),
+  Consignee: pickFirst(row, ["Consignee", "ConsigneeName", "ReceiverName"]),
+  ServiceName: pickFirst(row, ["ServiceName", "Service", "ProductCode"]),
+  Status: pickFirst(row, ["Status", "CurrentStatus", "ShipmentStatus", "LastStatus"]),
+  DeliveryDate: pickFirst(row, ["DeliveryDate", "DeliveredDate", "PODDate"]),
+  ForwardingNo: pickFirst(row, ["ForwardingNo", "ForwardingNumber", "ForwarderNo"]),
+  ForwardingURL: pickFirst(row, ["ForwardingURL", "ForwardingLink", "ForwarderUrl"]),
+  ShipperName: pickFirst(row, ["ShipperName", "SenderName"]),
+  ShipperCity: pickFirst(row, ["ShipperCity", "SenderCity"]),
+  ConsigneeCity: pickFirst(row, ["ConsigneeCity", "ReceiverCity"]),
+  Weight: pickFirst(row, ["Weight", "ActualWeight", "ChargeableWeight"]),
+  Pieces: pickFirst(row, ["Pieces", "Pcs", "NoOfPieces"]),
+  RefNo: pickFirst(row, ["RefNo", "CustomerRefNo", "ReferenceNo"]),
+  ExpectedDelivery: pickFirst(row, ["ExpectedDelivery", "EDD", "ExpectedDeliveryDate"]),
+  PODImage: pickFirst(row, ["PODImage", "PodImage", "POD"]),
+  ...row,
+})
+
+const normalizeXpressionEvent = (event = {}) => {
+  const eventDate = pickFirst(event, ["EventDate", "Date", "ScanDate", "StatusDate", "ActivityDate"])
+  const eventTime = pickFirst(event, ["EventTime", "Time", "ScanTime", "StatusTime", "ActivityTime"])
+  const eventDateTime = pickFirst(event, ["EventDateTime", "DateTime", "ScanDateTime", "StatusDateTime", "timestamp"])
+  const dateSource = eventDate || eventDateTime
+  const timeSource = eventTime || eventDateTime
+
+  return {
+    EventDate: eventDate || eventDateTime,
+    EventTime: eventTime,
+    EventDate1: pickFirst(event, ["EventDate1", "FormattedDate"]) || formatDate(dateSource),
+    EventTime1: pickFirst(event, ["EventTime1", "FormattedTime"]) || formatTime(timeSource),
+    Location: pickFirst(event, ["Location", "City", "ScanLocation", "CurrentLocation"]),
+    Status: pickFirst(event, ["Status", "ShipmentStatus", "Event", "Activity", "Description"]) || "Update",
+    Remark: pickFirst(event, ["Remark", "Remarks", "Comment", "Details", "Description"]),
+    ...event,
+  }
+}
+
 // Fetch tracking from Xpression software
 async function fetchXpressionTracking(awbNumber, credentials) {
+  if (!credentials?.userId || !credentials?.password) {
+    throw new Error("Xpression tracking credentials are not configured")
+  }
+
   const trackingUrl = credentials.trackingUrl ||
-    credentials.apiUrl.replace("/Awbentry/Awbentry", "/Tracking/Tracking")
+    credentials.apiUrl?.replace("/Awbentry/Awbentry", "/Tracking/Tracking")
+
+  if (!trackingUrl) {
+    throw new Error("Xpression tracking URL is not configured")
+  }
 
   const payload = {
     UserID: credentials.userId,
@@ -31,23 +133,43 @@ async function fetchXpressionTracking(awbNumber, credentials) {
 
   // Handle nested Response format
   const responseData = data.Response || data
+  const trackingRows = normalizeXpressionArray(
+    responseData.Tracking ||
+      responseData.TrackingData ||
+      responseData.Shipment ||
+      responseData.ShipmentData ||
+      responseData.AWBTracking
+  ).map((row) => normalizeXpressionTrackingRow(row, awbNumber))
+
+  const eventRows = normalizeXpressionArray(
+    responseData.Events ||
+      responseData.Event ||
+      responseData.TrackingEvents ||
+      responseData.ScanDetails ||
+      responseData.History ||
+      responseData.TrackingHistory
+  ).map(normalizeXpressionEvent)
 
   console.log("Xpression Tracking Response:", {
     ResponseCode: responseData.ResponseCode,
     ErrorCode: responseData.ErrorCode,
-    TrackingCount: responseData.Tracking?.length,
-    EventsCount: responseData.Events?.length,
+    TrackingCount: trackingRows.length,
+    EventsCount: eventRows.length,
   })
 
-  if (responseData.ResponseCode !== "RT01") {
+  if (responseData.Status === "Fail" || (responseData.ResponseCode && responseData.ResponseCode !== "RT01")) {
     throw new Error(responseData.ErrorDisc || responseData.APIError || "Failed to fetch tracking")
+  }
+
+  if (trackingRows.length === 0 && eventRows.length === 0) {
+    throw new Error("No Xpression tracking data found")
   }
 
   return {
     success: true,
     softwareType: "xpression",
-    tracking: responseData.Tracking || [],
-    events: responseData.Events || [],
+    tracking: trackingRows,
+    events: eventRows,
     additionalData: responseData.AdditionalData || [],
     rawResponse: responseData,
   }
@@ -250,9 +372,9 @@ async function fetchTech440Tracking(awbNumber, credentials) {
 
   // Normalize Tracking Info
   const normalizedTracking = [{
-    AWBNo: data.tracking_code,
+    AWBNo: data.tracking_code, 
     Status: data.status,
-    Origin: "India",
+    Origin: "India", 
     Destination: data.destination,
     Weight: data.weight,
     Pieces: data.number_of_box,
@@ -269,188 +391,194 @@ async function fetchTech440Tracking(awbNumber, credentials) {
   }
 }
 
-const joinUrl = (baseUrl, path = "") => {
-  if (!baseUrl) return path || ""
-  if (!path) return baseUrl
-  return `${baseUrl.replace(/\/+$/, "")}/${path.replace(/^\/+/, "")}`
-}
-
-// ─── KEY FIX: Parse M5C ISO date + separate time string correctly ───────────
-function parseM5CDateTime(isoDateStr, timeStr) {
-  try {
-    if (!isoDateStr) return { timestamp: 0, datePart: "", timePart: "" }
-
-    // isoDateStr = "2026-06-15T00:00:00"  →  take only the date part "2026-06-15"
-    const datePart = isoDateStr.split("T")[0]
-
-    // timeStr = "15:00:00"
-    // Combine as "2026-06-15T15:00:00" so JS Date parses it correctly
-    const combinedStr = timeStr
-      ? `${datePart}T${timeStr}`
-      : `${datePart}T00:00:00`
-
-    const dateObj = new Date(combinedStr)
-
-    if (isNaN(dateObj.getTime())) {
-      return { timestamp: 0, datePart: "", timePart: "" }
-    }
-
-    return {
-      timestamp: dateObj.getTime(),
-      // "15th June 2026"
-      datePart: formatDate(datePart),
-      // "3:00 PM"
-      timePart: formatTime(timeStr),
-    }
-  } catch {
-    return { timestamp: 0, datePart: "", timePart: "" }
-  }
-}
-
-async function fetchM5CTracking(awbNumber, credentials) {
-  const url = joinUrl(credentials.apiUrl, "/api/Track/GetTrackings")
-  const payload = {
-    ValidateAccount: [
-      {
-        AccountCode: credentials.accountCode,
-        Username: credentials.username,
-        Password: credentials.password,
-        AccessKey: credentials.accessKey || "",
-      },
-    ],
-    Awbno: awbNumber,
-  }
+// Fetch tracking from SkyNet's public Skylink tracking API (no credentials required)
+async function fetchSkyNetTracking(awbNumber) {
+  const url = `${SKYNET_TRACKING_URL}?awbNo=${encodeURIComponent(awbNumber)}`
 
   const response = await fetch(url, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(payload),
+    method: "GET",
+    headers: { Accept: "application/json" },
+    cache: "no-store",
   })
 
   const result = await response.json().catch(() => ({}))
-  if (!response.ok) {
-    throw new Error(`M5C tracking API error: ${response.status}`)
+  const data = result?.data
+
+  // result.stateCode is the API call status; data.status is the tracking lookup status
+  // (both are "SUCCESS" on a valid AWB — data.shipmentDetails[0].status holds the actual shipment status)
+  if (result?.stateCode !== "SUCCESS" || !data || data.status !== "SUCCESS") {
+    throw new Error(result?.message || data?.message || "SkyNet tracking data not found")
   }
 
-  // API response is an array, so grab the first element
-  const root = Array.isArray(result) ? result[0] : result
+  const details = data.shipmentDetails?.[0] || {}
 
-  const message =
-    root.messages?.[0] ||
-    root.Messages?.[0] ||
-    root.message?.[0] ||
-    {}
+  // SkyNet gives Date: "30-JUN-2026", Time: "20:18:53"
+  const events = (data.shipmentHistory || []).map((hist) => ({
+    EventDate: hist.date,
+    EventTime: hist.time,
+    EventDate1: formatDate(hist.date),
+    EventTime1: formatTime(hist.time),
+    Location: hist.location,
+    Status: hist.shipmentStatus, // e.g. "In transit"
+    Remark: hist.shipmentDetails, // e.g. "SHIPMENT ARRIVED AT ORIGIN"
+  }))
 
-  const responseFlag = String(message.Response ?? message.response ?? "")
-  const errorCode = String(message.ErrorCode ?? message.errorCode ?? "")
-
-  if (
-    responseFlag === "0" ||
-    (errorCode &&
-      errorCode !== "100" &&
-      errorCode.toLowerCase() !== "success") ||
-    /invalid|failed/i.test(
-      message.ErrorDescription || message["Error Description"] || ""
-    )
-  ) {
-    throw new Error(
-      message.ErrorDescription ||
-      message["Error Description"] ||
-      "M5C tracking failed"
-    )
-  }
-
-  // trackDetails is inside root
-  const details =
-    root.trackDetails?.[0] ||
-    root.TrackDetails?.[0] ||
-    root.trackDetail?.[0] ||
-    root.TrackDetail?.[0] ||
-    {}
-
-  // Event array is at ROOT level (not inside trackDetails) — confirmed by API response
-  const eventArray =
-    root.Event ||
-    root.event ||
-    root.Events ||
-    root.events ||
-    details.Event ||
-    details.event ||
-    details.Events ||
-    details.events ||
-    []
-
-  const events = eventArray.map((evt) => {
-    // ── Use the dedicated parser that handles ISO date + separate time ──
-    const { timestamp, datePart, timePart } = parseM5CDateTime(
-      evt.EventDate,
-      evt.EventTime
-    )
-
-    return {
-      timestamp,
-      // Keep raw values for debugging if needed
-      EventDate: evt.EventDate,
-      EventTime: evt.EventTime,
-      // These are what your frontend timeline renders
-      EventDate1: datePart,
-      EventTime1: timePart,
-      EventCode: evt.EventCode || evt["Event Code"] || "",
-      Location: evt.Location || evt.location || "",
-      Status:
-        evt.EventDescription ||
-        evt["Event Description"] ||
-        evt.Status ||
-        "Update",
-      Remark: evt.Remark || "",
-    }
-  })
+  const normalizedTracking = [{
+    AWBNo: details.airwayBillNo || data.shipmentOrderID || awbNumber,
+    Status: details.status || events[0]?.Status || "Unknown",
+    Origin: details.originHub || "",
+    Destination: details.destination || "",
+    Weight: details.weight || "",
+    Pieces: details.pieces || "",
+    BookingDate: details.awbDate || "",
+    DeliveryDate: details.deliveryDate || "",
+    Consignee: details.consigneeName || "",
+    ConsigneeCity: details.consigneeLocation || "",
+    ShipperName: details.shipperName || "",
+    ShipperCity: details.shipperLocation || "",
+    ServiceName: details.serviceName || "",
+    Forwarder: details.forwarder || "",
+    ForwarderNo: details.forwarderNo || "",
+  }]
 
   return {
     success: true,
-    softwareType: "m5c",
-    tracking: [
-      {
-        AWBNo: details.Awbno || details.AwbNo || awbNumber,
-        // API returns "Shipdate" (lowercase 'd'), handle both cases
-        BookingDate: details.Shipdate || details.ShipDate,
-        Destination: details.Destination,
-        Sector: details.Sector,
-        Consignee: details.Consignee,
-        Forwarder: details.Forwarder,
-        ForwardingNo: details["Forwarding No"] || details.ForwardingNo,
-        StatusCode: details.StatusCode,
-        Status: details.Status,
-        DeliveryDate: details.DeliveryDate || details["Delivery Date"],
-        DeliveryTime: details.DeliveryTime || details["Delivery Time"],
-        ReceiverName: details.ReceiverName || details["Receiver Name"],
-      },
-    ],
+    softwareType: "skynet",
+    tracking: normalizedTracking,
     events,
     rawResponse: result,
   }
 }
 
-// ─── Helper: format date string "2026-06-15" → "15th June 2026" ─────────────
+async function fetchSKartTracking(awbNumber, credentials) {
+  const url = joinUrl(credentials.apiUrl, credentials.trackingApiPath)
+  const payload = {
+    awb_no: awbNumber,
+    tracking_no: awbNumber,
+    customer_code: credentials.customerCode || undefined,
+    username: credentials.username || undefined,
+    password: credentials.password || undefined,
+  }
+
+  const response = await fetch(url, {
+    method: "POST",
+    headers: buildSKartHeaders(credentials),
+    body: JSON.stringify(payload),
+  })
+
+  const result = await response.json()
+  if (!response.ok) {
+    throw new Error(result?.message || result?.error || "SKart tracking request failed")
+  }
+
+  const data = result?.data || result?.result || result
+  const eventsSource = data?.events || data?.tracking || data?.history || data?.scan || []
+  const events = Array.isArray(eventsSource)
+    ? eventsSource.map((evt) => ({
+        timestamp: evt.timestamp || evt.date_time || evt.datetime || "",
+        EventDate1: formatDate(evt.date || evt.event_date || evt.timestamp || ""),
+        EventTime1: formatTime(evt.time || evt.event_time || evt.timestamp || ""),
+        Location: evt.location || evt.city || evt.hub || "",
+        Status: evt.status || evt.description || evt.remark || "Update",
+        Remark: evt.remark || evt.details || "",
+      }))
+    : []
+
+  const normalizedTracking = [{
+    AWBNo: data?.awb_no || data?.tracking_no || data?.awbNumber || awbNumber,
+    Status: data?.status || data?.current_status || "Unknown",
+    Origin: data?.origin || "",
+    Destination: data?.destination || "",
+    Weight: data?.weight || "",
+    Pieces: data?.pieces || data?.no_of_pieces || "",
+    BookingDate: data?.booking_date || data?.created_at || "",
+    ExpectedDelivery: data?.expected_delivery || data?.edd || "",
+  }]
+
+  return {
+    success: true,
+    softwareType: "skart",
+    tracking: normalizedTracking,
+    events,
+    rawResponse: data,
+  }
+}
+
+async function fetchShreeMarutiTracking(awbNumber, credentials = {}) {
+  const baseUrl = credentials.trackingApiUrl || SHREE_MARUTI_DEFAULT_TRACKING_URL
+  const url = joinUrl(baseUrl, encodeURIComponent(awbNumber))
+
+  const response = await fetch(url, {
+    method: "GET",
+    headers: { Accept: "application/json" },
+    cache: "no-store",
+  })
+
+  const data = await response.json().catch(() => ({}))
+  if (!response.ok) {
+    throw new Error(data?.message || data?.error || `Shree Maruti tracking API error: ${response.status}`)
+  }
+
+  const order = data?.orderInformation || {}
+  const statuses = Array.isArray(data?.statuses) ? data.statuses : []
+
+  if (!order.trackingId && statuses.length === 0) {
+    throw new Error("No Shree Maruti tracking data found")
+  }
+
+  const latestStatus = statuses[0] || {}
+  const events = statuses.map((status) => {
+    const timestamp = Number(status.statusTimestamp) || Date.parse(status.createdAt || status.updatedAt || "")
+    const date = timestamp ? new Date(timestamp) : null
+    const location = sanitizeShreeMarutiLocation(status.location || "")
+
+    return {
+      timestamp: timestamp || "",
+      EventDate1: date ? formatDate(date.toISOString()) : "",
+      EventTime1: date ? date.toLocaleTimeString("en-US", { hour: "2-digit", minute: "2-digit", hour12: true }) : "",
+      Location: location,
+      Status: status.subcategory || status.category || status.status || "Update",
+      Remark: status.event || status.status || "",
+      Category: status.category || "",
+      RawStatus: status.status || "",
+    }
+  })
+
+  return {
+    success: true,
+    softwareType: "shree-maruti",
+    tracking: [{
+      AWBNo: order.trackingId || awbNumber,
+      Status: latestStatus.subcategory || latestStatus.category || order.currentShipmentPhase || "Unknown",
+      Origin: order.sourceLocation?.city || "",
+      Destination: order.destinationLocation?.city || "",
+      BookingDate: order.createdAt || "",
+      ExpectedDelivery: "",
+      Consignee: order.receiverDetails?.receiver_name || "",
+      ShipperName: order.senderDetails?.sender_name || "",
+      CurrentShipmentPhase: order.currentShipmentPhase || "",
+      CurrentShipmentPhaseUpdatedAt: order.currentShipmentPhaseUpdatedAt || "",
+      PODLinks: order.pod_links || [],
+    }],
+    events,
+    rawResponse: data,
+  }
+}
+
+// Helper to format date like "8th March 2023"
 function formatDate(dateStr) {
   if (!dateStr) return ""
   try {
-    // Strip time portion if present (handles both "2026-06-15" and "2026-06-15T00:00:00")
-    const cleanDate = dateStr.split("T")[0]
-
-    // Parse as local date to avoid UTC shift (e.g. "2026-06-15" → June 15, not June 14)
-    const [year, month, day] = cleanDate.split("-").map(Number)
-    const date = new Date(year, month - 1, day)
-
+    const date = new Date(dateStr)
     if (isNaN(date.getTime())) return dateStr
 
-    const d = date.getDate()
-    const monthName = date.toLocaleString("en-US", { month: "long" })
-    const y = date.getFullYear()
+    const day = date.getDate()
+    const month = date.toLocaleString("en-US", { month: "long" })
+    const year = date.getFullYear()
 
-    const suffix = (n) => {
-      if (n > 3 && n < 21) return "th"
-      switch (n % 10) {
+    const suffix = (d) => {
+      if (d > 3 && d < 21) return "th"
+      switch (d % 10) {
         case 1: return "st"
         case 2: return "nd"
         case 3: return "rd"
@@ -458,26 +586,27 @@ function formatDate(dateStr) {
       }
     }
 
-    return `${d}${suffix(d)} ${monthName} ${y}`
+    return `${day}${suffix(day)} ${month} ${year}`
   } catch {
     return dateStr
   }
 }
 
-// ─── Helper: format time string "15:00:00" → "3:00 PM" ──────────────────────
+// Helper to format time like "12:50 PM"
 function formatTime(timeStr) {
   if (!timeStr) return ""
   try {
-    // Handles "15:00:00" or "15:00"
-    const parts = timeStr.split(":")
-    const h = parseInt(parts[0], 10)
-    const m = parts[1] || "00"
+    const parsedDate = new Date(timeStr)
+    if (!isNaN(parsedDate.getTime()) && /[T\s]\d{1,2}:\d{2}/.test(String(timeStr))) {
+      return parsedDate.toLocaleTimeString("en-US", { hour: "2-digit", minute: "2-digit", hour12: true })
+    }
 
-    if (isNaN(h)) return timeStr
-
+    // Splits "19:21:45" -> hours=19, minutes=21
+    const [hours, minutes] = timeStr.split(":")
+    const h = parseInt(hours, 10)
+    const m = minutes || "00"
     const period = h >= 12 ? "PM" : "AM"
     const hour12 = h % 12 || 12
-
     return `${hour12}:${m} ${period}`
   } catch {
     return timeStr
@@ -498,17 +627,45 @@ export async function POST(request) {
     }
 
     let vendor = null
+    let shouldUseShreeMarutiFallback = isShreeMarutiVendorName(vendorName)
+    let shouldUseSkynetFallback = isSkynetVendorName(vendorName) || forceSoftwareType === "skynet"
+    const supportedForcedSoftwareTypes = [
+      "xpression",
+      "itd",
+      "dhl",
+      "tech440",
+      "skynet",
+      "skart",
+      "shree-maruti",
+    ]
 
-    // 1. If we explicitly asked for DHL (from frontend logic)
-    if (forceSoftwareType === "dhl") {
-      vendor = await VendorIntegration.findOne({ softwareType: "dhl", isActive: true })
-    } else if (vendorId) {
+    if (vendorId) {
       vendor = await VendorIntegration.findById(vendorId)
     } else if (vendorName) {
       vendor = await VendorIntegration.findOne({
-        vendorName: { $regex: new RegExp(vendorName, "i") },
+        vendorName: { $regex: new RegExp(escapeRegExp(vendorName), "i") },
         isActive: true
       })
+      // A name match against the wrong softwareType (e.g. a vendor named
+      // "SkyNet" that was mistakenly saved as "itd") is worse than no match —
+      // it would silently route to the wrong fetcher. Discard it so the
+      // forceSoftwareType-based lookups below get a chance to run instead.
+      if (vendor && forceSoftwareType && vendor.softwareType !== forceSoftwareType) {
+        vendor = null
+      }
+      if (!vendor && isShreeMarutiVendorName(vendorName)) {
+        vendor = await VendorIntegration.findOne({ softwareType: "shree-maruti", isActive: true })
+      }
+    } else if (supportedForcedSoftwareTypes.includes(forceSoftwareType)) {
+      vendor = await VendorIntegration.findOne({ softwareType: forceSoftwareType, isActive: true })
+    }
+
+    if (
+      !vendor &&
+      supportedForcedSoftwareTypes.includes(forceSoftwareType) &&
+      forceSoftwareType !== "shree-maruti"
+    ) {
+      vendor = await VendorIntegration.findOne({ softwareType: forceSoftwareType, isActive: true })
     }
 
     // If no vendor found, try to find by AWB's integrated vendor
@@ -517,14 +674,47 @@ export async function POST(request) {
       if (awb?.integratedVendorId) {
         vendor = await VendorIntegration.findById(awb.integratedVendorId)
       } else if (awb?.cNoteVendorName) {
+        shouldUseShreeMarutiFallback = shouldUseShreeMarutiFallback || isShreeMarutiVendorName(awb.cNoteVendorName)
+        shouldUseSkynetFallback = shouldUseSkynetFallback || isSkynetVendorName(awb.cNoteVendorName)
         vendor = await VendorIntegration.findOne({
-          vendorName: { $regex: new RegExp(awb.cNoteVendorName, "i") },
+          vendorName: { $regex: new RegExp(escapeRegExp(awb.cNoteVendorName), "i") },
           isActive: true
         })
+        if (!vendor && isShreeMarutiVendorName(awb.cNoteVendorName)) {
+          vendor = await VendorIntegration.findOne({ softwareType: "shree-maruti", isActive: true })
+        }
       }
     }
 
     if (!vendor) {
+      if (shouldUseShreeMarutiFallback) {
+        const result = await fetchShreeMarutiTracking(awbNumber)
+        return new Response(
+          JSON.stringify({
+            success: true,
+            vendorName: "SHREE MARUTI",
+            vendorCode: "SHREE_MARUTI",
+            softwareType: "shree-maruti",
+            ...result,
+          }),
+          { status: 200, headers: { "Content-Type": "application/json" } }
+        )
+      }
+
+      if (shouldUseSkynetFallback) {
+        const result = await fetchSkyNetTracking(awbNumber)
+        return new Response(
+          JSON.stringify({
+            success: true,
+            vendorName: "SKYNET",
+            vendorCode: "SKYNET",
+            softwareType: "skynet",
+            ...result,
+          }),
+          { status: 200, headers: { "Content-Type": "application/json" } }
+        )
+      }
+
       return new Response(
         JSON.stringify({ success: false, error: "Vendor not found" }),
         { status: 404, headers: { "Content-Type": "application/json" } }
@@ -548,8 +738,12 @@ export async function POST(request) {
       result = await fetchDHLTracking(awbNumber, vendor.dhlCredentials)
     } else if (vendor.softwareType === "tech440") {
       result = await fetchTech440Tracking(awbNumber, vendor.tech440Credentials)
-    } else if (vendor.softwareType === "m5c") {
-      result = await fetchM5CTracking(awbNumber, vendor.m5cCredentials)
+    } else if (vendor.softwareType === "skynet") {
+      result = await fetchSkyNetTracking(awbNumber)
+    } else if (vendor.softwareType === "skart") {
+      result = await fetchSKartTracking(awbNumber, vendor.skartCredentials)
+    } else if (vendor.softwareType === "shree-maruti") {
+      result = await fetchShreeMarutiTracking(awbNumber, vendor.shreeMarutiCredentials)
     } else {
       return new Response(
         JSON.stringify({ success: false, error: `Unknown software type: ${vendor.softwareType}` }),
@@ -587,10 +781,11 @@ export async function GET(request) {
     const awbNumber = searchParams.get("awbNumber")
     const vendorId = searchParams.get("vendorId")
     const vendorName = searchParams.get("vendorName")
+    const forceSoftwareType = searchParams.get("forceSoftwareType")
 
     // Reuse POST logic
     const fakeRequest = {
-      json: async () => ({ awbNumber, vendorId, vendorName })
+      json: async () => ({ awbNumber, vendorId, vendorName, forceSoftwareType })
     }
 
     return POST(fakeRequest)

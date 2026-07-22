@@ -141,27 +141,38 @@ const parseInternalDate = (input) => {
   return 0;
 };
 
-const parseParcelsDate = (dateStr, timeStr) => {
+// SkyNet gives EventDate="25-Feb-2026" and EventTime="19:21:45"
+const parseSkyNetDate = (dateStr, timeStr) => {
   if (!dateStr) return 0;
   try {
-    const dp = dateStr.match(/(\d{1,2})\s+(\w+)\s+(\d{4})/);
-    if (!dp) return 0;
     const months = {
       jan: 0, feb: 1, mar: 2, apr: 3, may: 4, jun: 5,
       jul: 6, aug: 7, sep: 8, oct: 9, nov: 10, dec: 11,
     };
-    const mo = months[dp[2].toLowerCase().slice(0, 3)];
-    let h = 0, m = 0;
+    const parts = dateStr.split("-");
+    if (parts.length !== 3) return 0;
+    const day = parseInt(parts[0], 10);
+    const month = months[parts[1].toLowerCase()];
+    const year = parseInt(parts[2], 10);
+    if (isNaN(day) || isNaN(year) || month === undefined) return 0;
+
+    let hours = 0, minutes = 0, seconds = 0;
     if (timeStr) {
-      const tp = timeStr.match(/(\d{1,2}):(\d{2})/);
-      if (tp) { h = +tp[1]; m = +tp[2]; }
+      const t = timeStr.split(":");
+      hours = parseInt(t[0], 10) || 0;
+      minutes = parseInt(t[1], 10) || 0;
+      seconds = t[2] ? parseInt(t[2], 10) : 0;
     }
-    return new Date(+dp[3], mo, +dp[1], h, m).getTime();
+    return new Date(year, month, day, hours, minutes, seconds).getTime();
   } catch { return 0; }
 };
 
 const parseEventTimestamp = (evt, softwareType) => {
   try {
+    if (softwareType === "skynet" || (evt.EventDate && evt.EventDate.includes("-") && /[A-Za-z]/.test(evt.EventDate))) {
+      const ts = parseSkyNetDate(evt.EventDate, evt.EventTime);
+      if (ts > 0) return ts;
+    }
     if (softwareType === "xpression" || softwareType === "itd") {
       const ds = evt.EventDate1 || evt.EventDate;
       const ts = evt.EventTime1 || evt.EventTime || "12:00 AM";
@@ -578,22 +589,22 @@ const FlagIcon = ({ url, alt }) =>
 // ─────────────────────────────────────────────
 export default function TrackingDetails({ parcelDetails }) {
   const [vendorData,     setVendorData]     = useState(null);
-  const [forwardingData, setForwardingData] = useState(null);
   const [error,          setError]          = useState(null);
-  const [fwdError,       setFwdError]       = useState(null);
   const [isLoading,      setIsLoading]      = useState(false);
-  const [isFwdLoading,   setIsFwdLoading]   = useState(false);
   const [timeline,       setTimeline]       = useState([]);
   const [copied,         setCopied]         = useState(false);
   const [copiedFwd,      setCopiedFwd]      = useState(false);
 
   const hasVendor    = parcelDetails?.cNoteNumber && parcelDetails?.cNoteVendorName;
+  // "SkyNet" (any case) in the C Note vendor name always means: track via
+  // fetchSkyNetTracking using the C Note number, regardless of what's in the
+  // VendorIntegration DB (SkyNet's public API needs no vendor record at all).
+  const isSkynetCNote = /skynet/i.test(String(parcelDetails?.cNoteVendorName || ""));
   const fwdNumber    = parcelDetails?.forwardingNumber;
   const fwdLink      = parcelDetails?.forwardingLink || "";
   const fwdCarrier   = detectCarrier(fwdLink);
   const isDHL        = fwdNumber && fwdLink.toLowerCase().includes("dhl") && fwdCarrier === "dhl";
   const doVendor     = hasVendor || isDHL;
-  const doForwarding = fwdNumber && !isDHL;
 
   const trackNum           = parcelDetails?.trackingNumber;
   const originCountry      = parcelDetails?.sender?.country   || "";
@@ -602,7 +613,6 @@ export default function TrackingDetails({ parcelDetails }) {
   const dest               = parcelDetails?.receiver?.city  || parcelDetails?.receiver?.country  || "Destination";
   const mapOrigin          = originCountry || origin;
   const mapDestination     = destinationCountry || dest;
-  const hasFwdInfo         = !!(fwdNumber || fwdLink);
 
   const originCode  = getCountryCode(originCountry);
   const destCode    = getCountryCode(destinationCountry);
@@ -672,8 +682,12 @@ export default function TrackingDetails({ parcelDetails }) {
         ? { awbNumber: fwdNumber, forceSoftwareType: "dhl" }
         : {
             awbNumber:  parcelDetails?.cNoteNumber,
-            vendorId:   parcelDetails?.integratedVendorId,
+            // Skip vendorId for SkyNet so a stale/unrelated integratedVendorId can't
+            // hijack the lookup — forceSoftwareType alone is enough to route this
+            // straight to fetchSkyNetTracking on the backend.
+            vendorId:   isSkynetCNote ? undefined : parcelDetails?.integratedVendorId,
             vendorName: parcelDetails?.cNoteVendorName,
+            forceSoftwareType: isSkynetCNote ? "skynet" : undefined,
           };
       const r   = await fetch("/api/vendor-integrations/tracking", {
         method: "POST",
@@ -690,28 +704,7 @@ export default function TrackingDetails({ parcelDetails }) {
     }
   };
 
-  const fetchForwarding = async () => {
-    if (!doForwarding) return;
-    setIsFwdLoading(true);
-    setFwdError(null);
-    try {
-      const r   = await fetch("/api/vendor-integrations/tracking/forwarding", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ trackingNumber: fwdNumber }),
-      });
-      const res = await r.json();
-      if (!res.success) { setFwdError(res.error || "Failed"); return; }
-      setForwardingData(res);
-    } catch (e) {
-      setFwdError(e.message || "Failed");
-    } finally {
-      setIsFwdLoading(false);
-    }
-  };
-
-  useEffect(() => { if (doVendor)     fetchVendor();     }, [doVendor,     parcelDetails]);
-  useEffect(() => { if (doForwarding) fetchForwarding(); }, [doForwarding, fwdNumber]);
+  useEffect(() => { if (doVendor) fetchVendor(); }, [doVendor, parcelDetails]);
 
   useEffect(() => {
     try {
@@ -739,17 +732,6 @@ export default function TrackingDetails({ parcelDetails }) {
           })
         );
 
-      if (forwardingData?.events?.length)
-        forwardingData.events.forEach((e) =>
-          all.push({
-            timestamp: parseParcelsDate(e.date, e.time),
-            status:    String(e.status   ?? "Update").trim(),
-            location:  String(e.location ?? "").trim(),
-            comment:   "",
-            source:    "forwarding",
-          })
-        );
-
       all.sort((a, b) => b.timestamp - a.timestamp);
       setTimeline(
         all.filter(
@@ -766,26 +748,20 @@ export default function TrackingDetails({ parcelDetails }) {
       console.error("Failed to build shipment history timeline:", err);
       setTimeline([]);
     }
-  }, [vendorData, forwardingData, parcelDetails]);
+  }, [vendorData, parcelDetails]);
 
   const latestStatus = timeline[0]?.status   || "Awaiting Updates";
   const latestLoc    = timeline[0]?.location || "";
   const isDelivered  = latestStatus.toLowerCase().includes("delivered");
   const progress     = calcProgress(latestStatus, timeline);
   const grouped      = groupByDate(timeline);
-  const anyLoading   = isLoading || isFwdLoading;
+  const anyLoading   = isLoading;
   const statusMeta   = getStatusMeta(latestStatus);
-
-  const estDelivery  = forwardingData?.estimatedDelivery;
-  const shippingType = forwardingData?.shippingType;
-  const daysTransit  = forwardingData?.daysInTransit;
-  const carrier      = forwardingData?.carrier;
 
   if (!parcelDetails) return null;
 
   const refreshAll = () => {
-    if (doVendor)     fetchVendor();
-    if (doForwarding) fetchForwarding();
+    if (doVendor) fetchVendor();
   };
 
   return (
@@ -941,7 +917,7 @@ export default function TrackingDetails({ parcelDetails }) {
             {
               icon:    Clock,
               label:   "In Transit",
-              value:   daysTransit ? `${daysTransit} days` : "—",
+              value:   "—",
               iconBg:  "bg-blue-50",
               iconClr: "text-blue-600",
             },
@@ -961,14 +937,8 @@ export default function TrackingDetails({ parcelDetails }) {
             },
             {
               icon:    CalendarCheck,
-              label:   estDelivery ? "Est. Arrival" : "Status",
-              value:   estDelivery
-                ? estDelivery.length > 10
-                  ? estDelivery.slice(0, 10)
-                  : estDelivery
-                : isDelivered
-                ? "Delivered"
-                : "Active",
+              label:   "Status",
+              value:   isDelivered ? "Delivered" : "Active",
               iconBg:  "bg-emerald-50",
               iconClr: "text-emerald-600",
             },
@@ -1031,34 +1001,6 @@ export default function TrackingDetails({ parcelDetails }) {
               </div>
             </div>
 
-            {/* ── CARRIER CARD (below the map) — forwarding no/link live in the hero above ── */}
-            {(carrier || shippingType) && (
-              <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
-                <SectionHeader
-                  icon={Package}
-                  title="Carrier"
-                  subtitle="This leg is handled by our partner carrier"
-                  iconBg="bg-amber-50"
-                  iconColor="text-amber-600"
-                />
-
-                <div className="p-5">
-                  <div className="flex flex-wrap gap-2">
-                    {carrier && (
-                      <span className="inline-flex items-center gap-1.5 text-sm font-semibold bg-blue-50 text-blue-700 border border-blue-100 px-3 py-1.5 rounded-xl">
-                        <Truck className="w-4 h-4" /> {carrier}
-                      </span>
-                    )}
-                    {shippingType && (
-                      <span className="inline-flex items-center gap-1.5 text-sm font-semibold bg-slate-100 text-slate-700 border border-slate-200 px-3 py-1.5 rounded-xl">
-                        <Package className="w-4 h-4" /> {shippingType}
-                      </span>
-                    )}
-                  </div>
-                </div>
-              </div>
-            )}
-
             {/* ── SENDER / RECEIVER DETAILS (below) ── */}
             <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
               <SectionHeader
@@ -1117,36 +1059,20 @@ export default function TrackingDetails({ parcelDetails }) {
             </div>
 
             {/* ERRORS */}
-            {(error || fwdError) && (
+            {error && (
               <div className="space-y-3">
-                {error && (
-                  <div className="flex items-center gap-3 p-4 bg-red-50 rounded-2xl border border-red-100">
-                    <div className="w-9 h-9 bg-red-100 rounded-xl flex items-center justify-center shrink-0">
-                      <AlertCircle className="w-5 h-5 text-red-500" />
-                    </div>
-                    <p className="text-sm text-red-700 flex-1 min-w-0 break-words">{error}</p>
-                    <button
-                      onClick={fetchVendor}
-                      className="text-sm font-semibold text-red-600 hover:text-red-800 flex items-center gap-1 whitespace-nowrap shrink-0 bg-red-100 hover:bg-red-200 px-3 py-2 rounded-lg transition-colors"
-                    >
-                      <RefreshCw className="w-4 h-4" /> Retry
-                    </button>
+                <div className="flex items-center gap-3 p-4 bg-red-50 rounded-2xl border border-red-100">
+                  <div className="w-9 h-9 bg-red-100 rounded-xl flex items-center justify-center shrink-0">
+                    <AlertCircle className="w-5 h-5 text-red-500" />
                   </div>
-                )}
-                {fwdError && (
-                  <div className="flex items-center gap-3 p-4 bg-amber-50 rounded-2xl border border-amber-100">
-                    <div className="w-9 h-9 bg-amber-100 rounded-xl flex items-center justify-center shrink-0">
-                      <AlertCircle className="w-5 h-5 text-amber-500" />
-                    </div>
-                    <p className="text-sm text-amber-700 flex-1 min-w-0 break-words">{fwdError}</p>
-                    <button
-                      onClick={fetchForwarding}
-                      className="text-sm font-semibold text-amber-600 hover:text-amber-800 flex items-center gap-1 whitespace-nowrap shrink-0 bg-amber-100 hover:bg-amber-200 px-3 py-2 rounded-lg transition-colors"
-                    >
-                      <RefreshCw className="w-4 h-4" /> Retry
-                    </button>
-                  </div>
-                )}
+                  <p className="text-sm text-red-700 flex-1 min-w-0 break-words">{error}</p>
+                  <button
+                    onClick={fetchVendor}
+                    className="text-sm font-semibold text-red-600 hover:text-red-800 flex items-center gap-1 whitespace-nowrap shrink-0 bg-red-100 hover:bg-red-200 px-3 py-2 rounded-lg transition-colors"
+                  >
+                    <RefreshCw className="w-4 h-4" /> Retry
+                  </button>
+                </div>
               </div>
             )}
           </div>
@@ -1162,7 +1088,7 @@ export default function TrackingDetails({ parcelDetails }) {
                   </div>
                   <div className="min-w-0">
                     <p className="text-[15px] font-semibold text-slate-900 leading-tight">Shipment History</p>
-                    <p className="text-xs text-slate-500 mt-0.5">
+                    <p className="text-xs text-black mt-0.5">
                       {timeline.length} event{timeline.length !== 1 ? "s" : ""} tracked
                     </p>
                   </div>
@@ -1184,16 +1110,16 @@ export default function TrackingDetails({ parcelDetails }) {
                     <div className="w-14 h-14 bg-blue-50 rounded-2xl flex items-center justify-center mb-3">
                       <Loader2 className="w-7 h-7 text-blue-400 animate-spin" />
                     </div>
-                    <p className="text-sm font-semibold text-slate-700">Fetching updates…</p>
-                    <p className="text-xs text-slate-400 mt-1">This may take a moment</p>
+                    <p className="text-sm font-semibold text-black">Fetching updates…</p>
+                    <p className="text-xs text-black mt-1">This may take a moment</p>
                   </div>
                 ) : timeline.length === 0 ? (
                   <div className="flex flex-col items-center justify-center py-16 px-5">
                     <div className="w-14 h-14 bg-slate-100 rounded-2xl flex items-center justify-center mb-3">
                       <Package className="w-7 h-7 text-slate-300" />
                     </div>
-                    <p className="text-sm font-semibold text-slate-600">No updates yet</p>
-                    <p className="text-xs text-slate-400 mt-1">Check back soon</p>
+                    <p className="text-sm font-semibold text-black">No updates yet</p>
+                    <p className="text-xs text-black mt-1">Check back soon</p>
                   </div>
                 ) : (
                   <div className="py-2">
@@ -1203,7 +1129,7 @@ export default function TrackingDetails({ parcelDetails }) {
                         <div className="sticky top-0 z-10 px-5 py-2.5 flex items-center gap-3 bg-white/95 backdrop-blur-sm">
                           <div className="flex items-center gap-1.5 bg-slate-100 rounded-full px-3 py-1">
                             <Calendar className="w-3 h-3 text-slate-400" />
-                            <span className="text-xs font-semibold text-slate-500 uppercase tracking-wide">
+                            <span className="text-xs font-semibold text-black uppercase tracking-wide">
                               {date}
                             </span>
                           </div>
@@ -1242,13 +1168,13 @@ export default function TrackingDetails({ parcelDetails }) {
                                 <div className="flex items-start justify-between gap-3">
                                   <p
                                     className={`text-sm font-semibold leading-snug ${
-                                      isFirst ? meta.iconText : "text-slate-800"
+                                      isFirst ? meta.iconText : "text-black"
                                     }`}
                                   >
                                     {evt.status}
                                   </p>
                                   <div className="shrink-0 flex flex-col items-end gap-1">
-                                    <time className="text-xs text-slate-400 whitespace-nowrap font-medium">
+                                    <time className="text-xs text-black whitespace-nowrap font-medium">
                                       {fmtTime(evt.timestamp)}
                                     </time>
                                     {isFirst && (
@@ -1259,20 +1185,15 @@ export default function TrackingDetails({ parcelDetails }) {
                                   </div>
                                 </div>
                                 {evt.location && (
-                                  <p className="text-xs text-slate-500 flex items-center gap-1.5 mt-1.5">
+                                  <p className="text-xs text-black flex items-center gap-1.5 mt-1.5">
                                     <MapPin className="w-3 h-3 shrink-0 text-slate-400" />
                                     <span className="truncate">{evt.location}</span>
                                   </p>
                                 )}
                                 {evt.comment && (
-                                  <p className="text-xs text-slate-400 italic mt-1.5 leading-relaxed">
+                                  <p className="text-xs text-black italic mt-1.5 leading-relaxed">
                                     {evt.comment}
                                   </p>
-                                )}
-                                {evt.source === "forwarding" && (
-                                  <span className="inline-block mt-2 text-[10px] bg-amber-50 text-amber-600 border border-amber-100 font-semibold px-2 py-0.5 rounded-full">
-                                    Partner Carrier
-                                  </span>
                                 )}
                               </div>
                             </div>

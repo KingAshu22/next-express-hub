@@ -85,8 +85,8 @@ export default function Contact() {
                   {
                     icon: Mail,
                     label: "Email",
-                    value: "support@kargoone.com",
-                    href: "mailto:support@kargoone.com",
+                    value: "info@kargoone.com",
+                    href: "mailto:info@kargoone.com",
                   },
                   {
                     icon: MapPin,
@@ -120,6 +120,7 @@ export default function Contact() {
                     </motion.div>
                   );
                 })}
+                <p>Hyderabad | Mumbai | Kerala | Bangalore</p>
               </div>
 
               {/* Business Hours */}

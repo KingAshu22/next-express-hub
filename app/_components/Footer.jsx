@@ -227,6 +227,7 @@ export default function Footer() {
                     Business park, Gundavali, Andheri East, Mumbai, Maharashtra
                     400093
                   </p>
+                  <p className="text-xs whitespace-nowrap">Hyderabad | Mumbai | Kerala | Bangalore</p>
                 </div>
               </div>
             </div>

@@ -962,6 +962,313 @@ async function sendToXpression(awb, vendor, serviceData) {
   }
 }
 
+// Helper: Validate URL
+function isValidUrl(string) {
+  if (!string || string.trim() === "") return false
+  try {
+    new URL(string)
+    return true
+  } catch (_) {
+    return false
+  }
+}
+
+// Helper: Get default KYC document display name based on document type
+function getDefaultDocumentName(documentType) {
+  const nameMap = {
+    "Aadhaar Number": "Aadhaar Card",
+    "PAN Number": "PAN Card",
+    "Passport Number": "Passport",
+    "DRIVING LICENCE": "Driving License",
+    "Driving License Number": "Driving License",
+    "Voter Id": "Voter ID Card",
+    "GSTIN (Normal)": "GST Certificate",
+  }
+  return nameMap[documentType] || "KYC Document"
+}
+
+// Send to ITD API
+async function sendToITD(awb, vendor, serviceData, customSender, kycDocumentData = null) {
+  const creds = vendor.itdCredentials
+
+  const executeITDRequest = async (retryCount = 0) => {
+    const { token, customerId } = await getITDToken(creds, vendor._id)
+    const sender = customSender || awb.sender
+
+    const totalShippingValue =
+      Number.parseFloat(
+        awb?.boxes.reduce((acc, box) => {
+          return (
+            acc +
+            box.items.reduce((itemAcc, item) => {
+              return (
+                itemAcc +
+                (Number.parseFloat(item.price) || 0) *
+                (Number.parseInt(item.quantity, 10) || 0)
+              )
+            }, 0)
+          )
+        }, 0)
+      ) || 0
+
+    const totalActualWeight =
+      awb.boxes?.reduce(
+        (sum, box) => sum + Number.parseFloat(box.actualWeight || 0),
+        0
+      ) || 1
+
+    const destCountry = awb.receiver?.country?.trim()
+    const destCountryCode = getCountryCode(destCountry)
+
+    const originCountry =
+      sender?.country?.trim() || awb.sender?.country?.trim() || "India"
+    const originCountryCode = getCountryCode(originCountry) || "IN"
+
+    if (!destCountryCode) {
+      throw new Error(`Destination country "${destCountry}" not recognized.`)
+    }
+
+    const rawKycType = (awb.sender?.kyc?.type || "").toString().trim()
+    const documentNumber =
+      (awb.sender?.kyc?.kyc && String(awb.sender.kyc.kyc).trim()) ||
+      "000000000000"
+    const documentType =
+      ITD_KYC_TYPE_MAP[rawKycType] ||
+      (awb.sender?.gst ? "GSTIN (Normal)" : "Aadhaar Number")
+
+    const now = new Date()
+    const bookingDate = now.toISOString().split("T")[0]
+    const bookingTime = now.toTimeString().split(" ")[0]
+
+    const shipmentContent =
+      awb.boxes
+        ?.map((box) => box.items?.map((item) => item.name).join(", "))
+        .join("; ") || "General Goods"
+
+    const docketItems = awb.boxes?.map((box) => ({
+      actual_weight: Number.parseFloat(box.actualWeight || 1),
+      length: Number.parseFloat(box.length || 1),
+      width: Number.parseFloat(box.breadth || box.width || 1),
+      height: Number.parseFloat(box.height || 1),
+      number_of_boxes: 1,
+    })) || [
+      {
+        actual_weight: 1.0,
+        length: 10.0,
+        width: 10.0,
+        height: 10.0,
+        number_of_boxes: 1,
+      },
+    ]
+
+    const freeFormLineItems =
+      awb.boxes?.flatMap(
+        (box, boxIndex) =>
+          box.items?.map((item) => {
+            const quantity = Number.parseInt(item.quantity, 10) || 1
+            const rate = Number.parseFloat(item.price) || 0
+            const total = quantity * rate
+            const itemCount = box.items?.length || 1
+            const unitWeight = Number.parseFloat(box.actualWeight || 1) / itemCount
+            return {
+              total: Number.parseFloat(total.toFixed(2)),
+              no_of_packages: quantity,
+              box_no: boxIndex + 1,
+              rate: Number.parseFloat(rate.toFixed(2)),
+              hscode: String(item.hsnCode || "00000000").padStart(8, "0"),
+              description: item.name || "Item",
+              unit_of_measurement: "Pcs",
+              unit_weight: Number.parseFloat(unitWeight.toFixed(2)),
+              igst_amount: 0.0,
+            }
+          }) || []
+      ) || []
+
+    // KYC details with document link support
+    const kycDetails = []
+
+    const hasKycDocumentLink =
+      kycDocumentData &&
+      kycDocumentData.documentLink &&
+      isValidUrl(kycDocumentData.documentLink)
+
+    const kycDocumentName =
+      kycDocumentData?.documentName || getDefaultDocumentName(documentType)
+
+    if (documentNumber && documentNumber !== "000000000000") {
+      kycDetails.push({
+        document_type: documentType,
+        document_no: documentNumber,
+        document_sub_type: "doc_1",
+        document_name: hasKycDocumentLink ? kycDocumentName : "",
+        file_path: hasKycDocumentLink ? kycDocumentData.documentLink : "",
+      })
+    } else if (hasKycDocumentLink) {
+      kycDetails.push({
+        document_type: documentType || "Aadhaar Number",
+        document_no: "000000000000",
+        document_sub_type: "doc_1",
+        document_name: kycDocumentName,
+        file_path: kycDocumentData.documentLink,
+      })
+    }
+
+    const needsFreeFormInvoice = freeFormLineItems.length > 0 ? 1 : 0
+
+    const payload = {
+      tracking_no: awb.trackingNumber,
+      reference_name: sender?.name || "Reference",
+      customer_id: parseInt(customerId, 10),
+      origin_code: sender?.zip || awb.sender?.zip || originCountryCode,
+      product_code: serviceData.productCode || "NONDOX",
+      destination_code: destCountryCode,
+      booking_date: bookingDate,
+      booking_time: bookingTime,
+      pcs: Number.parseInt(awb.boxes?.length || 1, 10),
+      shipment_value: Number.parseFloat(totalShippingValue.toFixed(2)),
+      shipment_value_currency: "INR",
+      actual_weight: Number.parseFloat(totalActualWeight.toFixed(2)),
+      shipment_invoice_no: parseInt(awb.trackingNumber, 10) || 0,
+      shipment_invoice_date: bookingDate,
+      shipment_content: shipmentContent.substring(0, 200),
+      remark: awb.remarks || "",
+      entry_type: 2,
+      api_service_code: serviceData.apiServiceCode || serviceData.serviceName,
+      api_vendor_code: serviceData.vendorCode || "",
+      new_docket_free_form_invoice: needsFreeFormInvoice,
+      free_form_currency: "INR",
+      terms_of_trade: "FOB",
+      free_form_note_master_code: "SAMPLE",
+
+      shipper_name: (sender?.name || "Shipper").substring(0, 50),
+      shipper_company_name: (sender?.company || sender?.name || "Company").substring(
+        0,
+        50
+      ),
+      shipper_contact_no: cleanPhone(sender?.contact || awb.sender?.contact),
+      shipper_email: sender?.email || awb.sender?.email || "info@kargoone.com",
+      shipper_address_line_1: (sender?.address || "Address Line 1").substring(0, 100),
+      shipper_address_line_2: (sender?.address2 || "-").substring(0, 100),
+      shipper_address_line_3: "",
+      shipper_city: (sender?.city || "Mumbai").substring(0, 50),
+      shipper_state: (sender?.state || "Maharashtra").substring(0, 50),
+      shipper_country: originCountryCode,
+      shipper_zip_code: sender?.zip || awb.sender?.zip || "400001",
+      shipper_gstin_type: documentType,
+      shipper_gstin_no: documentNumber,
+
+      consignee_name: (awb.receiver?.name || "Consignee").substring(0, 50),
+      consignee_company_name: (
+        awb.receiver?.company ||
+        awb.receiver?.name ||
+        "Consignee"
+      ).substring(0, 50),
+      consignee_contact_no: cleanPhone(awb.receiver?.contact),
+      consignee_email: awb.receiver?.email || "consignee@email.com",
+      consignee_address_line_1: (awb.receiver?.address || "Addr").substring(0, 100),
+      consignee_address_line_2: (awb.receiver?.address2 || "-").substring(0, 100),
+      consignee_address_line_3: "",
+      consignee_city: (awb.receiver?.city || "City").substring(0, 50),
+      consignee_state: (awb.receiver?.state || "").substring(0, 50),
+      consignee_country: destCountryCode,
+      consignee_zip_code: awb.receiver?.zip || "000000",
+      consignee_gstin_type: "",
+      consignee_gstin_no: "",
+
+      docket_items: docketItems,
+      free_form_line_items: needsFreeFormInvoice === 1 ? freeFormLineItems : [],
+      kyc_details: kycDetails,
+    }
+
+    console.log("ITD Docket Payload:", JSON.stringify(payload, null, 2))
+
+    const createDocketUrl = `${creds.apiUrl}/create_docket`
+    const response = await fetch(createDocketUrl, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${token}`,
+      },
+      body: JSON.stringify(payload),
+    })
+
+    const responseText = await response.text()
+    console.log("ITD Docket Response:", responseText)
+
+    let apiResponse
+    try {
+      apiResponse = JSON.parse(responseText)
+    } catch (parseError) {
+      throw new Error(`Invalid response from ITD: ${responseText.substring(0, 200)}`)
+    }
+
+    if (
+      !apiResponse.success &&
+      (apiResponse.errors?.includes?.("AUTH TOKEN EXPIRED") ||
+        apiResponse.errors === "AUTH TOKEN EXPIRED. PLEASE GENERATE NEW AUTH TOKEN")
+    ) {
+      if (retryCount < 2) {
+        console.log(
+          `Token expired, invalidating cache and retrying (attempt ${retryCount + 1}/2)...`
+        )
+
+        await VendorIntegration.findByIdAndUpdate(vendor._id, {
+          "itdCredentials.cachedToken": null,
+          "itdCredentials.tokenExpiresAt": null,
+        })
+
+        return executeITDRequest(retryCount + 1)
+      } else {
+        throw new Error("Failed to authenticate with ITD after multiple attempts")
+      }
+    }
+
+    if (!apiResponse.success) {
+      throw new Error(
+        Array.isArray(apiResponse.errors)
+          ? apiResponse.errors.join("; ")
+          : apiResponse.message || "Failed to create docket"
+      )
+    }
+
+    const awbNumber =
+      apiResponse.data?.awb_no ||
+      apiResponse.data?.docket_no ||
+      apiResponse.data?.entry_number
+    const labels = []
+
+    if (apiResponse.labels && Array.isArray(apiResponse.labels)) {
+      apiResponse.labels.forEach((labelItem, index) => {
+        if (labelItem.label) {
+          let type = "label"
+          let name = "Label"
+          const filename = (labelItem.filename || "").toLowerCase()
+          if (filename.includes("shipper") || filename.includes("awb")) {
+            type = "awb_label"
+            name = "AWB / Shipper Copy"
+          } else if (filename.includes("box")) {
+            type = "box_label"
+            name = "Box Label"
+          } else if (filename.includes("invoice")) {
+            type = "invoice"
+            name = "Invoice"
+          }
+          labels.push({
+            type,
+            name,
+            filename: labelItem.filename || `label_${index}.pdf`,
+            data: labelItem.label,
+          })
+        }
+      })
+    }
+
+    return { awbNumber: String(awbNumber), labels }
+  }
+
+  return executeITDRequest()
+}
+
 async function sendToTech440(awb, vendor, serviceData, customSender) {
   const creds = vendor.tech440Credentials
   const sender = customSender || awb.sender
@@ -1712,6 +2019,7 @@ export async function POST(request) {
       productCode,
       customSenderDetails,
       skartKycDocumentLink,
+      kycDocumentData,
     } = await request.json()
 
     if (!awbId || !vendorId || !serviceData) {
@@ -1765,10 +2073,16 @@ export async function POST(request) {
         productCode: productCode || serviceData.productCode || "SPX",
       })
     } else if (vendor.softwareType === "itd") {
-      result = await sendToITD(awb, vendor, {
-        ...serviceData,
-        productCode: productCode || "NONDOX",
-      })
+      result = await sendToITD(
+        awb,
+        vendor,
+        {
+          ...serviceData,
+          productCode: productCode || serviceData.productCode || "NONDOX",
+        },
+        customSenderDetails,
+        kycDocumentData
+      )
     } else if (vendor.softwareType === "tech440") {
       const selectedService = vendor.tech440Credentials.services.find(
         (s) => s.serviceName === serviceData.serviceName

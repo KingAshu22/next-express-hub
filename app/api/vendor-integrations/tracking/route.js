@@ -2,6 +2,7 @@
 import { connectToDB } from "@/app/_utils/mongodb"
 import VendorIntegration from "@/models/VendorIntegration"
 import Awb from "@/models/Awb"
+import { getEventDescription } from "@/lib/m5-event-codes"
 
 const joinUrl = (baseUrl, path = "") => {
   if (!baseUrl) return path || ""
@@ -504,6 +505,99 @@ async function fetchSKartTracking(awbNumber, credentials) {
   }
 }
 
+const M5C_DEFAULT_TRACKING_API_URL = "http://apiv2.m5clogs.com"
+
+const normalizeM5CTrackingRow = (row = {}, awbNumber = "") => ({
+  AWBNo: pickFirst(row, ["AWBNo", "AwbNo", "AWBNumber", "Awbno", "TrackingNo"]) || awbNumber,
+  Status: pickFirst(row, ["Status", "CurrentStatus", "ShipmentStatus"]) || "Unknown",
+  Origin: pickFirst(row, ["Origin", "OriginCity", "OriginName", "ConsignorCity"]),
+  Destination: pickFirst(row, ["Destination", "DestinationCity", "DestinationName", "ConsigneeCity"]),
+  BookingDate: pickFirst(row, ["BookingDate", "BookDate", "PickupDate", "ShipmentDate"]),
+  DeliveryDate: pickFirst(row, ["DeliveryDate", "DeliveredDate", "PODDate"]),
+  Consignee: pickFirst(row, ["Consignee", "ConsigneeName", "ReceiverName"]),
+  ConsigneeCity: pickFirst(row, ["ConsigneeCity", "ReceiverCity"]),
+  ShipperName: pickFirst(row, ["ShipperName", "SenderName", "ConsignorName"]),
+  ShipperCity: pickFirst(row, ["ShipperCity", "SenderCity", "ConsignorCity"]),
+  Weight: pickFirst(row, ["Weight", "ActWeight", "ActualWeight", "ChargeableWeight"]),
+  Pieces: pickFirst(row, ["Pieces", "NumofItems", "Pcs", "NoOfPieces"]),
+  ExpectedDelivery: pickFirst(row, ["ExpectedDelivery", "EDD", "ExpectedDeliveryDate"]),
+  ...row,
+})
+
+// M5C gives EventDate like "2026-07-20T00:00:00" and a separate time-only EventTime
+const normalizeM5CEvent = (event = {}) => {
+  const dateOnly = String(event.EventDate || "").split("T")[0]
+  const timeOnly = event.EventTime || "00:00:00"
+  const timestamp = dateOnly ? new Date(`${dateOnly}T${timeOnly}`).getTime() : 0
+
+  return {
+    timestamp: Number.isFinite(timestamp) ? timestamp : 0,
+    EventDate1: formatDate(dateOnly),
+    EventTime1: formatTime(timeOnly),
+    Location: event.Location || "",
+    Status: getEventDescription(event.EventCode, event.EventDescription),
+    Remark: event.EventDescription || "",
+    ...event,
+  }
+}
+
+// Fetch tracking from M5C (uses the same ValidateAccount auth as AWB booking —
+// no separate OAuth token needed for the GetTrackings endpoint)
+async function fetchM5CTracking(awbNumber, credentials) {
+  if (!credentials?.username || !credentials?.password || !credentials?.accountCode) {
+    throw new Error("M5C tracking credentials are not configured")
+  }
+
+  const trackingUrl = joinUrl(
+    credentials.apiUrl || M5C_DEFAULT_TRACKING_API_URL,
+    "/api/Track/GetTrackings"
+  )
+
+  const response = await fetch(trackingUrl, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      ValidateAccount: [
+        {
+          AccountCode: credentials.accountCode,
+          Username: credentials.username,
+          Password: credentials.password,
+          AccessKey: credentials.accessKey || "",
+        },
+      ],
+      Awbno: awbNumber,
+    }),
+  })
+
+  if (!response.ok) {
+    throw new Error(`M5C tracking API error: ${response.statusText}`)
+  }
+
+  const data = await response.json()
+  const record = (Array.isArray(data) ? data[0] : data) || {}
+
+  if (record.messages?.[0]?.Response !== "1") {
+    throw new Error(record.messages?.[0]?.ErrorDescription || "Failed to fetch M5C tracking details")
+  }
+
+  const trackingRows = normalizeXpressionArray(record.trackDetails).map((row) =>
+    normalizeM5CTrackingRow(row, awbNumber)
+  )
+  const eventRows = normalizeXpressionArray(record.Event).map(normalizeM5CEvent)
+
+  if (trackingRows.length === 0 && eventRows.length === 0) {
+    throw new Error("No M5C tracking data found")
+  }
+
+  return {
+    success: true,
+    softwareType: "m5c",
+    tracking: trackingRows,
+    events: eventRows,
+    rawResponse: record,
+  }
+}
+
 async function fetchShreeMarutiTracking(awbNumber, credentials = {}) {
   const baseUrl = credentials.trackingApiUrl || SHREE_MARUTI_DEFAULT_TRACKING_URL
   const url = joinUrl(baseUrl, encodeURIComponent(awbNumber))
@@ -637,6 +731,7 @@ export async function POST(request) {
       "skynet",
       "skart",
       "shree-maruti",
+      "m5c",
     ]
 
     if (vendorId) {
@@ -744,6 +839,8 @@ export async function POST(request) {
       result = await fetchSKartTracking(awbNumber, vendor.skartCredentials)
     } else if (vendor.softwareType === "shree-maruti") {
       result = await fetchShreeMarutiTracking(awbNumber, vendor.shreeMarutiCredentials)
+    } else if (vendor.softwareType === "m5c") {
+      result = await fetchM5CTracking(awbNumber, vendor.m5cCredentials)
     } else {
       return new Response(
         JSON.stringify({ success: false, error: `Unknown software type: ${vendor.softwareType}` }),

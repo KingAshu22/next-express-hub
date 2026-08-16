@@ -71,6 +71,8 @@ const getStatusMeta = (status) => {
   const s = String(status || "").toLowerCase();
   if (s.includes("delivered"))
     return { label: "Delivered", pillBg: "bg-emerald-100", pillText: "text-emerald-700", dot: "bg-emerald-500", solid: "bg-emerald-600", solidHover: "hover:bg-emerald-700", iconBg: "bg-emerald-50", iconText: "text-emerald-600", border: "border-emerald-300", shadow: "shadow-emerald-200" };
+  if (s.includes("hold") || s.includes("address incorrect") || s.includes("address correction") || s.includes("suspicious"))
+    return { label: "On Hold", pillBg: "bg-orange-100", pillText: "text-orange-700", dot: "bg-orange-500", solid: "bg-orange-600", solidHover: "hover:bg-orange-700", iconBg: "bg-orange-50", iconText: "text-orange-600", border: "border-orange-300", shadow: "shadow-orange-200" };
   if (s.includes("unsuccessful") || s.includes("failed") || s.includes("exception") || (s.includes("delay") && !s.includes("flight")))
     return { label: "Exception", pillBg: "bg-red-100", pillText: "text-red-700", dot: "bg-red-500", solid: "bg-red-600", solidHover: "hover:bg-red-700", iconBg: "bg-red-50", iconText: "text-red-600", border: "border-red-300", shadow: "shadow-red-200" };
   if (s.includes("out for delivery"))
@@ -89,6 +91,8 @@ const getStatusMeta = (status) => {
 const getStatusIcon = (status) => {
   const s = (status || "").toLowerCase();
   if (s.includes("delivered"))        return <Home           className="w-4 h-4" />;
+  if (s.includes("hold") || s.includes("address incorrect") || s.includes("address correction") || s.includes("suspicious"))
+                                       return <AlertCircle     className="w-4 h-4" />;
   if (s.includes("out for delivery")) return <Truck          className="w-4 h-4" />;
   if (s.includes("customs") || s.includes("clearance") || s.includes("brokerage"))
                                        return <ClipboardCheck className="w-4 h-4" />;

@@ -11,7 +11,7 @@ const getIconForStatus = (status) => {
     const s = status.toLowerCase();
     if (s.includes("delivered")) return <CheckCircle className="w-5 h-5 text-green-500" />;
     if (s.includes("out for delivery")) return <Truck className="w-5 h-5 text-blue-500" />;
-    if (s.includes("delay") || s.includes("exception") || s.includes("unsuccessful")) return <AlertTriangle className="w-5 h-5 text-red-500" />;
+    if (s.includes("delay") || s.includes("exception") || s.includes("unsuccessful") || s.includes("hold") || s.includes("address incorrect") || s.includes("address correction") || s.includes("suspicious")) return <AlertTriangle className="w-5 h-5 text-red-500" />;
     return <Package className="w-5 h-5 text-slate-500" />;
 };
 

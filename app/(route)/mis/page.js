@@ -147,7 +147,7 @@ const getStatusIcon = (status) => {
     return Plane
   if (s.includes("booked") || s.includes("shipment") || s.includes("created") || s.includes("label") || s.includes("entry") || s.includes("pickup"))
     return Package
-  if (s.includes("unsuccessful") || s.includes("failed") || s.includes("exception") || s.includes("held") || s.includes("delay"))
+  if (s.includes("unsuccessful") || s.includes("failed") || s.includes("exception") || s.includes("hold") || s.includes("delay") || s.includes("address incorrect") || s.includes("address correction") || s.includes("suspicious"))
     return PackageX
   if (s.includes("processing") || s.includes("scan"))
     return CircleDot
@@ -275,7 +275,7 @@ const normalizeStatus = (status) => {
   if (s.includes("transit") || s.includes("shipped") || s.includes("departed") || s.includes("arrived") || s.includes("customs") || s.includes("clearance")) return "in transit"
   if (s.includes("pending") || s.includes("booked") || s.includes("created") || s.includes("pickup") || s.includes("label")) return "pending"
   if (s.includes("cancel") || s.includes("return")) return "cancelled"
-  if (s.includes("hold") || s.includes("exception") || s.includes("failed") || s.includes("delay")) return "on hold"
+  if (s.includes("hold") || s.includes("exception") || s.includes("failed") || s.includes("delay") || s.includes("address incorrect") || s.includes("address correction") || s.includes("suspicious")) return "on hold"
   
   return s || "unknown"
 }

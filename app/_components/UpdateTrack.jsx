@@ -41,6 +41,11 @@ const statusOptions = [
   "CUSTOMS CLEARED",
   "WAITING FOR FLIGHT CONFIRMATION",
   "SHIPMENT SENT TO DESTINATION",
+  "ON HOLD",
+  "ON HOLD FOR PAYMENT",
+  "ON HOLD - Suspicious item found",
+  "ADDRESS INCORRECT",
+  "ADDRESS CORRECTION REQUEST",
 ]
 
 const statusTemplates = [

@@ -988,7 +988,7 @@ function getDefaultDocumentName(documentType) {
 }
 
 // Send to ITD API
-async function sendToITD(awb, vendor, serviceData, customSender, kycDocumentData = null) {
+async function sendToITD(awb, vendor, serviceData, customSender, kycDocumentData = null, consigneeHouseNo = "") {
   const creds = vendor.itdCredentials
 
   const executeITDRequest = async (retryCount = 0) => {
@@ -1163,6 +1163,7 @@ async function sendToITD(awb, vendor, serviceData, customSender, kycDocumentData
         awb.receiver?.name ||
         "Consignee"
       ).substring(0, 50),
+      consignee_house_no: String(consigneeHouseNo || "").trim().substring(0, 50),
       consignee_contact_no: cleanPhone(awb.receiver?.contact),
       consignee_email: awb.receiver?.email || "consignee@email.com",
       consignee_address_line_1: (awb.receiver?.address || "Addr").substring(0, 100),
@@ -2020,6 +2021,7 @@ export async function POST(request) {
       customSenderDetails,
       skartKycDocumentLink,
       kycDocumentData,
+      consigneeHouseNo,
     } = await request.json()
 
     if (!awbId || !vendorId || !serviceData) {
@@ -2081,7 +2083,8 @@ export async function POST(request) {
           productCode: productCode || serviceData.productCode || "NONDOX",
         },
         customSenderDetails,
-        kycDocumentData
+        kycDocumentData,
+        consigneeHouseNo
       )
     } else if (vendor.softwareType === "tech440") {
       const selectedService = vendor.tech440Credentials.services.find(

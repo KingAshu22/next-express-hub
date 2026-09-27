@@ -864,6 +864,9 @@ export default function AWBTrackingPage({ params }) {
     documentName: ""
   })
 
+  // Consignee House No State (for ITD)
+  const [consigneeHouseNo, setConsigneeHouseNo] = useState("")
+
   // Integration result modal
   const [showResultModal, setShowResultModal] = useState(false)
   const [integrationResult, setIntegrationResult] = useState(null)
@@ -939,7 +942,8 @@ export default function AWBTrackingPage({ params }) {
     
     // Reset KYC document data when changing vendor
     setKycDocumentData({ documentLink: "", documentName: "" })
-    
+    setConsigneeHouseNo("")
+
     // Set default product code
     if (vendor.softwareType === "tech440") {
       setSelectedProductCode("NDX")
@@ -1139,6 +1143,8 @@ export default function AWBTrackingPage({ params }) {
           customSenderDetails: customSenderDetails,
           // Include KYC document data for ITD
           kycDocumentData: selectedVendor.softwareType === "itd" ? kycDocumentData : null,
+          // Include consignee house no for ITD
+          consigneeHouseNo: selectedVendor.softwareType === "itd" ? consigneeHouseNo.trim() : null,
         }),
       })
 
@@ -1171,6 +1177,7 @@ export default function AWBTrackingPage({ params }) {
       setManualReceiverZipCode("")
       setManualZipcodeId("")
       setKycDocumentData({ documentLink: "", documentName: "" })
+      setConsigneeHouseNo("")
       setError(null)
     } catch (err) {
       setError(err.message || "An unexpected error occurred")
@@ -1718,6 +1725,29 @@ export default function AWBTrackingPage({ params }) {
                               </div>
                             )}
                           </div>
+
+                          {/* ITD Consignee House No Section */}
+                          {selectedVendor.softwareType === "itd" && (
+                            <div className="mt-4 pt-4 border-t border-emerald-200">
+                              <div className="flex items-center gap-2 mb-2">
+                                <MapPin className="h-4 w-4 text-emerald-600" />
+                                <Label htmlFor="consigneeHouseNo" className="text-sm font-medium text-gray-700">
+                                  Consignee House No (Optional)
+                                </Label>
+                              </div>
+                              <Input
+                                id="consigneeHouseNo"
+                                value={consigneeHouseNo}
+                                onChange={(e) => setConsigneeHouseNo(e.target.value)}
+                                placeholder="e.g., 221B, Flat 12, Unit 4"
+                                maxLength={50}
+                                className="w-full bg-white"
+                              />
+                              <p className="text-xs text-gray-500 mt-1">
+                                Sent to ITD as consignee house number
+                              </p>
+                            </div>
+                          )}
 
                           {/* ITD KYC Document Section */}
                           {selectedVendor.softwareType === "itd" && (

@@ -42,6 +42,7 @@ function EnhancedShippingPage(
   const [authorizationCopies, setAuthorizationCopies] = useState(1)
   const [kycDocumentUrl, setKycDocumentUrl] = useState(null)
   const [kycLoading, setKycLoading] = useState(false)
+  const [franchiseName, setFranchiseName] = useState("")
 
   // Sender option states
   const [invoiceSenderOption, setInvoiceSenderOption] = useState("original")
@@ -73,6 +74,10 @@ function EnhancedShippingPage(
 
   // Logo URL - Update this path to your actual logo
   const logoUrl = "/logo.jpg"
+
+  // Contact details printed on the label footer
+  const labelWebsite = "https://kargoone.com"
+  const labelPhone = "+91 91520 39557"
 
   useEffect(() => {
     const fetchAWBData = async () => {
@@ -113,6 +118,19 @@ function EnhancedShippingPage(
 
         if (response.data[0]?.sender?.kyc?.document) {
           processKycDocumentUrl(response.data[0].sender.kyc.document)
+        }
+
+        // Resolve the franchise this AWB was booked with (shown on the address label)
+        const refCode = response.data[0]?.refCode
+        if (refCode) {
+          try {
+            const franchiseResponse = await axios.get(`/api/franchises/${encodeURIComponent(refCode)}`)
+            setFranchiseName(franchiseResponse.data?.firmName || franchiseResponse.data?.name || "")
+          } catch (err) {
+            setFranchiseName("")
+          }
+        } else {
+          setFranchiseName("")
         }
 
         setLoading(false)
@@ -314,6 +332,27 @@ function EnhancedShippingPage(
       .join("<br />")
   }
 
+  const formatInvoiceAddress = (party) => {
+    const address = escapeHtml(party?.address, "")
+    const address2 = escapeHtml(party?.address2, "")
+    const city = escapeHtml(party?.city, "")
+    const state = escapeHtml(party?.state, "")
+
+    return `
+                ${address ? `<p>${address}</p>` : ""}
+                ${address2 ? `<p>${address2}</p>` : ""}
+                ${city || state
+        ? `<p class="flex flex-row gap-2">
+                    ${city ? `<span><strong>City:</strong> ${city}</span>` : ""}
+                    ${state ? `<span><strong>State:</strong> ${state}</span>` : ""}
+                </p>`
+        : ""
+      }
+                <p><strong>Zip Code:</strong> ${escapeHtml(party?.zip, "")}</p>
+                <p><strong>Country:</strong> ${escapeHtml(party?.country, "")}</p>
+    `
+  }
+
   const getReceiverCountry = () => safeText(awbData?.receiver?.country).toUpperCase()
 
   const getReceiverZip = () => safeText(awbData?.receiver?.zip)
@@ -408,11 +447,7 @@ function EnhancedShippingPage(
                 <h2 class="font-bold mb-2">Sender:</h2>
                 <p class="font-bold uppercase">${sender?.name || ""}</p>
                 ${sender?.companyName ? `<p class="font-bold uppercase">C/O ${sender?.companyName}</p>` : ""}
-                <p>${sender?.address || ""} ${sender?.address2 || ""}</p>
-                <p class="flex flex-row gap-2">
-                    <strong>Zip Code:</strong> ${sender?.zip || ""}
-                    <strong>Country:</strong>${sender?.country || ""}
-                </p>
+                ${formatInvoiceAddress(sender)}
                 <p><strong>Cont No:</strong> ${sender?.contact || ""}</p>
                 <p><strong>Email:</strong> ${sender?.email || ""}</p>
                 <p><strong>${sender?.kyc?.type || ""}</strong> ${sender?.kyc?.kyc || ""}</p>
@@ -421,15 +456,7 @@ function EnhancedShippingPage(
                 <h2 class="font-bold mb-2">Receiver:</h2>
                 <p class="font-bold uppercase">${awbData.receiver?.name}</p>
                 ${awbData.receiver?.companyName ? `<p class="font-bold uppercase">C/O ${awbData.receiver?.companyName}</p>` : ""}
-                <p>
-                ${awbData.receiver?.address || ""}, ${awbData.receiver?.address2 || ""}
-                ${awbData.receiver?.city && awbData.receiver.city.length > 1 ? `, ${awbData.receiver.city}` : ""}
-                ${awbData.receiver?.state && awbData.receiver.state.length > 1 ? `, ${awbData.receiver.state}` : ""}
-                </p>
-                <p class="flex flex-row gap-2">
-                    <strong>Zip Code:</strong> ${awbData.receiver?.zip || ""}
-                    <strong>Country:</strong>${awbData.receiver?.country || ""}
-                </p>
+                ${formatInvoiceAddress(awbData.receiver)}
                 <p><strong>Cont No:</strong> ${awbData.receiver?.contact || ""}</p>
                 <p><strong>Email:</strong> ${awbData.receiver?.email || ""}</p>
             </div>
@@ -502,352 +529,111 @@ function EnhancedShippingPage(
     `
   }
 
-  const generateShippingLabelHTML = (boxIndex = 0, isLastLabel = false) => {
+  const getPhoneIconSvg = (className = "aw-phone-icon") => `
+    <svg class="${className}" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+      <path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6A19.79 19.79 0 0 1 2.12 4.18 2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72c.12.9.33 1.77.62 2.61a2 2 0 0 1-.45 2.11L8.09 9.63a16 16 0 0 0 6.28 6.28l1.19-1.19a2 2 0 0 1 2.11-.45c.84.29 1.71.5 2.61.62A2 2 0 0 1 22 16.92z"></path>
+    </svg>
+  `
+
+  const getLabelAwbNumber = () =>
+    awbData?.awbNumber || awbData?.cNoteNumber || awbData?.forwardingNumber || awbData?.trackingNumber || "N/A"
+
+  const getLabelTrackingValue = () => awbData?.trackingNumber || getLabelAwbNumber()
+
+  const generateAWLabelHTML = (boxIndex = 0, { isLastLabel = false, a4 = false } = {}) => {
     const box = awbData.boxes?.[boxIndex] || awbData.boxes?.[0] || {}
     const totalWeight = getTotalWeight()
     const boxWeight = box?.actualWeight || totalWeight / (awbData.boxes?.length || 1)
-    const weightDisplay = formatWeight(boxWeight)
-    const formattedDate = awbData.date ? format(new Date(awbData.date), "dd-MMM-yyyy").toUpperCase() : "N/A"
-
-    const shipmentType = getParcelTypeDisplay()
-
-    let boxTotal = 0
-    let itemRows = ""
-    let srNo = 1
-
-    const itemsToProcess = box?.items || []
-
-    itemsToProcess.forEach((item) => {
-      const amount = Number(item.price || 0) * Number(item.quantity || 0)
-      boxTotal += amount
-
-      const productDesc = (item.name || "N/A").length > 22
-        ? (item.name || "N/A").substring(0, 22) + "..."
-        : (item.name || "N/A")
-
-      itemRows += `
-        <tr>
-          <td class="sr-no">${srNo++}</td>
-          <td class="product-desc">${productDesc.toUpperCase()}</td>
-          <td class="hsn-code">${item.hsnCode || "N/A"}</td>
-          <td class="qty">${item.quantity || 0}</td>
-          <td class="rate">${Number(item.price || 0).toFixed(2)}</td>
-          <td class="amount">${amount.toFixed(2)}</td>
-        </tr>
-      `
-    })
-
-    if (itemsToProcess.length === 0) {
-      boxTotal = awbData.parcelValue || 0
-      itemRows = `
-        <tr>
-          <td class="sr-no">1</td>
-          <td class="product-desc">GOODS AS PER INVOICE</td>
-          <td class="hsn-code">N/A</td>
-          <td class="qty">1</td>
-          <td class="rate">${boxTotal.toFixed(2)}</td>
-          <td class="amount">${boxTotal.toFixed(2)}</td>
-        </tr>
-      `
-    }
-
-    const amountInWords = numberToWords(Math.round(boxTotal))
-    const currencyCode = awbData.shippingCurrency === "₹" ? "INR" : (awbData.shippingCurrency === "$" ? "USD" : awbData.shippingCurrency || "INR")
-    const currencyWord = awbData.shippingCurrency === "₹" ? "Rupees" : (awbData.shippingCurrency === "$" ? "Dollars" : "")
-
-    const awbNumber = awbData.awbNumber || awbData.cNoteNumber || awbData.forwardingNumber || awbData.trackingNumber || "N/A"
     const sender = getLabelSenderDetails()
-    const receiverLines = getAddressLines(awbData.receiver)
-    const receiverCountry = getReceiverCountry()
-    const receiverZip = getReceiverZip()
-    const receiverPhone = safeText(awbData.receiver?.contact)
+    const receiver = awbData.receiver || {}
+    const trackingValue = getLabelTrackingValue()
     const labelCount = getLabelCount()
-
-    const productSectionHTML = isEcommerce() ? `
-      <div class="section product-section">
-        <div class="section-header">PRODUCT DETAILS</div>
-        <table class="product-table">
-          <thead>
-            <tr>
-              <th class="col-sr">Sr.</th>
-              <th class="col-desc">Product Desc</th>
-              <th class="col-hsn">HSN</th>
-              <th class="col-qty">Qty</th>
-              <th class="col-rate">Rate</th>
-              <th class="col-amt">Amt.</th>
-            </tr>
-          </thead>
-          <tbody>
-            ${itemRows}
-            <tr class="total-row">
-              <td colspan="5" class="total-label">Total:</td>
-              <td class="total-amount">${awbData.shippingCurrency || "₹"}${boxTotal.toFixed(2)}</td>
-            </tr>
-            <tr class="words-row">
-              <td colspan="6" class="amount-words">${currencyCode}: ${amountInWords} ${currencyWord} Only</td>
-            </tr>
-          </tbody>
-        </table>
-      </div>
-    ` : ''
+    const formattedDate = awbData.date ? format(new Date(awbData.date), "dd/MM/yyyy") : format(new Date(), "dd/MM/yyyy")
+    const receiverCityLine = [receiver.city, receiver.state].filter(Boolean).join(", ")
+    const consigneeAddressLines = [receiver.address, receiver.address2, receiverCityLine].filter(Boolean)
+    const senderCityLine = sender ? [sender.city, sender.state, sender.zip].filter(Boolean).join(", ") : ""
+    const senderAddressLines = sender ? [sender.address, sender.address2, senderCityLine, sender.country].filter(Boolean) : []
+    const senderContact = sender?.contact
+    const receiverContact = receiver.contact
+    const rootClass = a4
+      ? "a4-label aw-label"
+      : `shipping-label aw-label${isLastLabel ? " last-label" : ""}`
 
     return `
-      <div class="shipping-label${isLastLabel ? ' last-label' : ''}">
-        <div class="label-header">
-          <div class="header-brand">
-          </div>
-          <div class="header-destination">
-            <div class="header-destination-label">Receiver Country</div>
-            <div class="header-destination-main">${receiverCountry}</div>
-            <div class="header-destination-zip">${receiverZip}</div>
+      <div class="${rootClass} ${sender ? "with-sender" : "without-sender"}">
+       <div class="aw-frame">
+        <div class="aw-top">
+          <div class="aw-entry-cell">
+            <div class="aw-entry-number">${escapeHtml(trackingValue)}</div>
+            <div class="aw-entry-caption"><span></span>AWB NUMBER<span></span></div>
           </div>
         </div>
 
-        <div class="meta-pills">
-          <span class="meta-pill">BOX ${boxIndex + 1} OF ${labelCount}</span>
-          <span class="meta-pill">${safeText(shipmentType).toUpperCase()}</span>
-        </div>
-
-        <div class="awb-focus-card">
-          <div class="awb-focus-label">Air Way Bill No.</div>
-          <div class="awb-focus-value">${safeText(awbNumber)}</div>
-        </div>
-        
-        <div class="section ship-to">
-          <div class="section-header">RECEIVER</div>
-          <div class="section-content">
-            <div class="receiver-name">${safeText(awbData.receiver?.name)}</div>
-            ${awbData.receiver?.companyName ? `<div class="receiver-company">${safeText(awbData.receiver.companyName)}</div>` : ""}
-            <div class="receiver-address">
-              ${receiverLines.map((line) => `<div class="address-line">${safeText(line, "")}</div>`).join("")}
-            </div>
-            <div class="receiver-phone-block">
-              <div class="receiver-phone-label">Receiver Mobile</div>
-              <div class="receiver-phone-value">${receiverPhone}</div>
-            </div>
-          </div>
-        </div>
-
-        <div class="section tracking-section">
-          <div class="section-header">SHIPMENT DETAILS</div>
-          <div class="section-content section-content-inline">
-            <div class="tracking-row">
-              <span class="tracking-label">Service</span>
-              <span class="tracking-value"></span>
-            </div>
-            <div class="tracking-row">
-              <span class="tracking-label">Mode</span>
-              <span class="tracking-value">${safeText(getParcelTypeDisplay())}</span>
-            </div>
-          </div>
-        </div>
-
-        ${sender
+        <div class="aw-main-grid">
+          <div class="aw-left">
+            ${sender
         ? `
-        <div class="section ship-from">
-          <div class="section-header">SENDER</div>
-          <div class="section-content section-content-compact sender-line-wrap">
-            <div class="sender-line">${escapeHtml(getLabelSenderLine(sender), "")}</div>
-          </div>
-        </div>
-        `
+            <section class="aw-ship-from">
+              <div class="aw-title-row">
+                <span class="aw-black-title">CONSIGNOR:</span>
+                <strong>${escapeHtml(formattedDate)}</strong>
+              </div>
+              <div class="aw-party-name">${escapeHtml(sender.name || sender.companyName)}</div>
+              ${sender.name && sender.companyName ? `<div class="aw-party-name">${escapeHtml(sender.companyName)}</div>` : ""}
+              <div class="aw-address-block">
+                ${senderAddressLines.map((line) => `<div>${escapeHtml(line, "")}</div>`).join("")}
+                ${senderContact ? `<div class="aw-phone-line">${getPhoneIconSvg()}<span>${escapeHtml(senderContact)}</span></div>` : ""}
+              </div>
+            </section>`
         : ""
       }
 
-        <div class="barcode-section">
-          <svg class="header-barcode-svg" data-value="${awbData.trackingNumber || awbNumber}"></svg>
-          <div class="tracking-number-text">${safeText(awbData.trackingNumber || awbNumber)}</div>
-        </div>
-        
-        ${productSectionHTML}
+            <section class="aw-consignee">
+              <div class="aw-title-row">
+                <span class="aw-black-title">CONSIGNEE:</span>
+                ${sender ? "" : `<strong>${escapeHtml(formattedDate)}</strong>`}
+              </div>
+              <div class="aw-consignee-name">${escapeHtml(receiver.name)}</div>
+              ${receiver.companyName ? `<div class="aw-consignee-company">${escapeHtml(receiver.companyName)}</div>` : ""}
+              <div class="aw-consignee-address">
+                ${consigneeAddressLines.map((line) => `<div>${escapeHtml(line, "")}</div>`).join("")}
+              </div>
+              ${receiverContact ? `<div class="aw-phone-line aw-consignee-phone">${getPhoneIconSvg()}<span>${escapeHtml(receiverContact)}</span></div>` : ""}
+              <div class="aw-location-line">ZIP ${escapeHtml(receiver.zip)}</div>
+              <div class="aw-country-line">COUNTRY: ${escapeHtml(getReceiverCountry())}</div>
+            </section>
+          </div>
 
-        <div class="label-footer">
-          <div class="box-info">AIR WAY BILL</div>
-          <div class="parcel-type"></div>
-        </div>
-      </div>
-    `
-  }
-
-  const generateA4LabelHTML = (boxIndex = 0) => {
-    const box = awbData.boxes?.[boxIndex] || awbData.boxes?.[0] || {}
-    const totalWeight = getTotalWeight()
-    const boxWeight = box?.actualWeight || totalWeight / (awbData.boxes?.length || 1)
-    const weightDisplay = formatWeight(boxWeight)
-    const formattedDate = awbData.date ? format(new Date(awbData.date), "dd-MMM-yyyy").toUpperCase() : "N/A"
-
-    const shipmentType = getParcelTypeDisplay()
-
-    let boxTotal = 0
-    let itemRows = ""
-    let srNo = 1
-
-    const itemsToProcess = box?.items || []
-    const maxItems = 3
-    const displayItems = itemsToProcess.slice(0, maxItems)
-
-    displayItems.forEach((item) => {
-      const amount = Number(item.price || 0) * Number(item.quantity || 0)
-      boxTotal += amount
-
-      const productDesc = (item.name || "N/A").length > 18
-        ? (item.name || "N/A").substring(0, 18) + "..."
-        : (item.name || "N/A")
-
-      itemRows += `
-        <tr>
-          <td class="sr-no">${srNo++}</td>
-          <td class="product-desc">${productDesc.toUpperCase()}</td>
-          <td class="hsn-code">${item.hsnCode || "N/A"}</td>
-          <td class="qty">${item.quantity || 0}</td>
-          <td class="rate">${Number(item.price || 0).toFixed(2)}</td>
-          <td class="amount">${amount.toFixed(2)}</td>
-        </tr>
-      `
-    })
-
-    if (itemsToProcess.length > maxItems) {
-      let remainingTotal = 0
-      for (let i = maxItems; i < itemsToProcess.length; i++) {
-        remainingTotal += Number(itemsToProcess[i].price || 0) * Number(itemsToProcess[i].quantity || 0)
-      }
-      boxTotal += remainingTotal
-      itemRows += `
-        <tr>
-          <td class="sr-no">...</td>
-          <td class="product-desc">+${itemsToProcess.length - maxItems} MORE ITEMS</td>
-          <td class="hsn-code">-</td>
-          <td class="qty">-</td>
-          <td class="rate">-</td>
-          <td class="amount">${remainingTotal.toFixed(2)}</td>
-        </tr>
-      `
-    }
-
-    if (itemsToProcess.length === 0) {
-      boxTotal = awbData.parcelValue || 0
-      itemRows = `
-        <tr>
-          <td class="sr-no">1</td>
-          <td class="product-desc">GOODS AS PER INVOICE</td>
-          <td class="hsn-code">N/A</td>
-          <td class="qty">1</td>
-          <td class="rate">${boxTotal.toFixed(2)}</td>
-          <td class="amount">${boxTotal.toFixed(2)}</td>
-        </tr>
-      `
-    }
-
-    const amountInWords = numberToWords(Math.round(boxTotal))
-    const currencyCode = awbData.shippingCurrency === "₹" ? "INR" : (awbData.shippingCurrency === "$" ? "USD" : awbData.shippingCurrency || "INR")
-    const currencyWord = awbData.shippingCurrency === "₹" ? "Rupees" : (awbData.shippingCurrency === "$" ? "Dollars" : "")
-
-    const awbNumber = awbData.awbNumber || awbData.cNoteNumber || awbData.forwardingNumber || awbData.trackingNumber || "N/A"
-    const sender = getLabelSenderDetails()
-    const receiverLines = getAddressLines(awbData.receiver)
-    const receiverCountry = getReceiverCountry()
-    const receiverZip = getReceiverZip()
-    const receiverPhone = safeText(awbData.receiver?.contact)
-    const labelCount = getLabelCount()
-
-    const productSectionHTML = isEcommerce() ? `
-      <div class="a4-product-section">
-        <div class="a4-section-header">PRODUCTS</div>
-        <table class="a4-product-table">
-          <thead>
-            <tr>
-              <th>#</th>
-              <th>Description</th>
-              <th>HSN</th>
-              <th>Qty</th>
-              <th>Rate</th>
-              <th>Amt</th>
-            </tr>
-          </thead>
-          <tbody>
-            ${itemRows}
-            <tr class="a4-total-row">
-              <td colspan="5"><strong>Total:</strong></td>
-              <td><strong>${awbData.shippingCurrency || "₹"}${boxTotal.toFixed(2)}</strong></td>
-            </tr>
-            <tr class="a4-words-row">
-              <td colspan="6" class="a4-amount-words">${currencyCode}: ${amountInWords} ${currencyWord} Only</td>
-            </tr>
-          </tbody>
-        </table>
-      </div>
-    ` : ''
-
-    return `
-      <div class="a4-label">
-        <div class="a4-header">
-          <div class="a4-header-destination">
-            <div class="a4-header-destination-label">Receiver Country</div>
-            <div class="a4-header-destination-main">${receiverCountry}</div>
-            <div class="a4-header-destination-zip">${receiverZip}</div>
+          <div class="aw-right">
+            <section class="aw-hawb">
+              <div class="aw-hawb-bars">
+                <div class="aw-barcode-rotate">
+                  <svg class="aw-barcode aw-main-barcode" data-value="${escapeHtml(trackingValue)}"></svg>
+                </div>
+              </div>
+              <div class="aw-hawb-strip">AWB NO : ${escapeHtml(trackingValue)}</div>
+            </section>
           </div>
         </div>
 
-        <div class="a4-meta-pills">
-          <span class="a4-meta-pill">BOX ${boxIndex + 1}/${labelCount}</span>
-          <span class="a4-meta-pill">${safeText(shipmentType).toUpperCase()}</span>
-        </div>
-
-        <div class="a4-awb-focus-card">
-          <div class="a4-awb-focus-label">Air Way Bill No.</div>
-          <div class="a4-awb-focus-value">${safeText(awbNumber)}</div>
-        </div>
-        
-        <div class="a4-section a4-to">
-          <div class="a4-section-header">RECEIVER</div>
-          <div class="a4-section-content">
-            <div class="a4-name">${safeText(awbData.receiver?.name)}</div>
-            ${awbData.receiver?.companyName ? `<div class="a4-receiver-company">${safeText(awbData.receiver.companyName)}</div>` : ""}
-            ${receiverLines.map((line) => `<div class="a4-address">${safeText(line, "")}</div>`).join("")}
-            <div class="a4-phone-block">
-              <div class="a4-phone-label">Receiver Mobile</div>
-              <div class="a4-phone-value">${receiverPhone}</div>
+        <div class="aw-parcel-row">
+          <section class="aw-pcs">
+            <div class="aw-pcs-values">
+              <div><small>PCS</small><span>${boxIndex + 1}/${labelCount}</span></div>
+              <div><small>ACT. WT.</small><span>${Number(boxWeight || 0).toFixed(2)}</span></div>
             </div>
+          </section>
+          <div class="aw-reference">
+            <div class="aw-reference-no"><strong>Ref No. :</strong> ${escapeHtml(awbData.refCode, "-")}</div>
+            ${franchiseName ? `<div class="aw-franchise">${escapeHtml(franchiseName, "")}</div>` : ""}
           </div>
         </div>
 
-        <div class="a4-section a4-awb">
-          <div class="a4-section-header">SHIPMENT DETAILS</div>
-          <div class="a4-section-content a4-section-content-inline">
-            <div class="a4-inline-row">
-              <span class="a4-inline-label">Service</span>
-              <span class="a4-inline-value"></span>
-            </div>
-            <div class="a4-inline-row">
-              <span class="a4-inline-label">Mode</span>
-              <span class="a4-inline-value">${safeText(getParcelTypeDisplay())}</span>
-            </div>
-          </div>
-        </div>
-
-        <div class="a4-barcode-section">
-          <svg class="a4-header-barcode" data-value="${awbData.trackingNumber || awbNumber}"></svg>
-          <div class="a4-tracking-text">${safeText(awbData.trackingNumber || awbNumber)}</div>
-        </div>
-        
-        ${sender
-        ? `
-        <div class="a4-section a4-from">
-          <div class="a4-section-header">SENDER</div>
-          <div class="a4-section-content a4-section-content-compact a4-sender-line-wrap">
-            <div class="a4-sender-line">${escapeHtml(getLabelSenderLine(sender), "")}</div>
-          </div>
-        </div>
-        `
-        : ""
-      }
-        
-        ${productSectionHTML}
-        
-        <div class="a4-footer">
-          <span class="a4-box-info">AIR WAY BILL</span>
-          <span class="a4-parcel-type"></span>
-        </div>
+        <footer class="aw-footer">
+          <div class="aw-footer-phone">${getPhoneIconSvg("aw-footer-phone-icon")}<span>${labelPhone}</span></div>
+          <div class="aw-footer-site">${labelWebsite.replace(/^https?:\/\//, "")}</div>
+        </footer>
+       </div>
       </div>
     `
   }
@@ -1234,20 +1020,22 @@ function EnhancedShippingPage(
     `
   }
 
-  const renderShippingBarcodes = () => {
+  const renderLabelBarcodes = () => {
     setTimeout(() => {
-      const headerBarcodes = document.querySelectorAll(".header-barcode-svg")
-      headerBarcodes.forEach((element) => {
+      const labelBarcodes = document.querySelectorAll(".aw-barcode")
+      labelBarcodes.forEach((element) => {
         const value = element.getAttribute("data-value")
         if (value && value !== "N/A" && value !== "") {
           try {
             JsBarcode(element, value, {
               format: "CODE128",
-              width: 1.55,
-              height: 40,
+              width: 2,
+              height: 100,
               displayValue: false,
               margin: 0,
             })
+            // The barcode is stretched to fill its rotated holder
+            element.setAttribute("preserveAspectRatio", "none")
           } catch (e) {
             console.error("Barcode error:", e)
           }
@@ -1256,26 +1044,385 @@ function EnhancedShippingPage(
     }, 150)
   }
 
-  const renderA4Barcodes = () => {
-    setTimeout(() => {
-      const headerBarcodes = document.querySelectorAll(".a4-header-barcode")
-      headerBarcodes.forEach((element) => {
-        const value = element.getAttribute("data-value")
-        if (value && value !== "N/A" && value !== "") {
-          try {
-            JsBarcode(element, value, {
-              format: "CODE128",
-              width: 1.05,
-              height: 28,
-              displayValue: false,
-              margin: 0,
-            })
-          } catch (e) {
-            console.error("Barcode error:", e)
-          }
-        }
-      })
-    }, 150)
+  const getAWLabelStyles = () => {
+    return `
+      .shipping-label.aw-label,
+      .a4-label.aw-label {
+        display: flex;
+        flex-direction: column;
+        gap: 0;
+        padding: 3mm;
+        border: none;
+        border-radius: 0;
+        background: #fff;
+        color: #000;
+        overflow: hidden;
+        font-family: 'Arial', 'Helvetica Neue', sans-serif;
+        line-height: 1.15;
+        -webkit-print-color-adjust: exact;
+        print-color-adjust: exact;
+      }
+
+      .aw-frame {
+        flex: 1;
+        min-width: 0;
+        min-height: 0;
+        display: flex;
+        flex-direction: column;
+        border: 0.5mm solid #000;
+        overflow: hidden;
+      }
+
+      .aw-top {
+        flex: none;
+        display: flex;
+        height: 15mm;
+        border-bottom: 0.5mm solid #000;
+      }
+
+      .aw-entry-cell {
+        flex: 1;
+        min-width: 0;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        padding: 1mm 3mm;
+        overflow: hidden;
+      }
+
+      .aw-entry-number {
+        font-size: 19pt;
+        font-weight: 900;
+        line-height: 1;
+        letter-spacing: 0.3mm;
+        white-space: nowrap;
+      }
+
+      .aw-entry-caption {
+        display: flex;
+        align-items: center;
+        gap: 1.5mm;
+        width: 100%;
+        margin-top: 1.2mm;
+        font-size: 6pt;
+        font-weight: 800;
+        letter-spacing: 0.4mm;
+      }
+
+      .aw-entry-caption span {
+        flex: 1;
+        height: 0;
+        border-top: 0.3mm solid #000;
+      }
+
+      .aw-main-grid {
+        flex: 1;
+        min-height: 0;
+        display: flex;
+        border-bottom: 0.5mm solid #000;
+      }
+
+      .aw-left {
+        flex: 1;
+        min-width: 0;
+        display: flex;
+        flex-direction: column;
+      }
+
+      .aw-right {
+        flex: none;
+        width: 28mm;
+        display: flex;
+        flex-direction: column;
+        border-left: 0.5mm solid #000;
+      }
+
+      .aw-title-row {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        margin-bottom: 1mm;
+        font-size: 7pt;
+      }
+
+      .aw-black-title {
+        display: inline-block;
+        padding: 0.6mm 2mm;
+        background: #000;
+        color: #fff;
+        font-size: 7pt;
+        font-weight: 800;
+        letter-spacing: 0.3mm;
+      }
+
+      /* Sender details are kept deliberately smaller than the receiver's */
+      .aw-ship-from {
+        flex: none;
+        max-height: 30mm;
+        padding: 1.5mm 2mm;
+        border-bottom: 0.5mm solid #000;
+        overflow: hidden;
+      }
+
+      .aw-ship-from .aw-title-row,
+      .aw-ship-from .aw-black-title {
+        font-size: 6pt;
+      }
+
+      .aw-party-name {
+        font-size: 7.5pt;
+        font-weight: 800;
+        text-transform: uppercase;
+      }
+
+      .aw-address-block {
+        margin-top: 0.5mm;
+        font-size: 6.5pt;
+        line-height: 1.2;
+        word-break: break-word;
+      }
+
+      .aw-phone-line {
+        display: flex;
+        align-items: center;
+        gap: 1mm;
+        margin-top: 0.8mm;
+        font-weight: 800;
+      }
+
+      .aw-phone-icon {
+        flex: none;
+        width: 2.6mm;
+        height: 2.6mm;
+      }
+
+      .aw-consignee {
+        flex: 1;
+        min-height: 0;
+        display: flex;
+        flex-direction: column;
+        padding: 1.5mm 2mm;
+        overflow: hidden;
+      }
+
+      .aw-consignee > * {
+        flex: none;
+      }
+
+      .aw-consignee-name {
+        font-size: 15pt;
+        font-weight: 900;
+        line-height: 1.1;
+        text-transform: uppercase;
+      }
+
+      .aw-consignee-company {
+        font-size: 11pt;
+        font-weight: 800;
+      }
+
+      .aw-consignee .aw-consignee-address {
+        flex: 1;
+        min-height: 0;
+        margin-top: 1mm;
+        font-size: 11.5pt;
+        font-weight: 700;
+        line-height: 1.2;
+        word-break: break-word;
+        overflow: hidden;
+      }
+
+      .aw-consignee-phone {
+        font-size: 15pt;
+        font-weight: 900;
+      }
+
+      .aw-consignee-phone .aw-phone-icon {
+        width: 4.4mm;
+        height: 4.4mm;
+      }
+
+      .aw-location-line {
+        margin-top: 1mm;
+        padding-top: 1mm;
+        border-top: 0.3mm solid #000;
+        font-size: 16pt;
+        font-weight: 900;
+      }
+
+      .aw-country-line {
+        font-size: 12pt;
+        font-weight: 900;
+        text-transform: uppercase;
+      }
+
+      /* Less room for the consignee when the consignor block is printed */
+      .with-sender .aw-consignee-name {
+        font-size: 13pt;
+      }
+
+      .with-sender .aw-consignee-company {
+        font-size: 10pt;
+      }
+
+      .with-sender .aw-consignee .aw-consignee-address {
+        font-size: 10pt;
+      }
+
+      .with-sender .aw-consignee-phone {
+        font-size: 13.5pt;
+      }
+
+      .with-sender .aw-location-line {
+        font-size: 14pt;
+      }
+
+      .with-sender .aw-country-line {
+        font-size: 11pt;
+      }
+
+      /* The A4 label is shorter, so trim a little more to keep long addresses visible */
+      .a4-label.with-sender .aw-consignee-name {
+        font-size: 12pt;
+      }
+
+      .a4-label.with-sender .aw-consignee-company {
+        font-size: 9pt;
+      }
+
+      .a4-label.with-sender .aw-consignee .aw-consignee-address {
+        font-size: 9pt;
+      }
+
+      .aw-hawb {
+        flex: 1;
+        min-height: 0;
+        display: flex;
+        flex-direction: column;
+      }
+
+      .aw-hawb-bars {
+        flex: 1;
+        min-height: 0;
+        position: relative;
+        overflow: hidden;
+        container-type: size;
+      }
+
+      .aw-barcode-rotate {
+        position: absolute;
+        top: 50%;
+        left: 50%;
+        width: min(calc(100cqh - 8mm), 72mm);
+        height: calc(100cqw - 7mm);
+        transform: translate(-50%, -50%) rotate(90deg);
+      }
+
+      .aw-barcode {
+        display: block;
+        width: 100%;
+        height: 100%;
+      }
+
+      .aw-hawb-strip {
+        flex: none;
+        padding: 1.2mm 0.5mm;
+        background: #000;
+        color: #fff;
+        font-size: 5.5pt;
+        font-weight: 800;
+        text-align: center;
+        white-space: nowrap;
+        overflow: hidden;
+      }
+
+      .aw-parcel-row {
+        flex: none;
+        display: flex;
+        align-items: stretch;
+        justify-content: space-between;
+        height: 13mm;
+        border-bottom: 0.5mm solid #000;
+      }
+
+      .aw-pcs,
+      .aw-pcs-values {
+        display: flex;
+      }
+
+      .aw-pcs-values > div {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        min-width: 24mm;
+        padding: 1mm 3mm;
+        border-right: 0.5mm solid #000;
+      }
+
+      .aw-pcs-values small {
+        font-size: 6pt;
+        font-weight: 800;
+        letter-spacing: 0.3mm;
+      }
+
+      .aw-pcs-values span {
+        font-size: 14pt;
+        font-weight: 900;
+        line-height: 1.1;
+      }
+
+      .aw-reference {
+        flex: 1;
+        min-width: 0;
+        display: flex;
+        flex-direction: column;
+        align-items: flex-end;
+        justify-content: space-between;
+        padding: 1.5mm 2mm 1mm;
+        text-align: right;
+        overflow: hidden;
+      }
+
+      .aw-reference-no {
+        font-size: 8pt;
+        white-space: nowrap;
+      }
+
+      .aw-franchise {
+        max-width: 100%;
+        font-size: 5.5pt;
+        font-weight: 700;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+      }
+
+      .aw-footer {
+        flex: none;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        height: 7mm;
+        padding: 0 2mm;
+        background: #000;
+        color: #fff;
+        font-size: 8pt;
+        font-weight: 800;
+      }
+
+      .aw-footer-phone {
+        display: flex;
+        align-items: center;
+        gap: 1mm;
+      }
+
+      .aw-footer-phone-icon {
+        width: 3mm;
+        height: 3mm;
+      }
+    `
   }
 
   const getLabelPrinterStyles = () => {
@@ -1946,6 +2093,19 @@ function EnhancedShippingPage(
         font-weight: 800;
         color: #000;
       }
+
+      .franchise-name {
+        position: absolute;
+        right: 0;
+        bottom: 0;
+        max-width: 36mm;
+        font-size: 4.8pt;
+        font-weight: 700;
+        color: #000;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+      }
       
       @media print {
         .shipping-label {
@@ -1960,6 +2120,8 @@ function EnhancedShippingPage(
           print-color-adjust: exact;
         }
       }
+
+      ${getAWLabelStyles()}
     `
   }
 
@@ -2565,6 +2727,16 @@ function EnhancedShippingPage(
         font-weight: 800;
         color: #000;
       }
+
+      .a4-franchise-name {
+        max-width: 60%;
+        font-size: 4.5pt;
+        font-weight: 700;
+        color: #000;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+      }
       
       @media print {
         .a4-label {
@@ -2578,6 +2750,8 @@ function EnhancedShippingPage(
           print-color-adjust: exact;
         }
       }
+
+      ${getAWLabelStyles()}
     `
   }
 
@@ -3013,7 +3187,7 @@ function EnhancedShippingPage(
 
       for (let i = 0; i < boxCount; i++) {
         const isLastLabel = i === boxCount - 1
-        allLabels += generateShippingLabelHTML(i, isLastLabel)
+        allLabels += generateAWLabelHTML(i, { isLastLabel })
       }
 
       document.body.innerHTML = `
@@ -3023,7 +3197,7 @@ function EnhancedShippingPage(
         ${allLabels}
       `
 
-      renderShippingBarcodes()
+      renderLabelBarcodes()
     } else {
       let allContent = ""
       const labelsPerPage = 4
@@ -3036,7 +3210,7 @@ function EnhancedShippingPage(
         for (let i = 0; i < labelsPerPage; i++) {
           const boxIndex = page * labelsPerPage + i
           if (boxIndex < boxCount) {
-            pageContent += generateA4LabelHTML(boxIndex)
+            pageContent += generateAWLabelHTML(boxIndex, { a4: true })
           } else {
             pageContent += '<div class="a4-label empty-placeholder"></div>'
           }
@@ -3053,7 +3227,7 @@ function EnhancedShippingPage(
         ${allContent}
       `
 
-      renderA4Barcodes()
+      renderLabelBarcodes()
     }
 
     setTimeout(() => {
@@ -3192,7 +3366,7 @@ function EnhancedShippingPage(
         let allLabels = ""
         for (let i = 0; i < boxCount; i++) {
           const isLastLabel = i === boxCount - 1
-          allLabels += generateShippingLabelHTML(i, isLastLabel)
+          allLabels += generateAWLabelHTML(i, { isLastLabel })
         }
         combinedContent += allLabels
       } else {
@@ -3207,7 +3381,7 @@ function EnhancedShippingPage(
           for (let i = 0; i < labelsPerPage; i++) {
             const boxIndex = page * labelsPerPage + i
             if (boxIndex < boxCount) {
-              pageContent += generateA4LabelHTML(boxIndex)
+              pageContent += generateAWLabelHTML(boxIndex, { a4: true })
             } else {
               pageContent += '<div class="a4-label empty-placeholder"></div>'
             }
@@ -3266,11 +3440,7 @@ function EnhancedShippingPage(
   const renderCombinedPrintBarcodes = () => {
     const effectiveOptions = getEffectivePrintOptions()
     if (effectiveOptions.selectedDocuments.labels) {
-      if (effectiveOptions.printerType === "label") {
-        renderShippingBarcodes()
-      } else {
-        renderA4Barcodes()
-      }
+      renderLabelBarcodes()
     }
   }
 

@@ -14,6 +14,7 @@ export default function AWBView({ params }) {
   const [awbData, setAwbData] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const [franchiseName, setFranchiseName] = useState("");
 
   useEffect(() => {
     const fetchAWBData = async () => {
@@ -23,6 +24,21 @@ export default function AWBView({ params }) {
         const response = await axios.get(`/api/awb/${trackingNumber}`);
         setAwbData(response.data[0]);
         setLoading(false);
+
+        // Resolve the franchise this AWB was booked with
+        const refCode = response.data[0]?.refCode;
+        if (refCode) {
+          try {
+            const franchiseResponse = await axios.get(
+              `/api/franchises/${encodeURIComponent(refCode)}`
+            );
+            setFranchiseName(
+              franchiseResponse.data?.firmName || franchiseResponse.data?.name || ""
+            );
+          } catch (err) {
+            setFranchiseName("");
+          }
+        }
       } catch (err) {
         setError("Failed to fetch AWB data");
         setLoading(false);
@@ -40,6 +56,14 @@ export default function AWBView({ params }) {
 
   const handlePrint = () => {
     window.print();
+  };
+
+  const totalWeight = (field) => {
+    const total = (awbData?.boxes || []).reduce(
+      (sum, box) => sum + (Number(box?.[field]) || 0),
+      0
+    );
+    return `${Number(total.toFixed(2))} kg`;
   };
 
   return (
@@ -119,7 +143,9 @@ export default function AWBView({ params }) {
             <h2 className="text-xs font-semibold text-[#232C65] mb-2">
               Shipment Details
             </h2>
-            <div className="grid grid-cols-4 gap-1 text-xs">
+            <div
+              className={`grid ${franchiseName ? "grid-cols-5" : "grid-cols-4"} gap-1 text-xs`}
+            >
               <InfoItem label="Invoice Number" value={awbData?.invoiceNumber} />
               <InfoItem
                 label="Date"
@@ -131,6 +157,9 @@ export default function AWBView({ params }) {
               />
               <InfoItem label="Parcel Type" value={awbData?.parcelType} />
               <InfoItem label="Status" value={awbData?.parcelStatus[awbData?.parcelStatus.length - 1]?.status} />
+              {franchiseName && (
+                <InfoItem label="Booked By (Franchise)" value={franchiseName} />
+              )}
             </div>
           </div>
 
@@ -176,6 +205,17 @@ export default function AWBView({ params }) {
                     );
                   })}
                 </tbody>
+                <tfoot className="bg-gray-50 font-semibold text-[#232C65]">
+                  <tr>
+                    <td className="px-8 py-2 whitespace-nowrap" colSpan={2}>
+                      Total ({awbData?.boxes?.length || 0}{" "}
+                      {awbData?.boxes?.length === 1 ? "box" : "boxes"})
+                    </td>
+                    <td className="px-8 py-2 whitespace-nowrap">{totalWeight("actualWeight")}</td>
+                    <td className="px-8 py-2 whitespace-nowrap">{totalWeight("dimensionalWeight")}</td>
+                    <td className="px-8 py-2 whitespace-nowrap">{totalWeight("chargeableWeight")}</td>
+                  </tr>
+                </tfoot>
               </table>
             </div>
           </div>
@@ -244,14 +284,17 @@ export default function AWBView({ params }) {
 }
 
 function AddressBox({ data }) {
+  const cityState = [data?.city, data?.state].filter(Boolean).join(", ");
+  const zipCountry = [data?.zip, data?.country].filter(Boolean).join(", ");
+
   return (
     <div className="border border-gray-200 rounded p-4 py-1">
       <p className="font-semibold text-[#E31E24]">{data?.name}</p>
       {data?.companyName && <p className="font-semibold text-[#E31E24]">C/O {data?.companyName}</p>}
-      <p>{data?.address}, {data?.address2}</p>
-      <p>{data?.city}, {data?.state}</p>
-      <p>{data?.zip}</p>
-      <p>{data?.country}</p>
+      {data?.address && <p>{data.address}</p>}
+      {data?.address2 && <p>{data.address2}</p>}
+      {cityState && <p>{cityState}</p>}
+      {zipCountry && <p>{zipCountry}</p>}
       <p>Contact: {data?.contact}</p>
     </div>
   );

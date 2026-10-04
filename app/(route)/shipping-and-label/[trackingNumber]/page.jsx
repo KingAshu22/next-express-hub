@@ -593,6 +593,8 @@ function EnhancedShippingPage(
                 <span class="aw-black-title">CONSIGNEE:</span>
                 ${sender ? "" : `<strong>${escapeHtml(formattedDate)}</strong>`}
               </div>
+              <div class="aw-consignee-fit-area">
+              <div class="aw-consignee-fit">
               <div class="aw-consignee-name">${escapeHtml(receiver.name)}</div>
               ${receiver.companyName ? `<div class="aw-consignee-company">${escapeHtml(receiver.companyName)}</div>` : ""}
               <div class="aw-consignee-address">
@@ -601,6 +603,8 @@ function EnhancedShippingPage(
               ${receiverContact ? `<div class="aw-phone-line aw-consignee-phone">${getPhoneIconSvg()}<span>${escapeHtml(receiverContact)}</span></div>` : ""}
               <div class="aw-location-line">ZIP ${escapeHtml(receiver.zip)}</div>
               <div class="aw-country-line">COUNTRY: ${escapeHtml(getReceiverCountry())}</div>
+              </div>
+              </div>
             </section>
           </div>
 
@@ -1020,8 +1024,52 @@ function EnhancedShippingPage(
     `
   }
 
+  // Grow or shrink each label's receiver details so they fill their box without overflowing
+  const fitLabelAddresses = () => {
+    document.querySelectorAll(".aw-consignee-fit-area").forEach((area) => {
+      const content = area.querySelector(".aw-consignee-fit")
+      if (!content || !area.clientHeight) return
+
+      const phone = content.querySelector(".aw-consignee-phone")
+
+      const applySize = (size) => {
+        content.style.fontSize = `${size}px`
+        if (!phone) return
+        // The contact number stays on one line, so cap it at the width of the box
+        phone.style.fontSize = ""
+        if (phone.scrollWidth > phone.clientWidth) {
+          const phoneSize = parseFloat(getComputedStyle(phone).fontSize)
+          phone.style.fontSize = `${(phoneSize * phone.clientWidth * 0.98) / phone.scrollWidth}px`
+        }
+      }
+
+      const fits = (size) => {
+        applySize(size)
+        return content.scrollHeight <= area.clientHeight && content.scrollWidth <= area.clientWidth
+      }
+
+      // Words are not split while sizing, so a size is rejected rather than breaking a word in two
+      content.style.wordBreak = "normal"
+      content.style.overflowWrap = "normal"
+
+      let low = 5
+      let high = 72
+      for (let i = 0; i < 12; i++) {
+        const mid = (low + high) / 2
+        if (fits(mid)) low = mid
+        else high = mid
+      }
+      applySize(low)
+
+      content.style.wordBreak = ""
+      content.style.overflowWrap = ""
+    })
+  }
+
   const renderLabelBarcodes = () => {
     setTimeout(() => {
+      fitLabelAddresses()
+
       const labelBarcodes = document.querySelectorAll(".aw-barcode")
       labelBarcodes.forEach((element) => {
         const value = element.getAttribute("data-value")
@@ -1206,93 +1254,65 @@ function EnhancedShippingPage(
         overflow: hidden;
       }
 
-      .aw-consignee > * {
+      .aw-consignee > .aw-title-row {
         flex: none;
       }
 
+      .aw-consignee-fit-area {
+        flex: 1;
+        min-height: 0;
+        overflow: hidden;
+      }
+
+      /* fitLabelAddresses sets this font size per label so the details fill the box exactly */
+      .aw-consignee-fit {
+        font-size: 10pt;
+        word-break: break-word;
+      }
+
       .aw-consignee-name {
-        font-size: 15pt;
+        font-size: 1.3em;
         font-weight: 900;
         line-height: 1.1;
         text-transform: uppercase;
       }
 
       .aw-consignee-company {
-        font-size: 11pt;
+        font-size: 0.95em;
         font-weight: 800;
       }
 
-      .aw-consignee .aw-consignee-address {
-        flex: 1;
-        min-height: 0;
-        margin-top: 1mm;
-        font-size: 11.5pt;
+      .aw-consignee-address {
+        margin-top: 0.25em;
+        font-size: 1em;
         font-weight: 700;
         line-height: 1.2;
-        word-break: break-word;
-        overflow: hidden;
       }
 
       .aw-consignee-phone {
-        font-size: 15pt;
+        margin-top: 0.2em;
+        font-size: 1.3em;
         font-weight: 900;
+        white-space: nowrap;
       }
 
       .aw-consignee-phone .aw-phone-icon {
-        width: 4.4mm;
-        height: 4.4mm;
+        width: 0.85em;
+        height: 0.85em;
       }
 
       .aw-location-line {
-        margin-top: 1mm;
-        padding-top: 1mm;
+        margin-top: 0.2em;
+        padding-top: 0.15em;
         border-top: 0.3mm solid #000;
-        font-size: 16pt;
+        font-size: 1.4em;
         font-weight: 900;
       }
 
       .aw-country-line {
-        font-size: 12pt;
+        font-size: 1.05em;
         font-weight: 900;
         text-transform: uppercase;
-      }
-
-      /* Less room for the consignee when the consignor block is printed */
-      .with-sender .aw-consignee-name {
-        font-size: 13pt;
-      }
-
-      .with-sender .aw-consignee-company {
-        font-size: 10pt;
-      }
-
-      .with-sender .aw-consignee .aw-consignee-address {
-        font-size: 10pt;
-      }
-
-      .with-sender .aw-consignee-phone {
-        font-size: 13.5pt;
-      }
-
-      .with-sender .aw-location-line {
-        font-size: 14pt;
-      }
-
-      .with-sender .aw-country-line {
-        font-size: 11pt;
-      }
-
-      /* The A4 label is shorter, so trim a little more to keep long addresses visible */
-      .a4-label.with-sender .aw-consignee-name {
-        font-size: 12pt;
-      }
-
-      .a4-label.with-sender .aw-consignee-company {
-        font-size: 9pt;
-      }
-
-      .a4-label.with-sender .aw-consignee .aw-consignee-address {
-        font-size: 9pt;
       }
 
       .aw-hawb {

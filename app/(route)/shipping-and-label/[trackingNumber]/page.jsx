@@ -15,6 +15,7 @@ import { format } from "date-fns"
 import JsBarcode from "jsbarcode"
 import { Input } from "@/components/ui/input"
 import { Textarea } from "@/components/ui/textarea"
+import { formatPhone } from "@/lib/utils"
 import {
   Dialog,
   DialogContent,
@@ -322,7 +323,7 @@ function EnhancedShippingPage(
       party.companyName,
       party.name,
       ...getAddressLines(party),
-      party.contact ? `Tel: ${party.contact}` : "",
+      party.contact ? `Tel: ${formatPhone(party.contact)}` : "",
       party.email ? `Email: ${party.email}` : "",
       party.kyc?.kyc ? `${party.kyc?.type || "KYC"} ${party.kyc.kyc}` : "",
       party.gst ? `GSTIN: ${party.gst}` : "",
@@ -448,7 +449,7 @@ function EnhancedShippingPage(
                 <p class="font-bold uppercase">${sender?.name || ""}</p>
                 ${sender?.companyName ? `<p class="font-bold uppercase">C/O ${sender?.companyName}</p>` : ""}
                 ${formatInvoiceAddress(sender)}
-                <p><strong>Cont No:</strong> ${sender?.contact || ""}</p>
+                <p><strong>Cont No:</strong> ${formatPhone(sender?.contact)}</p>
                 <p><strong>Email:</strong> ${sender?.email || ""}</p>
                 <p><strong>${sender?.kyc?.type || ""}</strong> ${sender?.kyc?.kyc || ""}</p>
             </div>
@@ -457,7 +458,7 @@ function EnhancedShippingPage(
                 <p class="font-bold uppercase">${awbData.receiver?.name}</p>
                 ${awbData.receiver?.companyName ? `<p class="font-bold uppercase">C/O ${awbData.receiver?.companyName}</p>` : ""}
                 ${formatInvoiceAddress(awbData.receiver)}
-                <p><strong>Cont No:</strong> ${awbData.receiver?.contact || ""}</p>
+                <p><strong>Cont No:</strong> ${formatPhone(awbData.receiver?.contact)}</p>
                 <p><strong>Email:</strong> ${awbData.receiver?.email || ""}</p>
             </div>
         </div>
@@ -553,8 +554,8 @@ function EnhancedShippingPage(
     const consigneeAddressLines = [receiver.address, receiver.address2, receiverCityLine].filter(Boolean)
     const senderCityLine = sender ? [sender.city, sender.state, sender.zip].filter(Boolean).join(", ") : ""
     const senderAddressLines = sender ? [sender.address, sender.address2, senderCityLine, sender.country].filter(Boolean) : []
-    const senderContact = sender?.contact
-    const receiverContact = receiver.contact
+    const senderContact = formatPhone(sender?.contact)
+    const receiverContact = formatPhone(receiver.contact)
     const rootClass = a4
       ? "a4-label aw-label"
       : `shipping-label aw-label${isLastLabel ? " last-label" : ""}`
@@ -847,7 +848,7 @@ function EnhancedShippingPage(
                     </div>
                     
                     <div class="mb-2">
-                        <p class="mb-2"><strong>Mobile No:${awbData?.sender?.companyName ? awbData?.sender?.contact || "________________" : "________________"}</strong></p>
+                        <p class="mb-2"><strong>Mobile No:${awbData?.sender?.companyName ? formatPhone(awbData?.sender?.contact) || "________________" : "________________"}</strong></p>
                     </div>
                     
                     <div class="mt-4">
@@ -883,7 +884,7 @@ function EnhancedShippingPage(
                     </div>
                     
                     <div class="mb-2">
-                        <p class="mb-4"><strong>Mobile No:</strong>${awbData?.sender?.companyName ? "________________" : awbData?.sender?.contact || "________________"}</p>
+                        <p class="mb-4"><strong>Mobile No:</strong>${awbData?.sender?.companyName ? "________________" : formatPhone(awbData?.sender?.contact) || "________________"}</p>
                     </div>
                 </div>
             </div>

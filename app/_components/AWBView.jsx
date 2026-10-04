@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import Image from "next/image";
 import { Printer } from "lucide-react";
+import { formatPhone } from "@/lib/utils";
 
 export default function AWBViewClient({ awbData }) {
   const [isPrinting, setIsPrinting] = useState(false);
@@ -162,7 +163,7 @@ function AddressBox({ data }) {
       <p className="font-semibold">{data?.name}</p>
       <p>{data?.address}</p>
       <p>{data?.country}</p>
-      <p>Contact: {data?.contact}</p>
+      <p>Contact: {formatPhone(data?.contact)}</p>
     </div>
   );
 }

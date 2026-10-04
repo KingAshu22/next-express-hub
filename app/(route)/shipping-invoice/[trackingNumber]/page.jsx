@@ -6,6 +6,7 @@ import axios from "axios"
 import { Loader2, Printer } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { format } from "date-fns"
+import { formatPhone } from "@/lib/utils"
 
 export default function ShippingInvoicePage() {
   const { trackingNumber } = useParams()
@@ -245,7 +246,7 @@ export default function ShippingInvoicePage() {
           ${awbData.sender?.companyName ? `<div class="bold up">C/O ${safe(awbData.sender?.companyName)}</div>` : ""}
           <div>${safe(awbData.sender?.address)}</div>
           <div><strong>Zip Code:</strong> ${safe(awbData.sender?.zip)} &nbsp;&nbsp; <strong>Country:</strong> ${safe(awbData.sender?.country)}</div>
-          <div><strong>Cont No:</strong> ${safe(awbData.sender?.contact)}</div>
+          <div><strong>Cont No:</strong> ${safe(formatPhone(awbData.sender?.contact))}</div>
           <div><strong>Email:</strong> ${safe(awbData.sender?.email) || "info@kargoone.com"}</div>
           ${
             awbData.sender?.kyc?.type || awbData.sender?.kyc?.kyc
@@ -259,7 +260,7 @@ export default function ShippingInvoicePage() {
           ${awbData.receiver?.companyName ? `<div class="bold up">C/O ${safe(awbData.receiver?.companyName)}</div>` : ""}
           <div>${safe(awbData.receiver?.address)}</div>
           <div><strong>Zip Code:</strong> ${safe(awbData.receiver?.zip)} &nbsp;&nbsp; <strong>Country:</strong> ${safe(awbData.receiver?.country)}</div>
-          <div><strong>Cont No:</strong> ${safe(awbData.receiver?.contact)}</div>
+          <div><strong>Cont No:</strong> ${safe(formatPhone(awbData.receiver?.contact))}</div>
           <div><strong>Email:</strong> ${safe(awbData.receiver?.email) || "info@kargoone.com"}</div>
         </div>
       </div>
@@ -515,7 +516,7 @@ export default function ShippingInvoicePage() {
                 {awbData.sender?.country}
               </p>
               <p>
-                <strong>Cont No:</strong> {awbData.sender?.contact}
+                <strong>Cont No:</strong> {formatPhone(awbData.sender?.contact)}
               </p>
               <p>
                 <strong>Email:</strong> {awbData.sender?.email || "info@kargoone.com"}
@@ -537,7 +538,7 @@ export default function ShippingInvoicePage() {
                 {awbData.receiver?.country}
               </p>
               <p>
-                <strong>Cont No:</strong> {awbData.receiver?.contact}
+                <strong>Cont No:</strong> {formatPhone(awbData.receiver?.contact)}
               </p>
               <p>
                 <strong>Email:</strong> {awbData.receiver?.email || "info@kargoone.com"}

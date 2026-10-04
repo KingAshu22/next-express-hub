@@ -7,6 +7,7 @@ import { Loader2, Printer } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import Barcode from "react-barcode"
 import JsBarcode from "jsbarcode"
+import { formatPhone } from "@/lib/utils"
 
 export default function Label() {
   const { trackingNumber } = useParams()
@@ -50,7 +51,7 @@ export default function Label() {
           <p><strong>Zip Code:</strong> ${awbData?.receiver?.zip || ""}</p>
           <p><strong>Country:</strong> ${awbData?.receiver?.country || ""}</p>
         </div>
-        <p>Cont No: ${awbData?.receiver?.contact || ""}</p>
+        <p>Cont No: ${formatPhone(awbData?.receiver?.contact)}</p>
       </div>
     `
   }
@@ -430,7 +431,7 @@ export default function Label() {
                   <strong>Country:</strong> {awbData.receiver?.country}
                 </p>
               </div>
-              <p className="mt-2">Cont No: {awbData.receiver?.contact}</p>
+              <p className="mt-2">Cont No: {formatPhone(awbData.receiver?.contact)}</p>
             </div>
           </div>
         ))}

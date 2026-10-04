@@ -1,4 +1,5 @@
 import React from "react";
+import { formatPhone } from "@/lib/utils";
 
 export default function ShippingDetails({ parcelDetails }) {
     if (!parcelDetails) return <p>Loading...</p>;
@@ -73,7 +74,7 @@ export default function ShippingDetails({ parcelDetails }) {
                                 {parcelDetails.sender?.name} <br />
                                 {parcelDetails.sender?.address}, {parcelDetails.sender?.zip}, {parcelDetails.sender?.country}
                                 <br />
-                                Contact No: {parcelDetails.sender?.contact} <br />
+                                Contact No: {formatPhone(parcelDetails.sender?.contact)} <br />
                                 {parcelDetails.sender?.kyc?.type} {parcelDetails.sender?.kyc?.kyc}
                             </td>
                             <td style={{ width: "50%" }}>
@@ -81,7 +82,7 @@ export default function ShippingDetails({ parcelDetails }) {
                                 {parcelDetails.receiver?.name} <br />
                                 {parcelDetails.receiver?.address}, {parcelDetails.receiver?.zip}, {parcelDetails.receiver?.country}
                                 <br />
-                                Contact No: {parcelDetails.receiver?.contact}
+                                Contact No: {formatPhone(parcelDetails.receiver?.contact)}
                             </td>
                         </tr>
                     </tbody>

@@ -42,6 +42,7 @@ import {
   Shield,
 } from "lucide-react"
 import axios from "axios"
+import { formatPhone } from "@/lib/utils"
 
 // ============================================
 // LabelCard Component
@@ -1917,7 +1918,7 @@ export default function AWBTrackingPage({ params }) {
                   {awbData.sender?.contact && (
                     <div className="flex items-center gap-2 text-sm text-gray-600">
                       <Phone className="h-4 w-4 text-gray-400" />
-                      {awbData.sender.contact}
+                      {formatPhone(awbData.sender.contact)}
                     </div>
                   )}
                 </div>
@@ -1941,7 +1942,7 @@ export default function AWBTrackingPage({ params }) {
                   {awbData.receiver?.contact && (
                     <div className="flex items-center gap-2 text-sm text-gray-600">
                       <Phone className="h-4 w-4 text-gray-400" />
-                      {awbData.receiver.contact}
+                      {formatPhone(awbData.receiver.contact)}
                     </div>
                   )}
                 </div>

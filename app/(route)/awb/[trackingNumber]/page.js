@@ -6,6 +6,7 @@ import Image from "next/image";
 import { Earth, Mail, MapPin, MoveRight, Phone, Printer } from "lucide-react";
 import Barcode from "react-barcode"; // Import the barcode package
 import Link from "next/link";
+import { formatPhone } from "@/lib/utils";
 
 export default function AWBView({ params }) {
   const { trackingNumber } = use(params);
@@ -295,7 +296,7 @@ function AddressBox({ data }) {
       {data?.address2 && <p>{data.address2}</p>}
       {cityState && <p>{cityState}</p>}
       {zipCountry && <p>{zipCountry}</p>}
-      <p>Contact: {data?.contact}</p>
+      <p>Contact: {formatPhone(data?.contact)}</p>
     </div>
   );
 }

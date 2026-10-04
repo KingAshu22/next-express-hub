@@ -1,4 +1,5 @@
 import { Card } from "@/components/ui/card"
+import { formatPhone } from "@/lib/utils"
 import { MapPin, Package, User, DollarSign } from "lucide-react"
 
 export default function ShipmentDetails({ awbData }) {
@@ -16,7 +17,7 @@ export default function ShipmentDetails({ awbData }) {
               <p className="text-slate-400 text-sm">
                 {awbData.sender?.city}, {awbData.sender?.zip}
               </p>
-              <p className="text-slate-400 text-sm">{awbData.sender?.contact}</p>
+              <p className="text-slate-400 text-sm">{formatPhone(awbData.sender?.contact)}</p>
             </div>
           </div>
         </div>
@@ -35,7 +36,7 @@ export default function ShipmentDetails({ awbData }) {
                 {awbData.receiver?.city}, {awbData.receiver?.zip}
               </p>
               <p className="text-slate-400 text-sm">{awbData.receiver?.country}</p>
-              <p className="text-slate-400 text-sm">{awbData.receiver?.contact}</p>
+              <p className="text-slate-400 text-sm">{formatPhone(awbData.receiver?.contact)}</p>
             </div>
           </div>
         </div>

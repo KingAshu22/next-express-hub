@@ -2,11 +2,40 @@
 
 import { useState, useEffect } from "react";
 import { useParams } from "next/navigation";
+import Link from "next/link";
 import axios from "axios";
-import { Loader2 } from "lucide-react";
+import { Loader2, PackageSearch, AlertCircle } from "lucide-react";
 import TrackingDetails from "@/app/_components/TrackingDetails";
 import FrontHeader from "@/app/_components/FrontHeader";
 import Footer from "@/app/_components/Footer";
+
+// Shared shell for the loading / error / not-found states so they sit under
+// the same light backdrop as the tracking page itself.
+function StateScreen({ icon, title, message, showBack }) {
+  return (
+    <>
+      <FrontHeader />
+      <div className="min-h-screen bg-slate-50 flex items-center justify-center px-4 pt-28 pb-16">
+        <div className="w-full max-w-md bg-white rounded-3xl border border-slate-200 shadow-sm p-8 text-center">
+          <div className="w-16 h-16 mx-auto rounded-2xl bg-primary/10 text-primary flex items-center justify-center mb-4">
+            {icon}
+          </div>
+          <h1 className="text-xl font-bold text-slate-900">{title}</h1>
+          {message && <p className="text-sm text-slate-500 mt-2">{message}</p>}
+          {showBack && (
+            <Link
+              href="/track"
+              className="inline-flex items-center justify-center mt-6 text-sm font-bold text-primary-darker bg-accent hover:bg-accent-dark rounded-xl px-5 py-2.5 transition-colors"
+            >
+              Track another shipment
+            </Link>
+          )}
+        </div>
+      </div>
+      <Footer />
+    </>
+  );
+}
 
 export default function TrackingPage() {
   const { trackingNumber } = useParams();
@@ -35,42 +64,40 @@ export default function TrackingPage() {
 
   if (loading) {
     return (
-      <div className="flex justify-center items-center min-h-screen bg-gradient-to-b from-indigo-50 to-white">
-        <Loader2 className="w-8 h-8 animate-spin text-indigo-600" />
-      </div>
+      <StateScreen
+        icon={<Loader2 className="w-8 h-8 animate-spin" />}
+        title="Finding your shipment…"
+        message={`Tracking number ${trackingNumber}`}
+      />
     );
   }
 
   if (error) {
     return (
-      <div className="container mx-auto px-4 py-8 bg-gradient-to-b from-indigo-50 to-white min-h-screen">
-        <h1 className="text-4xl font-bold mb-8 text-center text-red-600">
-          Error
-        </h1>
-        <p className="text-center text-xl">{error}</p>
-      </div>
+      <StateScreen
+        icon={<AlertCircle className="w-8 h-8" />}
+        title="Something went wrong"
+        message="We couldn't load this shipment right now. Please try again in a moment."
+        showBack
+      />
     );
   }
 
   if (!awbData) {
     return (
-      <div className="container mx-auto px-4 py-8 bg-gradient-to-b from-indigo-50 to-white min-h-screen">
-        <h1 className="text-4xl font-bold mb-8 text-center text-indigo-800">
-          No Data Found
-        </h1>
-        <p className="text-center text-xl">
-          No tracking information found for the given tracking number.
-        </p>
-      </div>
+      <StateScreen
+        icon={<PackageSearch className="w-8 h-8" />}
+        title="No shipment found"
+        message={`We couldn't find tracking information for ${trackingNumber}. Please check the number and try again.`}
+        showBack
+      />
     );
   }
 
   return (
     <>
-      <FrontHeader className="mb-4" />
-      <div className="container mx-auto px-4 py-20 bg-gradient-to-b from-indigo-50 to-white">
-        <TrackingDetails parcelDetails={awbData} />
-      </div>
+      <FrontHeader />
+      <TrackingDetails parcelDetails={awbData} />
       <Footer />
     </>
   );

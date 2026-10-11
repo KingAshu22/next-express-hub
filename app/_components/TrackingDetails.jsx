@@ -6,8 +6,7 @@ import {
   Package, Truck, Plane, Home, CheckCircle, AlertCircle, Clock,
   MapPin, RefreshCw, Loader2, CircleDot, PackageX, Warehouse,
   ClipboardCheck, Navigation, Calendar, Copy, Check,
-  ExternalLink, Globe, CalendarCheck, Route,
-  User, Phone, ArrowRight, TrendingUp,
+  ExternalLink, Globe, Route, User, Phone,
 } from "lucide-react";
 import { FaWhatsapp } from "react-icons/fa";
 import Barcode from "react-barcode";
@@ -65,50 +64,68 @@ const sanitizeComment = (comment) => {
   return c;
 };
 
-// Status → color language used across the hero bar and history timeline so
-// each stage of the journey reads as a distinct color, not just two tones.
+// Status → color tone. The tone of the latest status drives the status card,
+// the progress steps, the map route and the "Latest update" entry in the
+// shipment history, so the current state reads as one color across the page.
+const TONES = {
+  emerald: { hex: "#059669", text: "text-emerald-700", solid: "bg-emerald-600", soft: "bg-emerald-50", border: "border-emerald-200", pill: "bg-emerald-100 text-emerald-800", outline: "border-emerald-500 text-emerald-600" },
+  orange:  { hex: "#ea580c", text: "text-orange-700",  solid: "bg-orange-600",  soft: "bg-orange-50",  border: "border-orange-200",  pill: "bg-orange-100 text-orange-800",   outline: "border-orange-500 text-orange-600" },
+  red:     { hex: "#dc2626", text: "text-red-700",     solid: "bg-red-600",     soft: "bg-red-50",     border: "border-red-200",     pill: "bg-red-100 text-red-800",         outline: "border-red-500 text-red-600" },
+  indigo:  { hex: "#4f46e5", text: "text-indigo-700",  solid: "bg-indigo-600",  soft: "bg-indigo-50",  border: "border-indigo-200",  pill: "bg-indigo-100 text-indigo-800",   outline: "border-indigo-500 text-indigo-600" },
+  amber:   { hex: "#d97706", text: "text-amber-700",   solid: "bg-amber-600",   soft: "bg-amber-50",   border: "border-amber-200",   pill: "bg-amber-100 text-amber-800",     outline: "border-amber-500 text-amber-600" },
+  teal:    { hex: "#0d9488", text: "text-teal-700",    solid: "bg-teal-600",    soft: "bg-teal-50",    border: "border-teal-200",    pill: "bg-teal-100 text-teal-800",       outline: "border-teal-500 text-teal-600" },
+  blue:    { hex: "#2563eb", text: "text-blue-700",    solid: "bg-blue-600",    soft: "bg-blue-50",    border: "border-blue-200",    pill: "bg-blue-100 text-blue-800",       outline: "border-blue-500 text-blue-600" },
+  violet:  { hex: "#7c3aed", text: "text-violet-700",  solid: "bg-violet-600",  soft: "bg-violet-50",  border: "border-violet-200",  pill: "bg-violet-100 text-violet-800",   outline: "border-violet-500 text-violet-600" },
+  sky:     { hex: "#0284c7", text: "text-sky-700",     solid: "bg-sky-600",     soft: "bg-sky-50",     border: "border-sky-200",     pill: "bg-sky-100 text-sky-800",         outline: "border-sky-500 text-sky-600" },
+};
+
 const getStatusMeta = (status) => {
   const s = String(status || "").toLowerCase();
   if (s.includes("delivered"))
-    return { label: "Delivered", pillBg: "bg-emerald-100", pillText: "text-emerald-700", dot: "bg-emerald-500", solid: "bg-emerald-600", solidHover: "hover:bg-emerald-700", iconBg: "bg-emerald-50", iconText: "text-emerald-600", border: "border-emerald-300", shadow: "shadow-emerald-200" };
+    return { label: "Delivered", ...TONES.emerald };
   if (s.includes("hold") || s.includes("address incorrect") || s.includes("address correction") || s.includes("suspicious"))
-    return { label: "On Hold", pillBg: "bg-orange-100", pillText: "text-orange-700", dot: "bg-orange-500", solid: "bg-orange-600", solidHover: "hover:bg-orange-700", iconBg: "bg-orange-50", iconText: "text-orange-600", border: "border-orange-300", shadow: "shadow-orange-200" };
+    return { label: "On Hold", ...TONES.orange };
   if (s.includes("unsuccessful") || s.includes("failed") || s.includes("exception") || (s.includes("delay") && !s.includes("flight")))
-    return { label: "Exception", pillBg: "bg-red-100", pillText: "text-red-700", dot: "bg-red-500", solid: "bg-red-600", solidHover: "hover:bg-red-700", iconBg: "bg-red-50", iconText: "text-red-600", border: "border-red-300", shadow: "shadow-red-200" };
+    return { label: "Exception", ...TONES.red };
   if (s.includes("out for delivery"))
-    return { label: "Out for Delivery", pillBg: "bg-indigo-100", pillText: "text-indigo-700", dot: "bg-indigo-500", solid: "bg-indigo-600", solidHover: "hover:bg-indigo-700", iconBg: "bg-indigo-50", iconText: "text-indigo-600", border: "border-indigo-300", shadow: "shadow-indigo-200" };
+    return { label: "Out for Delivery", ...TONES.indigo };
   if (s.includes("customs") || s.includes("clearance") || s.includes("brokerage"))
-    return { label: "Customs", pillBg: "bg-amber-100", pillText: "text-amber-700", dot: "bg-amber-500", solid: "bg-amber-600", solidHover: "hover:bg-amber-700", iconBg: "bg-amber-50", iconText: "text-amber-600", border: "border-amber-300", shadow: "shadow-amber-200" };
+    return { label: "Customs", ...TONES.amber };
   if (s.includes("arrived") || s.includes("received") || s.includes("facility"))
-    return { label: "At Facility", pillBg: "bg-cyan-100", pillText: "text-cyan-700", dot: "bg-cyan-500", solid: "bg-cyan-600", solidHover: "hover:bg-cyan-700", iconBg: "bg-cyan-50", iconText: "text-cyan-600", border: "border-cyan-300", shadow: "shadow-cyan-200" };
+    return { label: "At Facility", ...TONES.teal };
   if (s.includes("transit") || s.includes("departed") || s.includes("dispatch") || s.includes("export") || s.includes("flight") || s.includes("airport") || s.includes("hub"))
-    return { label: "In Transit", pillBg: "bg-blue-100", pillText: "text-blue-700", dot: "bg-blue-500", solid: "bg-blue-600", solidHover: "hover:bg-blue-700", iconBg: "bg-blue-50", iconText: "text-blue-600", border: "border-blue-300", shadow: "shadow-blue-200" };
+    return { label: "In Transit", ...TONES.blue };
   if (s.includes("booked") || s.includes("created") || s.includes("label") || s.includes("pickup") || s.includes("prepared"))
-    return { label: "Booked", pillBg: "bg-violet-100", pillText: "text-violet-700", dot: "bg-violet-500", solid: "bg-violet-600", solidHover: "hover:bg-violet-700", iconBg: "bg-violet-50", iconText: "text-violet-600", border: "border-violet-300", shadow: "shadow-violet-200" };
-  return { label: "In Progress", pillBg: "bg-slate-100", pillText: "text-slate-700", dot: "bg-slate-400", solid: "bg-slate-600", solidHover: "hover:bg-slate-700", iconBg: "bg-slate-50", iconText: "text-slate-600", border: "border-slate-300", shadow: "shadow-slate-200" };
+    return { label: "Booked", ...TONES.violet };
+  return { label: "In Progress", ...TONES.sky };
 };
 
-const getStatusIcon = (status) => {
+const pickStatusIcon = (status) => {
   const s = (status || "").toLowerCase();
-  if (s.includes("delivered"))        return <Home           className="w-4 h-4" />;
+  if (s.includes("delivered"))        return Home;
   if (s.includes("hold") || s.includes("address incorrect") || s.includes("address correction") || s.includes("suspicious"))
-                                       return <AlertCircle     className="w-4 h-4" />;
-  if (s.includes("out for delivery")) return <Truck          className="w-4 h-4" />;
+                                       return AlertCircle;
+  if (s.includes("out for delivery")) return Truck;
   if (s.includes("customs") || s.includes("clearance") || s.includes("brokerage"))
-                                       return <ClipboardCheck className="w-4 h-4" />;
+                                       return ClipboardCheck;
   if (s.includes("arrived") || s.includes("received") || s.includes("facility"))
-                                       return <Warehouse      className="w-4 h-4" />;
+                                       return Warehouse;
   if (s.includes("departed") || s.includes("transit") || s.includes("dispatch") || s.includes("export"))
-                                       return <Navigation     className="w-4 h-4" />;
+                                       return Navigation;
   if (s.includes("flight") || s.includes("airport") || s.includes("hub"))
-                                       return <Plane          className="w-4 h-4" />;
+                                       return Plane;
   if (s.includes("booked") || s.includes("created") || s.includes("label") || s.includes("pickup"))
-                                       return <Package        className="w-4 h-4" />;
+                                       return Package;
   if (s.includes("unsuccessful") || s.includes("failed") || s.includes("exception") || s.includes("delay"))
-                                       return <PackageX       className="w-4 h-4" />;
+                                       return PackageX;
   if (s.includes("processing") || s.includes("scan"))
-                                       return <CircleDot      className="w-4 h-4" />;
-  return <CheckCircle className="w-4 h-4" />;
+                                       return CircleDot;
+  return CheckCircle;
+};
+
+const StatusIcon = ({ status, className = "w-4 h-4" }) => {
+  const Icon = pickStatusIcon(status);
+  return <Icon className={className} />;
 };
 
 const parseTime12Hour = (t) => {
@@ -303,9 +320,10 @@ const geocode = async (q) => {
 // ─────────────────────────────────────────────
 // MAP COMPONENT  (simple origin → destination route)
 // ─────────────────────────────────────────────
-const ShipmentMap = ({ origin, destination, progress, isDelivered }) => {
+const ShipmentMap = ({ origin, destination, progress, accent = "#2563eb" }) => {
   const mapDiv      = useRef(null);
   const mapInst     = useRef(null);
+  const routeLayer  = useRef(null);
   const boxMarker   = useRef(null);
 
   const [coords,    setCoords]    = useState(null);  // { from, to }
@@ -339,7 +357,6 @@ const ShipmentMap = ({ origin, destination, progress, isDelivered }) => {
       const arc = greatCircle(from.lat, from.lng, to.lat, to.lng, 120);
       const clamped  = Math.min(Math.max(progress || 10, 0), 100);
       const boxIdx   = Math.floor((clamped / 100) * (arc.length - 1));
-      const accent   = isDelivered ? "#10b981" : "#2563eb";
 
       if (!mapInst.current) {
         mapInst.current = L.map(mapDiv.current, {
@@ -364,15 +381,20 @@ const ShipmentMap = ({ origin, destination, progress, isDelivered }) => {
 
       const map = mapInst.current;
 
+      // redraw the route from scratch on every run
+      if (routeLayer.current) routeLayer.current.remove();
+      routeLayer.current = L.layerGroup().addTo(map);
+      const layer = routeLayer.current;
+
       // dashed full route
       L.polyline(arc, {
         color: "#cbd5e1", weight: 2.5, opacity: 0.85, dashArray: "6 8",
-      }).addTo(map);
+      }).addTo(layer);
 
       // travelled portion
       L.polyline(arc.slice(0, boxIdx + 1), {
         color: accent, weight: 3.5, opacity: 1,
-      }).addTo(map);
+      }).addTo(layer);
 
       // origin marker
       L.marker([from.lat, from.lng], {
@@ -381,7 +403,7 @@ const ShipmentMap = ({ origin, destination, progress, isDelivered }) => {
           html: `<div style="width:14px;height:14px;background:#10b981;border:3px solid white;border-radius:50%;box-shadow:0 2px 8px rgba(16,185,129,.6);"></div>`,
           iconAnchor: [7, 7],
         }),
-      }).addTo(map).bindTooltip(`<b>${from.name}</b>`, { direction: "top", className: "tmap-tip" });
+      }).addTo(layer).bindTooltip(`<b>${from.name}</b>`, { direction: "top", className: "tmap-tip" });
 
       // destination marker (pulsing)
       L.marker([to.lat, to.lng], {
@@ -393,7 +415,7 @@ const ShipmentMap = ({ origin, destination, progress, isDelivered }) => {
             </div>`,
           iconAnchor: [12, 12],
         }),
-      }).addTo(map).bindTooltip(`<b>${to.name}</b>`, { direction: "top", className: "tmap-tip" });
+      }).addTo(layer).bindTooltip(`<b>${to.name}</b>`, { direction: "top", className: "tmap-tip" });
 
       // moving box marker at the current progress point
       const boxHTML = `
@@ -410,11 +432,10 @@ const ShipmentMap = ({ origin, destination, progress, isDelivered }) => {
             <path d="M12 22V12"/>
           </svg>
         </div>`;
-      if (boxMarker.current) { try { map.removeLayer(boxMarker.current); } catch {} }
       boxMarker.current = L.marker(arc[boxIdx], {
         icon: L.divIcon({ className: "", html: boxHTML, iconAnchor: [18, 18] }),
         zIndexOffset: 1000,
-      }).addTo(map);
+      }).addTo(layer);
 
       map.fitBounds(
         L.latLngBounds([from.lat, from.lng], [to.lat, to.lng]).pad(0.3),
@@ -425,7 +446,7 @@ const ShipmentMap = ({ origin, destination, progress, isDelivered }) => {
     });
 
     return () => { destroyed = true; };
-  }, [coords, progress, isDelivered]);
+  }, [coords, progress, accent]);
 
   // cleanup on unmount
   useEffect(
@@ -487,85 +508,79 @@ const ShipmentMap = ({ origin, destination, progress, isDelivered }) => {
 // ─────────────────────────────────────────────
 // PROGRESS STEPS COMPONENT
 // ─────────────────────────────────────────────
-const ProgressSteps = ({ progress, isDelivered }) => {
-  const steps = [
-    { label: "Booked",     pct: 10,  icon: Package        },
-    { label: "In Transit", pct: 45,  icon: Truck          },
-    { label: "Customs",    pct: 65,  icon: ClipboardCheck },
-    { label: "Delivery",   pct: 85,  icon: Navigation     },
-    { label: "Delivered",  pct: 100, icon: Home           },
-  ];
+const PROGRESS_STEPS = [
+  { label: "Booked",           pct: 10,  icon: Package        },
+  { label: "In Transit",       pct: 45,  icon: Plane          },
+  { label: "Customs",          pct: 65,  icon: ClipboardCheck },
+  { label: "Out for Delivery", pct: 85,  icon: Truck          },
+  { label: "Delivered",        pct: 100, icon: Home           },
+];
+
+const ProgressSteps = ({ progress, tone }) => {
+  // Steps are spaced evenly, so map the progress % onto step positions
+  // rather than using it as a raw bar width.
+  let doneIdx = -1;
+  PROGRESS_STEPS.forEach((s, i) => { if (progress >= s.pct) doneIdx = i; });
+  const cur  = PROGRESS_STEPS[doneIdx];
+  const next = PROGRESS_STEPS[doneIdx + 1];
+  const frac = cur && next ? (progress - cur.pct) / (next.pct - cur.pct) : 0;
+  const fill = doneIdx < 0 ? 0 : ((doneIdx + frac) / (PROGRESS_STEPS.length - 1)) * 100;
 
   return (
-    <div className="px-5 py-5">
-      <div className="relative">
-        {/* Track bar */}
-        <div className="absolute top-5 left-5 right-5 h-1.5 bg-slate-100 rounded-full overflow-hidden">
-          <div
-            className="h-full rounded-full transition-all duration-700 ease-out"
-            style={{
-              width: `${progress}%`,
-              background: isDelivered
-                ? "linear-gradient(90deg,#34d399,#059669)"
-                : "linear-gradient(90deg,#3b82f6,#2563eb)",
-            }}
-          />
-        </div>
-
-        {/* Steps */}
-        <div className="relative flex justify-between">
-          {steps.map((step, i) => {
-            const done   = progress >= step.pct;
-            const active = !done && progress >= (steps[i - 1]?.pct ?? 0);
-            const Icon   = step.icon;
-            return (
-              <div key={step.label} className="flex flex-col items-center gap-2">
-                <div
-                  className={`w-10 h-10 rounded-full flex items-center justify-center border-2 transition-all duration-500 ${
-                    done
-                      ? isDelivered
-                        ? "bg-emerald-500 border-emerald-500 text-white shadow-md shadow-emerald-200"
-                        : "bg-blue-600 border-blue-600 text-white shadow-md shadow-blue-200"
-                      : active
-                      ? "bg-white border-blue-400 text-blue-500 shadow-sm"
-                      : "bg-white border-slate-200 text-slate-300"
-                  }`}
-                >
-                  <Icon className="w-4 h-4" />
-                </div>
-                <span
-                  className={`text-[11px] font-semibold text-center leading-tight ${
-                    done
-                      ? isDelivered
-                        ? "text-emerald-600"
-                        : "text-blue-600"
-                      : active
-                      ? "text-blue-500"
-                      : "text-slate-400"
-                  }`}
-                >
-                  {step.label}
-                </span>
-              </div>
-            );
-          })}
-        </div>
+    <div className="relative">
+      {/* Track bar */}
+      <div className="absolute top-4 sm:top-[18px] left-4 right-4 sm:left-5 sm:right-5 h-1 bg-slate-200 rounded-full overflow-hidden">
+        <div
+          className={`h-full rounded-full transition-all duration-700 ease-out ${tone.solid}`}
+          style={{ width: `${fill}%` }}
+        />
       </div>
+
+      {/* Steps */}
+      <ol className="relative flex justify-between">
+        {PROGRESS_STEPS.map((step, i) => {
+          const done   = i <= doneIdx;
+          const active = i === doneIdx + 1;
+          const Icon   = step.icon;
+          return (
+            <li key={step.label} className="flex flex-col items-center gap-1.5 w-9 sm:w-10">
+              <div
+                className={`w-9 h-9 sm:w-10 sm:h-10 rounded-full flex items-center justify-center border-2 transition-all duration-500 ${
+                  done
+                    ? `${tone.solid} border-transparent text-white shadow-md`
+                    : active
+                    ? `bg-white ${tone.outline}`
+                    : "bg-white border-slate-200 text-slate-300"
+                }`}
+              >
+                {done ? <Check className="w-4 h-4" strokeWidth={3} /> : <Icon className="w-4 h-4" />}
+              </div>
+              <span
+                className={`text-[10px] sm:text-xs font-semibold text-center leading-tight whitespace-normal w-16 sm:w-24 ${
+                  done ? tone.text : active ? "text-slate-700" : "text-slate-400"
+                }`}
+              >
+                {step.label}
+              </span>
+            </li>
+          );
+        })}
+      </ol>
     </div>
   );
 };
 
 // ─────────────────────────────────────────────
-// SECTION HEADER (reusable)
+// SMALL BUILDING BLOCKS
 // ─────────────────────────────────────────────
-const SectionHeader = ({ icon: Icon, title, subtitle, right, iconBg = "bg-blue-50", iconColor = "text-blue-600" }) => (
-  <div className="px-5 py-4 border-b border-slate-100 flex items-center justify-between gap-3">
+const SectionHeader = ({ icon: Icon, title, subtitle, right }) => (
+  <div className="px-5 sm:px-6 py-4 border-b border-slate-100 flex items-center justify-between gap-3">
     <div className="flex items-center gap-3 min-w-0">
-      <div className={`w-9 h-9 ${iconBg} rounded-xl flex items-center justify-center shrink-0`}>
-        <Icon className={`w-4.5 h-4.5 ${iconColor}`} />
+      <div className="w-10 h-10 bg-primary/10 rounded-xl flex items-center justify-center shrink-0">
+        <Icon className="w-5 h-5 text-primary" />
       </div>
       <div className="min-w-0">
-        <p className="text-[15px] font-semibold text-slate-900 leading-tight">{title}</p>
+        <h2 className="text-base font-bold text-slate-900 leading-tight">{title}</h2>
         {subtitle && <p className="text-xs text-slate-500 mt-0.5 truncate">{subtitle}</p>}
       </div>
     </div>
@@ -573,20 +588,56 @@ const SectionHeader = ({ icon: Icon, title, subtitle, right, iconBg = "bg-blue-5
   </div>
 );
 
-// ─────────────────────────────────────────────
-// FLAG ICON  (flagicons.lipis.dev, keyed off ISO-3166-1 alpha-2)
-// ─────────────────────────────────────────────
-const FlagIcon = ({ url, alt }) =>
+// Flag from flagicons.lipis.dev, keyed off ISO-3166-1 alpha-2
+const FlagIcon = ({ url, alt, className = "w-5 h-3.5 rounded-[2px]" }) =>
   url ? (
     <img
       src={url}
       alt={alt}
-      className="w-5 h-3.5 rounded-[2px] object-cover shrink-0 ring-1 ring-black/5"
+      className={`${className} object-cover shrink-0 ring-1 ring-black/10`}
       loading="lazy"
     />
   ) : (
-    <Globe className="w-4 h-4 text-slate-400 shrink-0" />
+    <Globe className="w-6 h-6 text-slate-400 shrink-0" />
   );
+
+const RouteEnd = ({ eyebrow, flagUrl, label, city, alignRight = false }) => (
+  <div className={`min-w-0 flex flex-col ${alignRight ? "items-end text-right" : "items-start"}`}>
+    <p className="text-[11px] sm:text-xs uppercase tracking-[0.16em] text-slate-400 font-semibold mb-1">
+      {eyebrow}
+    </p>
+    <div className={`flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-3 ${alignRight ? "items-end" : "items-start"}`}>
+      <FlagIcon url={flagUrl} alt={label} className="w-8 h-6 sm:w-10 sm:h-[30px] rounded-md shadow-sm" />
+      <span className="text-2xl sm:text-3xl xl:text-4xl font-extrabold text-slate-900 tracking-tight leading-none break-words">
+        {label}
+      </span>
+    </div>
+    {city && <p className="text-sm text-slate-500 mt-1.5 max-w-full truncate">{city}</p>}
+  </div>
+);
+
+const PartyBlock = ({ dotClass, eyebrow, place, name, phone, address }) => (
+  <div className="relative pl-8">
+    <span className={`absolute left-0 top-0.5 w-4 h-4 rounded-full border-4 border-white shadow ring-1 ring-slate-200 ${dotClass}`} />
+    <p className="text-[11px] uppercase tracking-wider text-slate-400 font-semibold">{eyebrow}</p>
+    <p className="text-base font-bold text-slate-900 mt-0.5">{place}</p>
+    {name && (
+      <p className="flex items-center gap-2 mt-2 text-sm text-slate-700 font-medium">
+        <User className="w-4 h-4 text-slate-400 shrink-0" />
+        <span className="min-w-0 break-words">{name}</span>
+      </p>
+    )}
+    {phone && (
+      <p className="flex items-center gap-2 mt-1.5 text-sm text-slate-700">
+        <Phone className="w-4 h-4 text-slate-400 shrink-0" />
+        <span>{phone}</span>
+      </p>
+    )}
+    {address && <p className="text-sm text-slate-500 mt-2 leading-relaxed break-words">{address}</p>}
+  </div>
+);
+
+const DAY_MS = 24 * 60 * 60 * 1000;
 
 // ─────────────────────────────────────────────
 // MAIN COMPONENT
@@ -624,6 +675,8 @@ export default function TrackingDetails({ parcelDetails }) {
   const destFlagUrl   = flagIconUrl(destCode);
   const originLabel = countryLabel(originCountry, originCode);
   const destLabel   = countryLabel(destinationCountry, destCode);
+  const originCity  = parcelDetails?.sender?.city   || "";
+  const destCity    = parcelDetails?.receiver?.city || "";
 
   const sName  = parcelDetails?.sender?.name    || "";
   const sPhone = parcelDetails?.sender?.phone   || "";
@@ -649,14 +702,14 @@ export default function TrackingDetails({ parcelDetails }) {
     .join(", ");
 
   const copyTrack = () => {
-    navigator.clipboard.writeText(trackNum);
+    navigator.clipboard?.writeText(String(trackNum));
     setCopied(true);
     setTimeout(() => setCopied(false), 2000);
   };
 
   const copyFwd = () => {
     if (fwdNumber) {
-      navigator.clipboard.writeText(fwdNumber);
+      navigator.clipboard?.writeText(String(fwdNumber));
       setCopiedFwd(true);
       setTimeout(() => setCopiedFwd(false), 2000);
     }
@@ -754,139 +807,169 @@ export default function TrackingDetails({ parcelDetails }) {
     }
   }, [vendorData, parcelDetails]);
 
-  const latestStatus = timeline[0]?.status   || "Awaiting Updates";
-  const latestLoc    = timeline[0]?.location || "";
+  if (!parcelDetails) return null;
+
+  const latest       = timeline[0];
+  const earlier      = timeline.slice(1);
+  const latestStatus = latest?.status   || "Awaiting Updates";
+  const latestLoc    = latest?.location || "";
   const isDelivered  = latestStatus.toLowerCase().includes("delivered");
   const progress     = calcProgress(latestStatus, timeline);
-  const grouped      = groupByDate(timeline);
+  const grouped      = groupByDate(earlier);
   const anyLoading   = isLoading;
-  const statusMeta   = getStatusMeta(latestStatus);
+  const fetchingFirst = anyLoading && timeline.length === 0;
+  // One tone for the current state — shared by the status card, the progress
+  // steps, the map route and the "Latest update" entry in the history.
+  const tone         = getStatusMeta(latestStatus);
 
-  if (!parcelDetails) return null;
+  const dated     = timeline.filter((e) => e.timestamp > 0);
+  const firstTs   = dated.length ? dated[dated.length - 1].timestamp : 0;
+  const lastTs    = dated.length ? dated[0].timestamp : 0;
+  const transitDays = firstTs
+    ? Math.max(1, Math.ceil(((isDelivered ? lastTs : Date.now()) - firstTs) / DAY_MS))
+    : 0;
 
   const refreshAll = () => {
     if (doVendor) fetchVendor();
   };
 
   return (
-    <div className="w-full min-h-screen bg-slate-50 font-sans text-slate-900">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 sm:py-8">
+    <div className="w-full bg-slate-50 font-sans text-slate-900">
+      <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 pt-28 md:pt-32 pb-12 sm:pb-16">
+
+        {/* Page heading */}
+        <div className="flex items-center justify-between gap-4 mb-4">
+          <p className="inline-flex items-center gap-2 text-xs font-bold uppercase tracking-[0.18em] text-primary">
+            <Package className="w-4 h-4" />
+            Shipment Tracking
+          </p>
+          <a href="/track" className="text-sm font-semibold text-primary hover:underline whitespace-nowrap">
+            Track another shipment
+          </a>
+        </div>
 
         {/* ──────────────────────────────────────
-            HERO: barcode + big tracking no + forwarding (left)
-                  route with flags (top right)
-                  colored status row (bottom)
+            SUMMARY CARD
+            route (large) → tracking / forwarding numbers →
+            latest status → progress → facts
         ────────────────────────────────────── */}
-        <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden mb-6">
-          <div className="p-5 sm:p-6">
-            <div className="flex flex-col lg:flex-row lg:items-start lg:justify-between gap-5">
-              {/* LEFT: barcode + big tracking number + forwarding */}
-              <div className="min-w-0 flex-1">
-                <div className="flex flex-col xs:flex-row xs:items-center gap-3 sm:gap-4">
-                  <div className="bg-slate-50 border border-slate-100 rounded-xl px-3 py-2 inline-flex items-center shrink-0 self-start">
-                    <Barcode
-                      value={String(trackNum || "0")}
-                      width={1.4}
-                      height={40}
-                      margin={0}
-                      displayValue={false}
-                      background="transparent"
-                      lineColor="#0f172a"
-                    />
+        <section className="bg-white rounded-3xl border border-slate-200 shadow-sm overflow-hidden">
+          <div className={`h-1.5 ${tone.solid}`} />
+
+          {/* Route (left) + tracking / forwarding numbers (right) */}
+          <div className="px-5 sm:px-6 py-5 grid grid-cols-1 lg:grid-cols-2 gap-5 lg:gap-8 lg:items-center">
+            {/* Route */}
+            <div className="flex items-center gap-3 sm:gap-5 min-w-0">
+              <RouteEnd eyebrow="From" flagUrl={originFlagUrl} label={originLabel} city={originCity} />
+              <div className="flex-1 min-w-[48px] flex items-center gap-1.5 sm:gap-3" aria-hidden="true">
+                <span className="w-2 h-2 rounded-full bg-slate-300 shrink-0" />
+                <span className="flex-1 border-t-2 border-dashed border-slate-300" />
+                <span className="w-9 h-9 sm:w-10 sm:h-10 rounded-full bg-primary text-white flex items-center justify-center shadow-md shrink-0">
+                  <Plane className="w-4 h-4 sm:w-5 sm:h-5" />
+                </span>
+                <span className="flex-1 border-t-2 border-dashed border-slate-300" />
+                <span className="w-2 h-2 rounded-full bg-slate-300 shrink-0" />
+              </div>
+              <RouteEnd eyebrow="To" flagUrl={destFlagUrl} label={destLabel} city={destCity} alignRight />
+            </div>
+
+            {/* Tracking number + forwarding number */}
+            <div className="grid grid-cols-1 gap-3 min-w-0">
+              {/* Tracking number */}
+              <div className="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 flex flex-wrap items-center justify-between gap-3">
+                <div className="min-w-0">
+                  <p className="text-[11px] uppercase tracking-wider text-slate-500 font-semibold mb-1">
+                    Tracking Number
+                  </p>
+                  <div className="flex items-center gap-2.5">
+                    <h1 className="font-mono text-xl sm:text-2xl font-bold text-primary-darker tracking-wide leading-none break-all">
+                      {trackNum}
+                    </h1>
+                    <button
+                      onClick={copyTrack}
+                      className="inline-flex items-center justify-center w-8 h-8 rounded-lg text-slate-600 bg-white border border-slate-200 hover:bg-slate-100 transition-colors shrink-0"
+                      title="Copy tracking number"
+                      aria-label="Copy tracking number"
+                    >
+                      {copied ? <Check className="w-4 h-4 text-emerald-600" /> : <Copy className="w-4 h-4" />}
+                    </button>
                   </div>
+                </div>
+                <div className="bg-white border border-slate-200 rounded-lg px-2.5 py-1.5 max-w-full overflow-hidden shrink-0">
+                  <Barcode
+                    value={String(trackNum || "0")}
+                    width={1.1}
+                    height={30}
+                    margin={0}
+                    displayValue={false}
+                    background="transparent"
+                    lineColor="#0d2847"
+                  />
+                </div>
+              </div>
+
+              {/* Forwarding number — amber, so it never reads as the tracking number */}
+              {fwdNumber && (
+                <div className="rounded-2xl border border-amber-300 bg-amber-50 px-4 py-3 flex flex-wrap items-center justify-between gap-3">
                   <div className="min-w-0">
-                    <p className="text-[11px] uppercase tracking-wider text-slate-400 font-semibold mb-0.5">
-                      Tracking Number
+                    <p className="text-[11px] uppercase tracking-wider text-amber-700 font-bold mb-1">
+                      Forwarding Number{fwdCarrier ? ` · ${fwdCarrier.toUpperCase()}` : ""}
                     </p>
-                    <div className="flex items-center gap-2">
-                      <h1 className="text-2xl sm:text-3xl lg:text-[2.5rem] font-black text-slate-900 tracking-tight leading-none truncate">
-                        {trackNum}
-                      </h1>
+                    <div className="flex items-center gap-2.5">
+                      <span className="font-mono text-xl sm:text-2xl font-extrabold text-amber-700 tracking-wide leading-none break-all">
+                        {fwdNumber}
+                      </span>
                       <button
-                        onClick={copyTrack}
-                        className="inline-flex items-center justify-center w-8 h-8 rounded-lg text-slate-500 hover:text-slate-900 bg-slate-100 hover:bg-slate-200 transition-colors shrink-0"
-                        title="Copy tracking number"
+                        onClick={copyFwd}
+                        className="inline-flex items-center justify-center w-8 h-8 rounded-lg text-amber-700 bg-white border border-amber-300 hover:bg-amber-100 transition-colors shrink-0"
+                        title="Copy forwarding number"
+                        aria-label="Copy forwarding number"
                       >
-                        {copied ? <Check className="w-4 h-4 text-emerald-600" /> : <Copy className="w-4 h-4" />}
+                        {copiedFwd ? <Check className="w-4 h-4 text-emerald-600" /> : <Copy className="w-4 h-4" />}
                       </button>
                     </div>
                   </div>
+                  {fwdLink && (
+                    <a
+                      href={fwdLink}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="inline-flex items-center justify-center gap-2 text-sm font-bold text-white bg-amber-600 hover:bg-amber-700 rounded-lg px-3.5 py-2 transition-colors shrink-0 whitespace-nowrap w-full sm:w-auto"
+                    >
+                      <ExternalLink className="w-4 h-4" />
+                      Track on Carrier
+                    </a>
+                  )}
                 </div>
-
-                {/* Forwarding number — directly below tracking no, link on the right */}
-                {fwdNumber && (
-                  <div className="mt-4 rounded-xl border border-blue-200 bg-blue-50/70 px-4 py-3.5 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
-                    <div className="min-w-0">
-                      <p className="text-[11px] uppercase tracking-wider text-blue-700 font-bold mb-1">
-                        Forwarding Number
-                      </p>
-                      <div className="flex items-center gap-2 flex-wrap">
-                        <span className="font-mono text-lg sm:text-xl font-extrabold text-slate-900 tracking-wide break-all">
-                          {fwdNumber}
-                        </span>
-                        <button
-                          onClick={copyFwd}
-                          className="inline-flex items-center justify-center w-8 h-8 rounded-lg bg-white border border-blue-200 hover:bg-blue-100 transition-colors shrink-0"
-                          title="Copy forwarding number"
-                        >
-                          {copiedFwd ? <Check className="w-4 h-4 text-emerald-600" /> : <Copy className="w-4 h-4 text-blue-600" />}
-                        </button>
-                      </div>
-                    </div>
-                    {fwdLink && (
-                      <a
-                        href={fwdLink}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="inline-flex items-center justify-center gap-2 text-sm font-bold text-white bg-blue-600 hover:bg-blue-700 rounded-xl px-4 py-2.5 transition-colors shadow-sm shadow-blue-200 shrink-0 whitespace-nowrap"
-                      >
-                        <ExternalLink className="w-4 h-4" />
-                        Track on Carrier
-                      </a>
-                    )}
-                  </div>
-                )}
-              </div>
-
-              {/* RIGHT TOP: route with flags */}
-              <div className="shrink-0 self-start lg:self-auto flex flex-col items-start lg:items-end gap-2">
-                <span className="text-[11px] uppercase tracking-wider text-slate-400 font-semibold">Route</span>
-                <div className="inline-flex items-center gap-2.5 bg-slate-50 border border-slate-200 rounded-2xl px-4 py-2.5">
-                  <span className="flex items-center gap-1.5">
-                    <FlagIcon url={originFlagUrl} alt={originLabel} />
-                    <span className="text-sm font-bold text-slate-700 whitespace-nowrap">{originLabel}</span>
-                  </span>
-                  <ArrowRight className="w-4 h-4 text-slate-400 shrink-0" />
-                  <span className="flex items-center gap-1.5">
-                    <FlagIcon url={destFlagUrl} alt={destLabel} />
-                    <span className="text-sm font-bold text-slate-700 whitespace-nowrap">{destLabel}</span>
-                  </span>
-                </div>
-              </div>
+              )}
             </div>
           </div>
 
-          {/* Status row — colored per status */}
-          <div className="border-t border-slate-100 px-5 sm:px-6 py-4 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 bg-slate-50/60">
-            <div className="flex items-center gap-4 min-w-0">
-              <div className={`w-12 h-12 rounded-2xl flex items-center justify-center shrink-0 ${statusMeta.iconBg} ${statusMeta.iconText}`}>
-                {isDelivered ? <Home className="w-6 h-6" /> : getStatusIcon(latestStatus)}
+          {/* Latest status */}
+          <div className={`border-y ${tone.border} ${tone.soft} px-5 sm:px-6 py-4 flex flex-col md:flex-row md:items-center md:justify-between gap-5`}>
+            <div className="flex items-start gap-4 min-w-0">
+              <div className={`w-12 h-12 sm:w-14 sm:h-14 rounded-2xl flex items-center justify-center shrink-0 text-white shadow-md ${tone.solid}`}>
+                {fetchingFirst
+                  ? <Loader2 className="w-6 h-6 animate-spin" />
+                  : <StatusIcon status={latestStatus} className="w-6 h-6 sm:w-7 sm:h-7" />}
               </div>
               <div className="min-w-0">
-                <div className="flex items-center gap-2 mb-0.5">
-                  <span className={`inline-flex items-center gap-1.5 text-xs font-semibold px-2.5 py-0.5 rounded-full ${statusMeta.pillBg} ${statusMeta.pillText}`}>
-                    <span className={`w-1.5 h-1.5 rounded-full ${statusMeta.dot} ${isDelivered ? "" : "animate-pulse"}`} />
-                    {statusMeta.label}
+                <div className="flex items-center flex-wrap gap-2 mb-1">
+                  <span className="text-[11px] uppercase tracking-wider text-slate-500 font-semibold">
+                    Latest Status
                   </span>
-                  <span className="text-xs text-slate-400">{progress}%</span>
+                  <span className={`inline-flex items-center gap-1.5 text-xs font-bold px-2.5 py-0.5 rounded-full text-white ${tone.solid}`}>
+                    <span className={`w-1.5 h-1.5 rounded-full bg-white ${isDelivered ? "" : "animate-pulse"}`} />
+                    {tone.label}
+                  </span>
                 </div>
-                <p className="text-lg font-bold text-slate-900 leading-tight truncate">
-                  {anyLoading && timeline.length === 0 ? "Updating…" : latestStatus}
+                <p className={`text-xl sm:text-2xl font-extrabold leading-tight break-words ${tone.text}`}>
+                  {fetchingFirst ? "Fetching latest status…" : latestStatus}
                 </p>
                 {latestLoc && (
-                  <p className="text-sm text-slate-500 flex items-center gap-1.5 mt-0.5 truncate">
-                    <MapPin className="w-3.5 h-3.5 shrink-0 text-slate-400" />
-                    {latestLoc}
+                  <p className="text-sm text-slate-700 flex items-center gap-1.5 mt-1">
+                    <MapPin className="w-4 h-4 shrink-0 text-slate-400" />
+                    <span className="min-w-0 break-words">{latestLoc}</span>
                   </p>
                 )}
               </div>
@@ -895,361 +978,254 @@ export default function TrackingDetails({ parcelDetails }) {
             <div className="flex items-center gap-2 shrink-0">
               <button
                 onClick={shareWhatsApp}
-                className="inline-flex items-center gap-1.5 text-sm font-semibold text-white bg-emerald-500 hover:bg-emerald-600 rounded-xl px-3 py-2 transition-colors"
-                title="Share via WhatsApp"
+                className="flex-1 md:flex-none inline-flex items-center justify-center gap-2 text-sm font-semibold text-white bg-emerald-600 hover:bg-emerald-700 rounded-xl px-4 py-2 transition-colors"
               >
                 <FaWhatsapp className="w-4 h-4" />
-                <span className="hidden xs:inline">Share</span>
+                Share
               </button>
               <button
                 onClick={refreshAll}
                 disabled={anyLoading}
-                className="inline-flex items-center justify-center w-9 h-9 rounded-xl text-slate-600 hover:text-slate-900 bg-slate-100 hover:bg-slate-200 transition-colors disabled:opacity-50"
-                title="Refresh tracking"
+                className="flex-1 md:flex-none inline-flex items-center justify-center gap-2 text-sm font-semibold text-slate-700 bg-white border border-slate-200 hover:bg-slate-100 rounded-xl px-4 py-2 transition-colors disabled:opacity-60"
               >
-                <RefreshCw className={`w-4 h-4 ${anyLoading ? "animate-spin text-blue-600" : ""}`} />
+                <RefreshCw className={`w-4 h-4 ${anyLoading ? "animate-spin" : ""}`} />
+                {anyLoading ? "Refreshing…" : "Refresh"}
               </button>
             </div>
           </div>
-        </div>
 
-        {/* ──────────────────────────────────────
-            STAT CARDS
-        ────────────────────────────────────── */}
-        <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
-          {[
-            {
-              icon:    Clock,
-              label:   "In Transit",
-              value:   "—",
-              iconBg:  "bg-blue-50",
-              iconClr: "text-blue-600",
-            },
-            {
-              icon:    TrendingUp,
-              label:   "Progress",
-              value:   `${progress}%`,
-              iconBg:  "bg-indigo-50",
-              iconClr: "text-indigo-600",
-            },
-            {
-              icon:    Route,
-              label:   "Events",
-              value:   String(timeline.length),
-              iconBg:  "bg-violet-50",
-              iconClr: "text-violet-600",
-            },
-            {
-              icon:    CalendarCheck,
-              label:   "Status",
-              value:   isDelivered ? "Delivered" : "Active",
-              iconBg:  "bg-emerald-50",
-              iconClr: "text-emerald-600",
-            },
-          ].map(({ icon: Icon, label, value, iconBg, iconClr }) => (
-            <div
-              key={label}
-              className="bg-white rounded-2xl border border-slate-200 shadow-sm p-4 flex items-center gap-3"
-            >
-              <div className={`w-11 h-11 ${iconBg} rounded-xl flex items-center justify-center shrink-0`}>
-                <Icon className={`w-5 h-5 ${iconClr}`} />
+          {/* Progress */}
+          <div className="px-5 sm:px-8 py-5">
+            <ProgressSteps progress={progress} tone={tone} />
+          </div>
+
+          {/* Facts */}
+          <dl className="grid grid-cols-2 sm:grid-cols-3 gap-px bg-slate-100 border-t border-slate-100">
+            {[
+              {
+                icon:  Calendar,
+                label: "Last update",
+                value: lastTs ? `${fmtDate(lastTs)} · ${fmtTime(lastTs)}` : "—",
+                span:  "col-span-2 sm:col-span-1",
+              },
+              {
+                icon:  Clock,
+                label: isDelivered ? "Delivered in" : "Transit time",
+                value: transitDays ? `${transitDays} day${transitDays !== 1 ? "s" : ""}` : "—",
+              },
+              {
+                icon:  Route,
+                label: "Tracking updates",
+                value: String(timeline.length),
+              },
+            ].map(({ icon: Icon, label, value, span = "" }) => (
+              <div key={label} className={`bg-white px-5 sm:px-6 py-3 flex items-center gap-3 ${span}`}>
+                <Icon className="w-5 h-5 text-slate-400 shrink-0" />
+                <div className="min-w-0">
+                  <dt className="text-[11px] uppercase tracking-wider text-slate-400 font-semibold">{label}</dt>
+                  <dd className="text-sm sm:text-base font-bold text-slate-900 mt-0.5 truncate">{value}</dd>
+                </div>
               </div>
-              <div className="min-w-0">
-                <p className="text-xs uppercase tracking-wider text-slate-400 font-semibold">{label}</p>
-                <p className="text-lg font-bold text-slate-900 mt-0.5 truncate">{value}</p>
-              </div>
+            ))}
+          </dl>
+        </section>
+
+        {/* ERRORS */}
+        {error && (
+          <div className="mt-6 flex items-center gap-3 p-4 bg-red-50 rounded-2xl border border-red-100">
+            <div className="w-9 h-9 bg-red-100 rounded-xl flex items-center justify-center shrink-0">
+              <AlertCircle className="w-5 h-5 text-red-500" />
             </div>
-          ))}
-        </div>
+            <p className="text-sm text-red-700 flex-1 min-w-0 break-words">{error}</p>
+            <button
+              onClick={fetchVendor}
+              className="text-sm font-semibold text-red-600 hover:text-red-800 flex items-center gap-1 whitespace-nowrap shrink-0 bg-red-100 hover:bg-red-200 px-3 py-2 rounded-lg transition-colors"
+            >
+              <RefreshCw className="w-4 h-4" /> Retry
+            </button>
+          </div>
+        )}
 
         {/* ──────────────────────────────────────
             MAIN GRID
-            Left: Map + Forwarding + Addresses
-            Right: Shipment History
+            Left: Shipment History
+            Right: Map + Sender / Receiver
         ────────────────────────────────────── */}
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 items-start">
+        <div className="mt-6 grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
 
-          {/* ════ LEFT COLUMN ════ */}
-          <div className="flex flex-col gap-6 min-w-0">
+          {/* ════ SHIPMENT HISTORY ════ */}
+          <section className="lg:col-span-7 min-w-0 bg-white rounded-3xl border border-slate-200 shadow-sm overflow-hidden">
+            <SectionHeader
+              icon={Clock}
+              title="Shipment History"
+              subtitle={`${timeline.length} update${timeline.length !== 1 ? "s" : ""} · newest first`}
+            />
+
+            {fetchingFirst ? (
+              <div className="flex flex-col items-center justify-center py-16 px-5">
+                <div className="w-14 h-14 bg-primary/10 rounded-2xl flex items-center justify-center mb-3">
+                  <Loader2 className="w-7 h-7 text-primary animate-spin" />
+                </div>
+                <p className="text-sm font-semibold text-slate-900">Fetching updates…</p>
+                <p className="text-xs text-slate-500 mt-1">This may take a moment</p>
+              </div>
+            ) : !latest ? (
+              <div className="flex flex-col items-center justify-center py-16 px-5">
+                <div className="w-14 h-14 bg-slate-100 rounded-2xl flex items-center justify-center mb-3">
+                  <Package className="w-7 h-7 text-slate-400" />
+                </div>
+                <p className="text-sm font-semibold text-slate-900">No updates yet</p>
+                <p className="text-xs text-slate-500 mt-1">Check back soon</p>
+              </div>
+            ) : (
+              <div className="p-4 sm:p-6">
+                {/* Latest update — same tone as the status card above */}
+                <div className={`rounded-2xl border ${tone.border} ${tone.soft} p-4 sm:p-5 flex gap-4`}>
+                  <div className={`w-11 h-11 rounded-xl flex items-center justify-center shrink-0 text-white shadow-md ${tone.solid}`}>
+                    <StatusIcon status={latest.status} className="w-5 h-5" />
+                  </div>
+                  <div className="min-w-0 flex-1">
+                    <span className={`inline-block text-[10px] font-bold uppercase tracking-wider text-white px-2 py-0.5 rounded-full mb-1.5 ${tone.solid}`}>
+                      Latest update
+                    </span>
+                    <p className={`text-lg sm:text-xl font-extrabold leading-snug break-words ${tone.text}`}>
+                      {latest.status}
+                    </p>
+                    {latest.location && (
+                      <p className="text-sm text-slate-700 flex items-center gap-1.5 mt-1.5">
+                        <MapPin className="w-4 h-4 shrink-0 text-slate-400" />
+                        <span className="min-w-0 break-words">{latest.location}</span>
+                      </p>
+                    )}
+                    {latest.comment && (
+                      <p className="text-sm text-slate-600 mt-1.5 leading-relaxed break-words">{latest.comment}</p>
+                    )}
+                    {latest.timestamp > 0 && (
+                      <p className={`text-xs font-semibold mt-2 ${tone.text}`}>
+                        {fmtDate(latest.timestamp)} · {fmtTime(latest.timestamp)}
+                      </p>
+                    )}
+                  </div>
+                </div>
+
+                {/* Earlier updates */}
+                {Object.entries(grouped).map(([date, evts]) => (
+                  <div key={date || "undated"} className="mt-6">
+                    <div className="flex items-center gap-3 mb-3">
+                      <span className="inline-flex items-center gap-1.5 bg-slate-100 rounded-full px-3 py-1 text-xs font-bold text-slate-700 uppercase tracking-wide">
+                        <Calendar className="w-3 h-3 text-slate-400" />
+                        {date || "Date unavailable"}
+                      </span>
+                      <span className="flex-1 h-px bg-slate-100" />
+                    </div>
+
+                    <ol>
+                      {evts.map((evt, idx) => {
+                        const isLast = idx === evts.length - 1;
+                        return (
+                          <li key={`${evt.timestamp}-${idx}`} className="flex gap-3.5">
+                            {/* Icon + line */}
+                            <div className="flex flex-col items-center shrink-0">
+                              <div className="w-9 h-9 rounded-full flex items-center justify-center bg-slate-50 border border-slate-200 text-slate-500 shrink-0">
+                                <StatusIcon status={evt.status} />
+                              </div>
+                              {!isLast && <div className="w-px flex-1 bg-slate-200 my-1 min-h-[14px]" />}
+                            </div>
+
+                            {/* Content */}
+                            <div className={`flex-1 min-w-0 pt-1.5 ${isLast ? "" : "pb-5"}`}>
+                              <div className="flex items-start justify-between gap-3">
+                                <p className="text-sm font-semibold text-slate-900 leading-snug break-words min-w-0">
+                                  {evt.status}
+                                </p>
+                                <time className="text-xs text-slate-500 whitespace-nowrap font-medium shrink-0 pt-0.5">
+                                  {fmtTime(evt.timestamp)}
+                                </time>
+                              </div>
+                              {evt.location && (
+                                <p className="text-xs text-slate-600 flex items-center gap-1.5 mt-1">
+                                  <MapPin className="w-3 h-3 shrink-0 text-slate-400" />
+                                  <span className="min-w-0 break-words">{evt.location}</span>
+                                </p>
+                              )}
+                              {evt.comment && (
+                                <p className="text-xs text-slate-500 mt-1 leading-relaxed break-words">
+                                  {evt.comment}
+                                </p>
+                              )}
+                            </div>
+                          </li>
+                        );
+                      })}
+                    </ol>
+                  </div>
+                ))}
+              </div>
+            )}
+          </section>
+
+          {/* ════ MAP + SENDER / RECEIVER ════ */}
+          <div className="lg:col-span-5 min-w-0 flex flex-col gap-6 lg:sticky lg:top-28">
 
             {/* MAP CARD */}
-            <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
+            <section className="bg-white rounded-3xl border border-slate-200 shadow-sm overflow-hidden">
               <SectionHeader
                 icon={Globe}
-                title="Live Route"
+                title="Route Map"
                 subtitle={`${mapOrigin} → ${mapDestination}`}
                 right={
-                  <span
-                    className={`text-xs font-bold px-3 py-1 rounded-full shrink-0 ${
-                      isDelivered
-                        ? "bg-emerald-100 text-emerald-700"
-                        : "bg-blue-100 text-blue-700"
-                    }`}
-                  >
-                    {isDelivered ? "✓ Delivered" : `${progress}%`}
+                  <span className={`text-xs font-bold px-3 py-1 rounded-full shrink-0 ${tone.pill}`}>
+                    {tone.label}
                   </span>
                 }
               />
-
-              <div className="h-[340px] sm:h-[400px]">
+              <div className="h-[280px] sm:h-[340px] isolate">
                 <ShipmentMap
                   origin={mapOrigin}
                   destination={mapDestination}
                   progress={progress}
-                  isDelivered={isDelivered}
+                  accent={tone.hex}
                 />
               </div>
+            </section>
 
-              <div className="border-t border-slate-100">
-                <ProgressSteps progress={progress} isDelivered={isDelivered} />
-              </div>
-            </div>
-
-            {/* ── SENDER / RECEIVER DETAILS (below) ── */}
-            <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
+            {/* SENDER / RECEIVER */}
+            <section className="bg-white rounded-3xl border border-slate-200 shadow-sm overflow-hidden">
               <SectionHeader
                 icon={MapPin}
                 title="Sender & Receiver"
                 subtitle="Pickup and delivery details"
-                iconBg="bg-violet-50"
-                iconColor="text-violet-600"
               />
-
-              <div className="grid grid-cols-1 sm:grid-cols-2 divide-y sm:divide-y-0 sm:divide-x divide-slate-100">
-                {/* SENDER */}
-                <div className="p-5">
-                  <div className="flex items-center gap-2 mb-3">
-                    <span className="w-2.5 h-2.5 rounded-full bg-emerald-500" />
-                    <p className="text-xs uppercase tracking-wider text-slate-400 font-semibold">From (Sender)</p>
-                  </div>
-                  <p className="text-sm font-bold text-slate-900">{mapOrigin}</p>
-                  {sName && (
-                    <div className="flex items-center gap-2 mt-3 text-sm text-slate-700">
-                      <User className="w-4 h-4 text-slate-400 shrink-0" />
-                      <span className="font-medium">{sName}</span>
-                    </div>
-                  )}
-                  {sPhone && (
-                    <div className="flex items-center gap-2 mt-2 text-sm text-slate-700">
-                      <Phone className="w-4 h-4 text-slate-400 shrink-0" />
-                      <span>{sPhone}</span>
-                    </div>
-                  )}
-                  <p className="text-sm text-slate-500 mt-2 leading-relaxed">{sAddr || origin}</p>
-                </div>
-
-                {/* RECEIVER */}
-                <div className="p-5">
-                  <div className="flex items-center gap-2 mb-3">
-                    <span className="w-2.5 h-2.5 rounded-full bg-blue-500" />
-                    <p className="text-xs uppercase tracking-wider text-slate-400 font-semibold">To (Receiver)</p>
-                  </div>
-                  <p className="text-sm font-bold text-slate-900">{mapDestination}</p>
-                  {rName && (
-                    <div className="flex items-center gap-2 mt-3 text-sm text-slate-700">
-                      <User className="w-4 h-4 text-slate-400 shrink-0" />
-                      <span className="font-medium">{rName}</span>
-                    </div>
-                  )}
-                  {rPhone && (
-                    <div className="flex items-center gap-2 mt-2 text-sm text-slate-700">
-                      <Phone className="w-4 h-4 text-slate-400 shrink-0" />
-                      <span>{rPhone}</span>
-                    </div>
-                  )}
-                  <p className="text-sm text-slate-500 mt-2 leading-relaxed">{rAddr || dest}</p>
-                </div>
+              <div className="relative p-5 sm:p-6 space-y-6">
+                <span className="absolute left-[27px] sm:left-[31px] top-8 bottom-8 border-l-2 border-dashed border-slate-200" aria-hidden="true" />
+                <PartyBlock
+                  dotClass="bg-primary"
+                  eyebrow="From (Sender)"
+                  place={mapOrigin}
+                  name={sName}
+                  phone={sPhone}
+                  address={sAddr || origin}
+                />
+                <PartyBlock
+                  dotClass="bg-accent"
+                  eyebrow="To (Receiver)"
+                  place={mapDestination}
+                  name={rName}
+                  phone={rPhone}
+                  address={rAddr || dest}
+                />
               </div>
-            </div>
-
-            {/* ERRORS */}
-            {error && (
-              <div className="space-y-3">
-                <div className="flex items-center gap-3 p-4 bg-red-50 rounded-2xl border border-red-100">
-                  <div className="w-9 h-9 bg-red-100 rounded-xl flex items-center justify-center shrink-0">
-                    <AlertCircle className="w-5 h-5 text-red-500" />
-                  </div>
-                  <p className="text-sm text-red-700 flex-1 min-w-0 break-words">{error}</p>
-                  <button
-                    onClick={fetchVendor}
-                    className="text-sm font-semibold text-red-600 hover:text-red-800 flex items-center gap-1 whitespace-nowrap shrink-0 bg-red-100 hover:bg-red-200 px-3 py-2 rounded-lg transition-colors"
-                  >
-                    <RefreshCw className="w-4 h-4" /> Retry
-                  </button>
-                </div>
-              </div>
-            )}
-          </div>
-
-          {/* ════ RIGHT COLUMN — SHIPMENT HISTORY ════ */}
-          <div className="min-w-0">
-            <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden flex flex-col lg:sticky lg:top-6">
-              {/* Header */}
-              <div className="px-5 py-4 border-b border-slate-100 flex items-center justify-between gap-3 shrink-0">
-                <div className="flex items-center gap-3 min-w-0">
-                  <div className="w-9 h-9 bg-blue-50 rounded-xl flex items-center justify-center shrink-0">
-                    <Clock className="w-4.5 h-4.5 text-blue-600" />
-                  </div>
-                  <div className="min-w-0">
-                    <p className="text-[15px] font-semibold text-slate-900 leading-tight">Shipment History</p>
-                    <p className="text-xs text-black mt-0.5">
-                      {timeline.length} event{timeline.length !== 1 ? "s" : ""} tracked
-                    </p>
-                  </div>
-                </div>
-                <button
-                  onClick={refreshAll}
-                  disabled={anyLoading}
-                  className="inline-flex items-center justify-center w-9 h-9 rounded-xl text-slate-600 hover:text-slate-900 bg-slate-100 hover:bg-slate-200 transition-colors disabled:opacity-50 shrink-0"
-                  title="Refresh"
-                >
-                  <RefreshCw className={`w-4 h-4 ${anyLoading ? "animate-spin text-blue-600" : ""}`} />
-                </button>
-              </div>
-
-              {/* Body */}
-              <div className="overflow-y-auto max-h-[640px] overscroll-contain">
-                {anyLoading && timeline.length === 0 ? (
-                  <div className="flex flex-col items-center justify-center py-16 px-5">
-                    <div className="w-14 h-14 bg-blue-50 rounded-2xl flex items-center justify-center mb-3">
-                      <Loader2 className="w-7 h-7 text-blue-400 animate-spin" />
-                    </div>
-                    <p className="text-sm font-semibold text-black">Fetching updates…</p>
-                    <p className="text-xs text-black mt-1">This may take a moment</p>
-                  </div>
-                ) : timeline.length === 0 ? (
-                  <div className="flex flex-col items-center justify-center py-16 px-5">
-                    <div className="w-14 h-14 bg-slate-100 rounded-2xl flex items-center justify-center mb-3">
-                      <Package className="w-7 h-7 text-slate-300" />
-                    </div>
-                    <p className="text-sm font-semibold text-black">No updates yet</p>
-                    <p className="text-xs text-black mt-1">Check back soon</p>
-                  </div>
-                ) : (
-                  <div className="py-2">
-                    {Object.entries(grouped).map(([date, evts], gi) => (
-                      <div key={date}>
-                        {/* Date separator */}
-                        <div className="sticky top-0 z-10 px-5 py-2.5 flex items-center gap-3 bg-white/95 backdrop-blur-sm">
-                          <div className="flex items-center gap-1.5 bg-slate-100 rounded-full px-3 py-1">
-                            <Calendar className="w-3 h-3 text-slate-400" />
-                            <span className="text-xs font-semibold text-black uppercase tracking-wide">
-                              {date}
-                            </span>
-                          </div>
-                          <div className="flex-1 h-px bg-slate-100" />
-                        </div>
-
-                        {evts.map((evt, idx) => {
-                          const isFirst = gi === 0 && idx === 0;
-                          const isLast  = idx === evts.length - 1;
-                          const meta    = getStatusMeta(evt.status);
-                          return (
-                            <div
-                              key={`${evt.timestamp}-${idx}`}
-                              className={`flex gap-3.5 px-5 py-3.5 transition-colors hover:bg-slate-50 ${
-                                isFirst ? "bg-blue-50/50" : ""
-                              }`}
-                            >
-                              {/* Icon + line */}
-                              <div className="flex flex-col items-center shrink-0">
-                                <div
-                                  className={`w-9 h-9 rounded-xl flex items-center justify-center border-2 shadow-sm shrink-0 ${
-                                    isFirst
-                                      ? `${meta.solid} ${meta.border} text-white ${meta.shadow}`
-                                      : `bg-white ${meta.border} ${meta.iconText}`
-                                  }`}
-                                >
-                                  {getStatusIcon(evt.status)}
-                                </div>
-                                {!isLast && (
-                                  <div className="w-px flex-1 bg-gradient-to-b from-slate-200 to-transparent mt-1.5 min-h-[14px]" />
-                                )}
-                              </div>
-
-                              {/* Content */}
-                              <div className="flex-1 min-w-0 pb-0.5">
-                                <div className="flex items-start justify-between gap-3">
-                                  <p
-                                    className={`text-sm font-semibold leading-snug ${
-                                      isFirst ? meta.iconText : "text-black"
-                                    }`}
-                                  >
-                                    {evt.status}
-                                  </p>
-                                  <div className="shrink-0 flex flex-col items-end gap-1">
-                                    <time className="text-xs text-black whitespace-nowrap font-medium">
-                                      {fmtTime(evt.timestamp)}
-                                    </time>
-                                    {isFirst && (
-                                      <span className={`text-[10px] font-semibold px-2 py-0.5 rounded-full ${meta.pillBg} ${meta.pillText}`}>
-                                        Latest
-                                      </span>
-                                    )}
-                                  </div>
-                                </div>
-                                {evt.location && (
-                                  <p className="text-xs text-black flex items-center gap-1.5 mt-1.5">
-                                    <MapPin className="w-3 h-3 shrink-0 text-slate-400" />
-                                    <span className="truncate">{evt.location}</span>
-                                  </p>
-                                )}
-                                {evt.comment && (
-                                  <p className="text-xs text-black italic mt-1.5 leading-relaxed">
-                                    {evt.comment}
-                                  </p>
-                                )}
-                              </div>
-                            </div>
-                          );
-                        })}
-                      </div>
-                    ))}
-                    <div className="h-3" />
-                  </div>
-                )}
-              </div>
-
-              {/* Footer refresh */}
-              <div className="shrink-0 border-t border-slate-100 px-4 py-3 bg-slate-50/60">
-                <button
-                  onClick={refreshAll}
-                  disabled={anyLoading}
-                  className={`w-full flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl text-sm font-semibold transition-all ${
-                    anyLoading
-                      ? "bg-blue-50 text-blue-400 cursor-not-allowed"
-                      : isDelivered
-                      ? "bg-emerald-600 hover:bg-emerald-700 text-white shadow-sm shadow-emerald-200"
-                      : "bg-blue-600 hover:bg-blue-700 text-white shadow-sm shadow-blue-200"
-                  }`}
-                >
-                  {anyLoading ? (
-                    <>
-                      <Loader2 className="w-4 h-4 animate-spin" />
-                      Refreshing…
-                    </>
-                  ) : (
-                    <>
-                      <RefreshCw className="w-4 h-4" />
-                      Refresh Tracking
-                    </>
-                  )}
-                </button>
-              </div>
-            </div>
+            </section>
           </div>
         </div>
 
-        {/* ── FOOTER ── */}
-        <div className="mt-6 flex items-center justify-between flex-wrap gap-2">
-          <p className="text-xs text-slate-400 font-medium">
-            Last updated: {new Date().toLocaleString()}
-          </p>
-          <div className="flex items-center gap-2">
-            <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
-            <p className="text-xs text-slate-400 font-medium">Live tracking active</p>
-          </div>
-        </div>
+        {/* ── FOOTER NOTE ── */}
+        <p className="mt-8 text-center text-xs text-slate-500">
+          Updates come straight from our network and carrier partners. Questions about this shipment?{" "}
+          <a href="/contact" className="font-semibold text-primary hover:underline">
+            Contact us
+          </a>
+        </p>
       </div>
     </div>
   );

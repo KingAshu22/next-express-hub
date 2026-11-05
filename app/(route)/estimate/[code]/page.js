@@ -171,7 +171,7 @@ export default function ViewEstimate() {
         {/* Footer Note */}
         <div className="mt-8 pt-4 border-t border-gray-300 text-sm text-gray-600">
           <p><strong>Notes:</strong> This is a computer-generated estimate. No signature required.</p>
-          <p className="mt-1 text-center">Thank you for choosing SunEx Services!</p>
+          <p className="mt-1 text-center">Thank you for choosing Kargo One!</p>
         </div>
       </div>
 

@@ -639,7 +639,8 @@ Content-Type: application/json
                       { field: "data.destination", desc: "Destination location" },
                       { field: "data.sender", desc: "Sender details object" },
                       { field: "data.receiver", desc: "Receiver details object" },
-                      { field: "data.timeline", desc: "Array of tracking events" },
+                      { field: "data.timeline", desc: "All tracking events, newest first: our updates plus live scans from the delivery partner (same as our website tracking page)" },
+                      { field: "warning", desc: "Only present if live partner scans could not be fetched right now; the timeline then has the saved updates only" },
                     ].map((item, index) => (
                       <div key={index} className="flex items-start gap-2">
                         <code className="bg-gray-100 dark:bg-gray-800 px-2 py-1 rounded text-xs font-mono text-blue-600 dark:text-blue-400 whitespace-nowrap">

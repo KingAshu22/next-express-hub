@@ -288,7 +288,7 @@ export default function UpdateRatePage() {
                 <Input
                   value={rateData.service}
                   onChange={(e) => setRateData({ ...rateData, service: e.target.value })}
-                  placeholder="e.g., SUNEX-D"
+                  placeholder="e.g., KARGO-D"
                   required
                 />
               </div>

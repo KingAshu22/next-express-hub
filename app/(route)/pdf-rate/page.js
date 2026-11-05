@@ -126,7 +126,7 @@ export default function PDFRatePage() {
     printWindow.document.write(`
       <html>
         <head>
-          <title>Rate Sheet - SunEx Services</title>
+          <title>Rate Sheet - Kargo One</title>
           <style>
             @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap');
             body { font-family: 'Inter', sans-serif; padding: 2rem; color: #1f2937; }
@@ -147,7 +147,7 @@ export default function PDFRatePage() {
         </head>
         <body>
           <div class="letterhead">
-            <div class="company-name">SunEx Services Pvt Ltd</div>
+            <div class="company-name">Kargo One Private Limited</div>
             <div class="tagline">International & Domestic Courier & Cargo Services</div>
             <div class="contact">Mob No: +91 70213 35122</div>
           </div>
@@ -172,7 +172,7 @@ export default function PDFRatePage() {
             </tbody>
           </table>
           <div class="footer">
-            <p>This is a computer-generated document. Rates are subject to change. Thank you for choosing SunEx Services.</p>
+            <p>This is a computer-generated document. Rates are subject to change. Thank you for choosing Kargo One.</p>
           </div>
         </body>
       </html>
@@ -346,7 +346,7 @@ export default function PDFRatePage() {
             <CardContent>
               <div id="print-area">
                   <div className="text-center mb-6 hidden print-block">
-                    <h2 className="text-xl font-bold">SunEx Services Pvt Ltd</h2>
+                    <h2 className="text-xl font-bold">Kargo One Private Limited</h2>
                     <p className="text-sm italic">International & Domestic Courier & Cargo Services</p>
                     <p className="text-xs mt-1">Mob No: +91 70213 35122</p>
                   </div>

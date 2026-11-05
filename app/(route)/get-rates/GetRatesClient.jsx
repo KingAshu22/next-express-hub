@@ -76,7 +76,7 @@ const maskVendorName = (text, vendorName) => {
 
 const normalizeServiceName = (name, vendorName) => {
     if (!name) return name
-    const withAtlanticFix = name.replace(/atlantic/gi, 'SunEx')
+    const withAtlanticFix = name.replace(/atlantic/gi, 'Kargo One')
     return maskVendorName(withAtlanticFix, vendorName)
 }
 

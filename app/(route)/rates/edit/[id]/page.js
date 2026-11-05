@@ -550,7 +550,7 @@ export default function EditRatePage() {
                   id="service"
                   value={rateData.service}
                   onChange={(e) => setRateData({ ...rateData, service: e.target.value })}
-                  placeholder="e.g., SUNEX-D, Express, Economy"
+                  placeholder="e.g., KARGO-D, Express, Economy"
                   required
                 />
               </div>

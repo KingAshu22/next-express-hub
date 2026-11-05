@@ -6,6 +6,7 @@ import Franchise from "@/models/Franchise";
 import { NextResponse } from "next/server";
 import { getEventDescription } from "@/lib/m5-event-codes";
 import Awb from "@/models/Awb";
+import { getVendorTracking, buildVendorTrackingRequest } from "@/lib/vendor-tracking";
 
 // ==================== CORS CONFIGURATION ====================
 
@@ -136,6 +137,51 @@ const parseEventTimestamp = (event, isM5, isCJ) => {
   }
 };
 
+// SkyNet gives EventDate="25-Feb-2026" and EventTime="19:21:45"
+const MONTHS = { jan: 0, feb: 1, mar: 2, apr: 3, may: 4, jun: 5, jul: 6, aug: 7, sep: 8, oct: 9, nov: 10, dec: 11 };
+const parseSkyNetDate = (dateStr, timeStr) => {
+  const parts = String(dateStr || "").split("-");
+  if (parts.length !== 3) return 0;
+  const day = parseInt(parts[0], 10);
+  const month = MONTHS[parts[1].toLowerCase()];
+  const year = parseInt(parts[2], 10);
+  if (isNaN(day) || isNaN(year) || month === undefined) return 0;
+  const [h = 0, m = 0, sec = 0] = String(timeStr || "").split(":").map((v) => parseInt(v, 10) || 0);
+  return new Date(year, month, day, h, m, sec).getTime();
+};
+
+// Timestamp for an event returned by lib/vendor-tracking (same rules as the
+// website track page, so both show the same timeline)
+const parseVendorEventTimestamp = (evt, softwareType) => {
+  try {
+    if (softwareType === "skynet" || (evt.EventDate && String(evt.EventDate).includes("-") && /[A-Za-z]/.test(evt.EventDate))) {
+      const ts = parseSkyNetDate(evt.EventDate, evt.EventTime);
+      if (ts > 0) return ts;
+    }
+    if (softwareType === "xpression" || softwareType === "itd") {
+      const ds = evt.EventDate1 || evt.EventDate;
+      const ts = evt.EventTime1 || evt.EventTime || "12:00 AM";
+      const d = parseOrdinalDate(ds) || new Date(parseInternalDate(ds));
+      if (!isNaN(d.getTime())) {
+        const { hours, minutes } = parseTime12Hour(ts);
+        d.setHours(hours, minutes, 0, 0);
+        return d.getTime();
+      }
+      return 0;
+    }
+    return parseInternalDate(evt.timestamp);
+  } catch {
+    return 0;
+  }
+};
+
+// Hide internal-only notes (e.g. clone provenance) from customers
+const sanitizeComment = (comment) => {
+  const c = String(comment || "").trim();
+  if (!c || /^cloned from awb/i.test(c)) return null;
+  return c;
+};
+
 const formatDisplayTime = (timestamp) => {
   if (!timestamp || timestamp === 0) return "N/A";
   return new Date(timestamp).toLocaleString("en-GB", {
@@ -237,8 +283,22 @@ async function fetchCourierJourneyData(cNoteNumber) {
 
 // ==================== MERGE TIMELINE FUNCTION ====================
 
-function mergeTrackingTimeline(parcelDetails, m5Data, cjData) {
+function mergeTrackingTimeline(parcelDetails, m5Data, cjData, vendorData) {
   const allEvents = [];
+
+  // Vendor events from the shared vendor integrations
+  if (vendorData?.events?.length) {
+    vendorData.events.forEach((e) => {
+      const timestamp = parseVendorEventTimestamp(e, vendorData.softwareType);
+      allEvents.push({
+        timestamp,
+        status: String(e.Status ?? e.status ?? "Update").trim() || "Update",
+        location: String(e.Location ?? e.location ?? "").trim() || null,
+        comment: sanitizeComment(e.Remark ?? e.comment),
+        formattedTime: formatDisplayTime(timestamp),
+      });
+    });
+  }
 
   const normalize = (evt, isM5, isCJ) => {
     const timestamp = parseEventTimestamp(evt, isM5, isCJ);
@@ -252,7 +312,7 @@ function mergeTrackingTimeline(parcelDetails, m5Data, cjData) {
       location = evt.Location;
     } else {
       status = evt.status;
-      comment = evt.comment;
+      comment = sanitizeComment(evt.comment);
       location = evt.location;
     }
 
@@ -289,8 +349,10 @@ function mergeTrackingTimeline(parcelDetails, m5Data, cjData) {
     const prev = arr[index - 1];
     const isSameStatus =
       event.status.toLowerCase() === prev.status.toLowerCase();
+    const isSameLocation =
+      String(event.location || "").toLowerCase() === String(prev.location || "").toLowerCase();
     const isTimeClose = Math.abs(event.timestamp - prev.timestamp) < 60000;
-    return !(isSameStatus && isTimeClose);
+    return !(isSameStatus && isSameLocation && isTimeClose);
   });
 
   return deduped;
@@ -363,36 +425,41 @@ export async function POST(request) {
     }
 
     // ==================== FETCH VENDOR TRACKING DATA ====================
+    // Same vendor lookup as the website track page, so API users get the
+    // vendor/partner scans too, not only the updates added on this website.
+    let vendorData = null;
     let m5Data = null;
     let cjData = null;
     let vendorError = null;
 
-    if (parcelDetails.cNoteVendorName === "M5" && parcelDetails.cNoteNumber) {
-      const result = await fetchM5TrackingData(parcelDetails.cNoteNumber);
-      if (result.success) {
-        m5Data = result.data;
-      } else {
-        vendorError = result.error;
+    const vendorRequest = buildVendorTrackingRequest(parcelDetails);
+    if (vendorRequest) {
+      try {
+        vendorData = await getVendorTracking(vendorRequest);
+      } catch (error) {
+        vendorError = error.message || "Vendor tracking failed";
       }
     }
 
-    if (
-      parcelDetails.cNoteVendorName === "Courier Journey" &&
-      parcelDetails.cNoteNumber
-    ) {
-      const result = await fetchCourierJourneyData(parcelDetails.cNoteNumber);
-      if (result.success) {
-        cjData = result.data;
-      } else {
-        vendorError = result.error;
+    // Older bookings saved with these vendor names before vendor integrations existed
+    if (!vendorData && parcelDetails.cNoteNumber) {
+      if (parcelDetails.cNoteVendorName === "M5") {
+        const result = await fetchM5TrackingData(parcelDetails.cNoteNumber);
+        if (result.success) { m5Data = result.data; vendorError = null; }
+        else vendorError = vendorError || result.error;
+      } else if (parcelDetails.cNoteVendorName === "Courier Journey") {
+        const result = await fetchCourierJourneyData(parcelDetails.cNoteNumber);
+        if (result.success) { cjData = result.data; vendorError = null; }
+        else vendorError = vendorError || result.error;
       }
     }
 
     // ==================== MERGE TIMELINE ====================
-    const timeline = mergeTrackingTimeline(parcelDetails, m5Data, cjData);
+    const timeline = mergeTrackingTimeline(parcelDetails, m5Data, cjData, vendorData);
 
     // ==================== BUILD RESPONSE ====================
-    const trackingData = m5Data?.trackDetails?.[0] || cjData?.Tracking?.[0];
+    const trackingData =
+      vendorData?.tracking?.[0] || m5Data?.trackDetails?.[0] || cjData?.Tracking?.[0];
 
     const response = {
       success: true,
@@ -401,14 +468,14 @@ export async function POST(request) {
         currentStatus: timeline[0]?.status || "Unknown",
         lastUpdate: timeline[0]?.formattedTime || "N/A",
         origin:
-          trackingData?.Origin ||
           parcelDetails?.sender?.country ||
           parcelDetails?.origin ||
+          trackingData?.Origin ||
           "N/A",
         destination:
-          trackingData?.Destination ||
           parcelDetails?.receiver?.country ||
           parcelDetails?.destination ||
+          trackingData?.Destination ||
           "N/A",
         sender: {
           name: parcelDetails?.sender?.name || "N/A",
@@ -420,8 +487,10 @@ export async function POST(request) {
           address: parcelDetails?.receiver?.address || "N/A",
           country: parcelDetails?.receiver?.country || "N/A",
         },
-        forwardingNumber: parcelDetails?.forwardingNumber || null,
-        forwardingLink: parcelDetails?.forwardingLink || null,
+        forwardingNumber:
+          parcelDetails?.forwardingNumber || trackingData?.ForwardingNo || null,
+        forwardingLink:
+          parcelDetails?.forwardingLink || trackingData?.ForwardingURL || null,
         timeline: timeline.map((event) => ({
           status: event.status,
           timestamp: event.formattedTime,
@@ -432,7 +501,8 @@ export async function POST(request) {
     };
 
     if (vendorError) {
-      response.warning = `Vendor tracking fetch failed: ${vendorError}`;
+      console.error("Tracking API vendor fetch failed:", trackingNumber, vendorError);
+      response.warning = "Live carrier updates are temporarily unavailable; showing the latest saved updates.";
     }
 
     return createCorsResponse(response, 200, request);
@@ -480,7 +550,8 @@ export async function GET(request) {
             receiver: "object",
             forwardingNumber: "string | null",
             forwardingLink: "string | null",
-            timeline: "array of tracking events",
+            timeline:
+              "array of tracking events (website updates + live carrier/partner scans, newest first)",
           },
         },
       },

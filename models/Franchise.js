@@ -13,7 +13,7 @@ const ZoneSchema = new Schema({
 
 const RateSheetSchema = new Schema({
   type: String,        // e.g. dhl/fedex
-  service: String,     // e.g. SUNEX-D
+  service: String,     // e.g. KARGO-D
   originalName: String,
   covidCharges: String,
   fuelCharges: String,

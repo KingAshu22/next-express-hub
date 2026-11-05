@@ -345,7 +345,7 @@ export default function ClientForm({
     <Card className="w-full max-w-md mx-auto">
       <CardHeader className="space-y-1">
         <div className="flex justify-center mb-4">
-          <Image src="/Sun.jpg" alt="Redly Express Logo" width={200} height={60} />
+          <Image src="/kargoone-logo.png" alt="Kargo One Logo" width={200} height={54} />
         </div>
         <CardTitle className="text-2xl font-bold text-center text-[#232C65]">
           {isEdit ? "Edit Client" : "Client Registration"}

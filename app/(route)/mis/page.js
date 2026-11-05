@@ -1105,7 +1105,7 @@ function AllAWBsMISPage() {
       const csvData = []
       const currentDate = format(new Date(), "dd/MM/yyyy HH:mm")
 
-      csvData.push(["SunEx Services Private Limited"])
+      csvData.push(["Kargo One Private Limited"])
       csvData.push(["AWB Management Information System (MIS) Report - LIVE DATA"])
       csvData.push([`Generated: ${currentDate}`])
       csvData.push([`Live Tracking: ${stats.liveStatusCounts.live} of ${stats.totalShipments} shipments`])
@@ -1200,7 +1200,7 @@ function AllAWBsMISPage() {
       const url = window.URL.createObjectURL(blob)
       const a = document.createElement("a")
       a.href = url
-      a.download = `SunEx_AWB_MIS_Live${dateRange}.csv`
+      a.download = `KargoOne_AWB_MIS_Live${dateRange}.csv`
       document.body.appendChild(a)
       a.click()
       document.body.removeChild(a)
@@ -1221,7 +1221,7 @@ function AllAWBsMISPage() {
         <html>
         <head>
           <meta charset="utf-8">
-          <title>SunEx AWB MIS Report - Live Data</title>
+          <title>Kargo One AWB MIS Report - Live Data</title>
           <style>
             * { margin: 0; padding: 0; box-sizing: border-box; }
             body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; padding: 20px; color: #1f2937; }
@@ -1249,7 +1249,7 @@ function AllAWBsMISPage() {
         </head>
         <body>
           <div class="header">
-            <div class="company-name">SunEx Services Private Limited</div>
+            <div class="company-name">Kargo One Private Limited</div>
             <div class="report-title">AWB Management Information System Report</div>
             <div class="live-badge">🔴 LIVE DATA - ${stats.liveStatusCounts.live} of ${stats.totalShipments} tracked in real-time</div>
             <div style="font-size: 12px; color: #9ca3af; margin-top: 10px;">Generated: ${currentDate}</div>
@@ -1328,7 +1328,7 @@ function AllAWBsMISPage() {
 
           <div class="footer">
             <p>🔴 Live tracking data fetched in real-time from vendor systems</p>
-            <p style="margin-top: 5px;">© ${new Date().getFullYear()} SunEx Services Private Limited</p>
+            <p style="margin-top: 5px;">© ${new Date().getFullYear()} Kargo One Private Limited</p>
           </div>
         </body>
         </html>

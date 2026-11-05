@@ -8,6 +8,47 @@ import { Button } from "@/components/ui/button"
 import { format } from "date-fns"
 import { formatPhone } from "@/lib/utils"
 
+const DEFAULT_EMAIL = "info@kargoone.com"
+
+// Lines of a sender / receiver block. Each line is rendered as one plain text
+// run (no bold label next to a normal value, no flex boxes), so copying from
+// the saved PDF pastes "Zip Code: 689543, Country: India" on one line instead
+// of every label and value on a new line.
+const partyLines = (party, { showKyc = false } = {}) => {
+  if (!party) return []
+  const clean = (value) => String(value ?? "").trim()
+  const join = (parts) => parts.map(clean).filter(Boolean).join(", ")
+
+  const name = clean(party.name)
+  const company = clean(party.companyName)
+  const kycType = clean(party.kyc?.type).replace(/\s*-\s*$/, "") || "KYC"
+  const kycNumber = clean(party.kyc?.kyc)
+
+  return [
+    { text: name, bold: true },
+    // Skip "C/O" when the company is just the person's name again
+    company && company.toLowerCase() !== name.toLowerCase() ? { text: `C/O ${company}`, bold: true } : null,
+    { text: join([party.address, party.address2]) },
+    { text: join([party.city && `City: ${clean(party.city)}`, party.state && `State: ${clean(party.state)}`]) },
+    { text: join([party.zip && `Zip Code: ${clean(party.zip)}`, party.country && `Country: ${clean(party.country)}`]) },
+    { text: party.contact ? `Cont No: ${formatPhone(party.contact)}` : "" },
+    { text: `Email: ${clean(party.email) || DEFAULT_EMAIL}` },
+    showKyc && kycNumber ? { text: `${kycType}: ${kycNumber}` } : null,
+  ].filter((line) => line && line.text)
+}
+
+const escapeHtml = (value) =>
+  String(value ?? "")
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+
+const partyHtml = (party, options) =>
+  partyLines(party, options)
+    .map((line) => `<div${line.bold ? ' class="bold up"' : ""}>${escapeHtml(line.text)}</div>`)
+    .join("")
+
 export default function ShippingInvoicePage() {
   const { trackingNumber } = useParams()
   const [awbData, setAwbData] = useState(null)
@@ -224,44 +265,29 @@ export default function ShippingInvoicePage() {
       <div class="invoice-title">SHIPPING INVOICE</div>
       <div class="info-grid">
         <div>
-          <div><strong>Date:</strong> ${awbData.date ? format(new Date(awbData.date), "dd/MM/yyyy") : "N/A"}</div>
-          <div><strong>Pre Carriage By:</strong> ${safe(awbData.via) || "N/A"}</div>
-          <div><strong>Vessel/Flight No:</strong> ${safe(awbData.forwardingNo) || "N/A"}</div>
-          <div><strong>Port of Discharge:</strong> ${safe(awbData.sender?.country) || "N/A"}</div>
-          <div><strong>Country of Origin of Goods:</strong> ${safe(awbData.sender?.country) || "INDIA"}</div>
+          <div>Date: ${awbData.date ? format(new Date(awbData.date), "dd/MM/yyyy") : "N/A"}</div>
+          <div>Pre Carriage By: ${safe(awbData.via) || "N/A"}</div>
+          <div>Vessel/Flight No: ${safe(awbData.forwardingNo) || "N/A"}</div>
+          <div>Port of Discharge: ${safe(awbData.sender?.country) || "N/A"}</div>
+          <div>Country of Origin of Goods: ${safe(awbData.sender?.country) || "INDIA"}</div>
         </div>
         <div>
-          <div><strong>EXP. REF-</strong> ${safe(awbData.trackingNumber)}</div>
-          <div><strong>Place of Receipt by Pre-carrier:</strong></div>
-          <div><strong>Port of Loading:</strong> ${safe(awbData.sender?.country) || "N/A"}</div>
-          <div><strong>Final Destination:</strong> ${safe(awbData.receiver?.country) || "N/A"}</div>
-          <div><strong>Country of Final Destination:</strong> ${safe(awbData.receiver?.country) || "N/A"}</div>
+          <div>EXP. REF- ${safe(awbData.trackingNumber)}</div>
+          <div>Place of Receipt by Pre-carrier: </div>
+          <div>Port of Loading: ${safe(awbData.sender?.country) || "N/A"}</div>
+          <div>Final Destination: ${safe(awbData.receiver?.country) || "N/A"}</div>
+          <div>Country of Final Destination: ${safe(awbData.receiver?.country) || "N/A"}</div>
         </div>
       </div>
 
       <div class="addr-grid">
         <div class="address-box">
           <div class="addr-title">Sender:</div>
-          <div class="bold up">${safe(awbData.sender?.name)}</div>
-          ${awbData.sender?.companyName ? `<div class="bold up">C/O ${safe(awbData.sender?.companyName)}</div>` : ""}
-          <div>${safe(awbData.sender?.address)}</div>
-          <div><strong>Zip Code:</strong> ${safe(awbData.sender?.zip)} &nbsp;&nbsp; <strong>Country:</strong> ${safe(awbData.sender?.country)}</div>
-          <div><strong>Cont No:</strong> ${safe(formatPhone(awbData.sender?.contact))}</div>
-          <div><strong>Email:</strong> ${safe(awbData.sender?.email) || "info@kargoone.com"}</div>
-          ${
-            awbData.sender?.kyc?.type || awbData.sender?.kyc?.kyc
-              ? `<div><strong>${safe(awbData.sender?.kyc?.type)}</strong> ${safe(awbData.sender?.kyc?.kyc)}</div>`
-              : ""
-          }
+          ${partyHtml(awbData.sender, { showKyc: true })}
         </div>
         <div class="address-box">
           <div class="addr-title">Receiver:</div>
-          <div class="bold up">${safe(awbData.receiver?.name)}</div>
-          ${awbData.receiver?.companyName ? `<div class="bold up">C/O ${safe(awbData.receiver?.companyName)}</div>` : ""}
-          <div>${safe(awbData.receiver?.address)}</div>
-          <div><strong>Zip Code:</strong> ${safe(awbData.receiver?.zip)} &nbsp;&nbsp; <strong>Country:</strong> ${safe(awbData.receiver?.country)}</div>
-          <div><strong>Cont No:</strong> ${safe(formatPhone(awbData.receiver?.contact))}</div>
-          <div><strong>Email:</strong> ${safe(awbData.receiver?.email) || "info@kargoone.com"}</div>
+          ${partyHtml(awbData.receiver)}
         </div>
       </div>
     `
@@ -467,37 +493,37 @@ export default function ShippingInvoicePage() {
           <div className="grid grid-cols-2 gap-4 mb-6 text-[12px]">
             <div>
               <p>
-                <strong>Date:</strong>{" "}
+                Date:{" "}
                 {awbData.date ? format(new Date(awbData.date), "dd/MM/yyyy") : "N/A"}
               </p>
               <p>
-                <strong>Pre Carriage By:</strong> {awbData.via || "N/A"}
+                Pre Carriage By: {awbData.via || "N/A"}
               </p>
               <p>
-                <strong>Vessel/Flight No:</strong> {awbData.forwardingNo || "N/A"}
+                Vessel/Flight No: {awbData.forwardingNo || "N/A"}
               </p>
               <p>
-                <strong>Port of Discharge:</strong> {awbData.sender?.country || "N/A"}
+                Port of Discharge: {awbData.sender?.country || "N/A"}
               </p>
               <p>
-                <strong>Country of Origin of Goods:</strong> {awbData.sender?.country || "INDIA"}
+                Country of Origin of Goods: {awbData.sender?.country || "INDIA"}
               </p>
             </div>
             <div>
               <p>
-                <strong>EXP. REF-</strong> {awbData.trackingNumber}
+                EXP. REF- {awbData.trackingNumber}
               </p>
               <p>
-                <strong>Place of Receipt by Pre-carrier:</strong>
+                Place of Receipt by Pre-carrier:
               </p>
               <p>
-                <strong>Port of Loading:</strong> {awbData.sender?.country || "N/A"}
+                Port of Loading: {awbData.sender?.country || "N/A"}
               </p>
               <p>
-                <strong>Final Destination:</strong> {awbData.receiver?.country || "N/A"}
+                Final Destination: {awbData.receiver?.country || "N/A"}
               </p>
               <p>
-                <strong>Country of Final Destination:</strong> {awbData.receiver?.country || "N/A"}
+                Country of Final Destination: {awbData.receiver?.country || "N/A"}
               </p>
             </div>
           </div>
@@ -505,44 +531,19 @@ export default function ShippingInvoicePage() {
           <div className="grid grid-cols-2 gap-2 mb-6 text-[12px]">
             <div className="border border-gray-300 p-1 rounded-lg">
               <h2 className="font-bold mb-2">Sender:</h2>
-              <p className="font-bold uppercase">{awbData.sender?.name}</p>
-              {awbData.sender?.companyName && (
-                <p className="font-bold uppercase">C/O {awbData.sender?.companyName}</p>
-              )}
-              <p>{awbData.sender?.address}</p>
-              <p className="flex flex-row gap-2">
-                <strong>Zip Code:</strong> {awbData.sender?.zip}
-                <strong>Country:</strong>
-                {awbData.sender?.country}
-              </p>
-              <p>
-                <strong>Cont No:</strong> {formatPhone(awbData.sender?.contact)}
-              </p>
-              <p>
-                <strong>Email:</strong> {awbData.sender?.email || "info@kargoone.com"}
-              </p>
-              <p>
-                <strong>{awbData.sender?.kyc?.type}</strong> {awbData.sender?.kyc?.kyc}
-              </p>
+              {partyLines(awbData.sender, { showKyc: true }).map((line) => (
+                <p key={line.text} className={line.bold ? "font-bold uppercase" : undefined}>
+                  {line.text}
+                </p>
+              ))}
             </div>
             <div className="border border-gray-300 rounded-lg p-1">
               <h2 className="font-bold mb-2">Receiver:</h2>
-              <p className="font-bold uppercase">{awbData.receiver?.name}</p>
-              {awbData.receiver?.companyName && (
-                <p className="font-bold uppercase">C/O {awbData.receiver?.companyName}</p>
-              )}
-              <p>{awbData.receiver?.address}</p>
-              <p className="flex flex-row gap-2">
-                <strong>Zip Code:</strong> {awbData.receiver?.zip}
-                <strong>Country:</strong>
-                {awbData.receiver?.country}
-              </p>
-              <p>
-                <strong>Cont No:</strong> {formatPhone(awbData.receiver?.contact)}
-              </p>
-              <p>
-                <strong>Email:</strong> {awbData.receiver?.email || "info@kargoone.com"}
-              </p>
+              {partyLines(awbData.receiver).map((line) => (
+                <p key={line.text} className={line.bold ? "font-bold uppercase" : undefined}>
+                  {line.text}
+                </p>
+              ))}
             </div>
           </div>
 

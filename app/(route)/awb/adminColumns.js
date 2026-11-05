@@ -239,6 +239,15 @@ export const adminColumns = [
     },
   },
   {
+    id: "pcs",
+    header: "PCS",
+    // Number of boxes in the booking
+    cell: ({ row }) => {
+      const boxes = row.original.boxes
+      return <span>{Array.isArray(boxes) ? boxes.length : 0}</span>
+    },
+  },
+  {
     accessorKey: "financials", // Use dot notation for nested data
     header: "Amount",
     cell: ({ row }) => {

@@ -333,25 +333,34 @@ function EnhancedShippingPage(
       .join("<br />")
   }
 
-  const formatInvoiceAddress = (party) => {
-    const address = escapeHtml(party?.address, "")
-    const address2 = escapeHtml(party?.address2, "")
-    const city = escapeHtml(party?.city, "")
-    const state = escapeHtml(party?.state, "")
+  // Sender / receiver block of the shipping invoice. Every line is one plain
+  // text run (no bold label + value, no flex boxes) so that copying from the
+  // saved PDF pastes "Zip Code: 689543, Country: India" on one line instead of
+  // putting every label and value on its own line.
+  const formatInvoiceParty = (party, { showKyc = false } = {}) => {
+    if (!party) return ""
+    const clean = (value) => String(value ?? "").trim()
+    const join = (parts) => parts.map(clean).filter(Boolean).join(", ")
+    const line = (text, className = "") =>
+      text ? `<p${className ? ` class="${className}"` : ""}>${escapeHtml(text, "")}</p>` : ""
 
-    return `
-                ${address ? `<p>${address}</p>` : ""}
-                ${address2 ? `<p>${address2}</p>` : ""}
-                ${city || state
-        ? `<p class="flex flex-row gap-2">
-                    ${city ? `<span><strong>City:</strong> ${city}</span>` : ""}
-                    ${state ? `<span><strong>State:</strong> ${state}</span>` : ""}
-                </p>`
-        : ""
-      }
-                <p><strong>Zip Code:</strong> ${escapeHtml(party?.zip, "")}</p>
-                <p><strong>Country:</strong> ${escapeHtml(party?.country, "")}</p>
-    `
+    const name = clean(party.name)
+    const company = clean(party.companyName)
+    const showCompany = company && company.toLowerCase() !== name.toLowerCase()
+    // "Aadhaar No -" + "1234..." -> "Aadhaar No: 1234..."
+    const kycType = clean(party.kyc?.type).replace(/\s*-\s*$/, "") || "KYC"
+    const kycNumber = clean(party.kyc?.kyc)
+
+    return [
+      line(name, "font-bold uppercase"),
+      showCompany ? line(`C/O ${company}`, "font-bold uppercase") : "",
+      line(join([party.address, party.address2])),
+      line(join([party.city && `City: ${clean(party.city)}`, party.state && `State: ${clean(party.state)}`])),
+      line(join([party.zip && `Zip Code: ${clean(party.zip)}`, party.country && `Country: ${clean(party.country)}`])),
+      line(party.contact ? `Cont No: ${formatPhone(party.contact)}` : ""),
+      line(party.email ? `Email: ${clean(party.email)}` : ""),
+      showKyc && kycNumber ? line(`${kycType}: ${kycNumber}`) : "",
+    ].join("\n")
   }
 
   const getReceiverCountry = () => safeText(awbData?.receiver?.country).toUpperCase()
@@ -428,38 +437,29 @@ function EnhancedShippingPage(
 
         <div class="grid grid-cols-2 gap-4 mb-6 text-[12px]">
             <div>
-                <p><strong>Date:</strong> ${awbData.date ? format(new Date(awbData.date), "dd/MM/yyyy") : "N/A"}</p>
-                <p><strong>Pre Carriage By:</strong> ${awbData.via || "N/A"}</p>
-                <p><strong>Vessel/Flight No:</strong> ${awbData.forwardingNumber || "N/A"}</p>
-                <p><strong>Port of Discharge:</strong> ${sender?.country || "N/A"}</p>
-                <p><strong>Country of Origin of Goods:</strong> ${sender?.country || "INDIA"}</p>
+                <p>Date: ${awbData.date ? format(new Date(awbData.date), "dd/MM/yyyy") : "N/A"}</p>
+                <p>Pre Carriage By: ${awbData.via || "N/A"}</p>
+                <p>Vessel/Flight No: ${awbData.forwardingNumber || "N/A"}</p>
+                <p>Port of Discharge: ${sender?.country || "N/A"}</p>
+                <p>Country of Origin of Goods: ${sender?.country || "INDIA"}</p>
             </div>
             <div>
-                <p><strong>EXP. REF-</strong> ${awbData.trackingNumber}</p>
-                <p><strong>Place of Receipt by Pre-carrier:</strong></p>
-                <p><strong>Port of Loading:</strong> ${sender?.country || "N/A"}</p>
-                <p><strong>Final Destination:</strong> ${awbData.receiver?.country || "N/A"}</p>
-                <p><strong>Country of Final Destination:</strong> ${awbData.receiver?.country || "N/A"}</p>
+                <p>EXP. REF- ${awbData.trackingNumber}</p>
+                <p>Place of Receipt by Pre-carrier: </p>
+                <p>Port of Loading: ${sender?.country || "N/A"}</p>
+                <p>Final Destination: ${awbData.receiver?.country || "N/A"}</p>
+                <p>Country of Final Destination: ${awbData.receiver?.country || "N/A"}</p>
             </div>
         </div>
 
         <div class="grid grid-cols-2 gap-2 mb-6 text-[12px]">
             <div class="border border-gray-300 p-1 rounded-lg">
                 <h2 class="font-bold mb-2">Sender:</h2>
-                <p class="font-bold uppercase">${sender?.name || ""}</p>
-                ${sender?.companyName ? `<p class="font-bold uppercase">C/O ${sender?.companyName}</p>` : ""}
-                ${formatInvoiceAddress(sender)}
-                <p><strong>Cont No:</strong> ${formatPhone(sender?.contact)}</p>
-                <p><strong>Email:</strong> ${sender?.email || ""}</p>
-                <p><strong>${sender?.kyc?.type || ""}</strong> ${sender?.kyc?.kyc || ""}</p>
+                ${formatInvoiceParty(sender, { showKyc: true })}
             </div>
             <div class="border border-gray-300 rounded-lg p-1">
                 <h2 class="font-bold mb-2">Receiver:</h2>
-                <p class="font-bold uppercase">${awbData.receiver?.name}</p>
-                ${awbData.receiver?.companyName ? `<p class="font-bold uppercase">C/O ${awbData.receiver?.companyName}</p>` : ""}
-                ${formatInvoiceAddress(awbData.receiver)}
-                <p><strong>Cont No:</strong> ${formatPhone(awbData.receiver?.contact)}</p>
-                <p><strong>Email:</strong> ${awbData.receiver?.email || ""}</p>
+                ${formatInvoiceParty(awbData.receiver)}
             </div>
         </div>
 

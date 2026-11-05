@@ -1036,9 +1036,12 @@ async function sendToITD(awb, vendor, serviceData, customSender, kycDocumentData
       ITD_KYC_TYPE_MAP[rawKycType] ||
       (awb.sender?.gst ? "GSTIN (Normal)" : "Aadhaar Number")
 
+    // ITD looks up the freight from the rate card for this booking date, so use
+    // the IST date (toISOString is UTC and gives yesterday before 05:30 IST)
     const now = new Date()
-    const bookingDate = now.toISOString().split("T")[0]
-    const bookingTime = now.toTimeString().split(" ")[0]
+    const istNow = new Date(now.getTime() + 5.5 * 60 * 60 * 1000)
+    const bookingDate = istNow.toISOString().split("T")[0]
+    const bookingTime = istNow.toISOString().split("T")[1].substring(0, 8)
 
     const shipmentContent =
       awb.boxes
@@ -1119,7 +1122,9 @@ async function sendToITD(awb, vendor, serviceData, customSender, kycDocumentData
       tracking_no: awb.trackingNumber,
       reference_name: sender?.name || "Reference",
       customer_id: parseInt(customerId, 10),
-      origin_code: sender?.zip || awb.sender?.zip || originCountryCode,
+      // Must match the origin used for rates (lib/itd-rate-fetcher.js), otherwise
+      // ITD finds no rate card and rejects the docket with a zero freight amount
+      origin_code: originCountryCode,
       product_code: serviceData.productCode || "NONDOX",
       destination_code: destCountryCode,
       booking_date: bookingDate,
@@ -1513,7 +1518,7 @@ async function sendToSKart(awb, vendor, serviceData, customSender, skartKycDocum
       120
     ),
     consigner_mobile_number: "+" + cleanPhone(sender?.contact || ""),
-    consigner_email_id: sender?.email || "yourship.sunexpress@gmail.com",
+    consigner_email_id: sender?.email || "info@kargoone.com",
     consigner_address_1: truncate(sender?.address || "-", 120),
     consigner_address_2: truncate(
       sender?.address2 || sender?.address || "-",
@@ -1535,7 +1540,7 @@ async function sendToSKart(awb, vendor, serviceData, customSender, skartKycDocum
       120
     ),
     consignee_mobile_number: "+" + cleanPhone(awb.receiver?.contact || ""),
-    consignee_email_id: awb.receiver?.email || "yourship.sunexpress@gmail.com",
+    consignee_email_id: awb.receiver?.email || "info@kargoone.com",
     consignee_address_1: truncate(awb.receiver?.address || "-", 120),
     consignee_address_2: truncate(
       awb.receiver?.address2 || awb.receiver?.address || "-",

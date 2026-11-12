@@ -655,6 +655,8 @@ export default function TrackingDetails({ parcelDetails, onRefresh }) {
     comment:   e.comment || null,
   }));
   const isLoading = false;
+  // Set by the server when live carrier scans could not be fetched
+  const error = parcelDetails?.warning || null;
 
   const fwdNumber    = parcelDetails?.forwardingNumber;
   const fwdLink      = parcelDetails?.forwardingLink || "";
@@ -960,7 +962,7 @@ export default function TrackingDetails({ parcelDetails, onRefresh }) {
             </div>
             <p className="text-sm text-red-700 flex-1 min-w-0 break-words">{error}</p>
             <button
-              onClick={fetchVendor}
+              onClick={() => onRefresh?.()}
               className="text-sm font-semibold text-red-600 hover:text-red-800 flex items-center gap-1 whitespace-nowrap shrink-0 bg-red-100 hover:bg-red-200 px-3 py-2 rounded-lg transition-colors"
             >
               <RefreshCw className="w-4 h-4" /> Retry

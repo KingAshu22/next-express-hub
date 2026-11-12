@@ -61,6 +61,7 @@ export default function TrackingPage() {
               forwardingNumber: t.forwardingNumber,
               forwardingLink: t.forwardingLink,
               timeline: t.timeline || [],
+              warning: response.data?.warning || null,
             }
           : null
       );

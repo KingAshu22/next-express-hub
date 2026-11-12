@@ -1,4 +1,6 @@
 import { connectToDB } from "@/app/_utils/mongodb"
+import { withAuth } from "@/lib/auth/server"
+import { ADMIN_BRANCH } from "@/lib/auth/config"
 
 // You might want to store tokens in a database or cache
 // For simplicity, using in-memory cache with expiration
@@ -53,7 +55,7 @@ export async function getExpressImpexToken() {
   }
 }
 
-export async function POST(request) {
+export const POST = withAuth(async (request, _ctx, session) => {
   try {
     const tokenData = await getExpressImpexToken()
 
@@ -74,4 +76,4 @@ export async function POST(request) {
       { status: 500, headers: { "Content-Type": "application/json" } }
     )
   }
-}
+}, { roles: ADMIN_BRANCH })

@@ -1,8 +1,10 @@
 import { NextResponse } from "next/server";
+import { withAuth } from "@/lib/auth/server"
+import { ADMIN_ONLY } from "@/lib/auth/config"
 import { connectToDB } from "@/app/_utils/mongodb";
 import Billing from "@/models/Billing";
 
-export async function POST(req, { params }) {
+export const POST = withAuth(async (req, { params }, session) => {
   try {
     await connectToDB();
     
@@ -48,4 +50,4 @@ export async function POST(req, { params }) {
     console.error("Error recording payment:", err);
     return NextResponse.json({ error: "Internal Server Error" }, { status: 500 });
   }
-}
+}, { roles: ADMIN_ONLY })

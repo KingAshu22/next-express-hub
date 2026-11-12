@@ -26,6 +26,8 @@ import {
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import Image from "next/image";
 import { useRouter, useSearchParams } from "next/navigation";
+import toast from "react-hot-toast";
+import { saveProfile } from "@/lib/auth/client";
 
 const formSchema = z.object({
   email: z.string().email({ message: "Please enter a valid email address" }),
@@ -46,9 +48,11 @@ export default function SignInForm() {
   useEffect(() => {
     const rawReturnUrl = searchParams.get("redirect_url") || "/dashboard";
     if (typeof window !== "undefined") {
-      const returnUrlPath = new URL(rawReturnUrl, window.location.origin)
-        .pathname;
-      setReturnUrl(returnUrlPath);
+      const parsed = new URL(rawReturnUrl, window.location.origin);
+      // Never redirect to another site after login (open-redirect protection)
+      setReturnUrl(
+        parsed.origin === window.location.origin ? parsed.pathname + parsed.search : "/dashboard"
+      );
     }
   }, [searchParams]);
 
@@ -62,101 +66,33 @@ export default function SignInForm() {
 
   async function onSubmit(values) {
     setIsLoading(true);
+    const endpoint =
+      userType === "admin"
+        ? "/api/admin-signin"
+        : userType === "franchise"
+          ? "/api/franchise-signin"
+          : "/api/client-signin";
 
-    if (userType === "admin") {
-      try {
-        const response = await fetch("/api/admin-signin", {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify(values), // Pass email and password
-        });
+    try {
+      const response = await fetch(endpoint, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        credentials: "same-origin",
+        body: JSON.stringify(values),
+      });
+      const data = await response.json().catch(() => ({}));
 
-        const data = await response.json(); // Parse response as JSON
-
-        if (response.ok) {
-          console.log("Admin signed in:", data.admin);
-          const authExpiry = Date.now() + 7 * 24 * 60 * 60 * 1000;
-          localStorage.setItem("id", data.admin._id);
-          localStorage.setItem("userType", "admin");
-          localStorage.setItem("name", data.admin.name);
-          localStorage.setItem("authExpiry", authExpiry);
-          router.push(returnUrl);
-        } else {
-          console.error("Error:", data.error);
-          // Optionally, show an error message to the user
-        }
-      } catch (error) {
-        console.error("Error during sign-in:", error);
+      if (response.ok && data.user) {
+        // The session itself is an HttpOnly cookie set by the server;
+        // only display info is kept in the browser.
+        saveProfile(data.user);
+        router.push(returnUrl || "/dashboard");
+      } else {
+        toast.error(data.error || "Sign in failed. Please try again.");
       }
-    } else if (userType === "franchise") {
-      try {
-        const response = await fetch("/api/franchise-signin", {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify(values), // Pass email and password
-        });
-
-        const data = await response.json(); // Parse response as JSON
-
-        if (response.ok) {
-          console.log("Franchise signed in:", data.franchise);
-          const authExpiry = Date.now() + 7 * 24 * 60 * 60 * 1000;
-          localStorage.setItem("id", data.franchise._id);
-          localStorage.setItem("code", data.franchise.code);
-          localStorage.setItem(
-            "userType",
-            data.franchise?.isBranch === "Yes"
-              ? "branch"
-              : data.franchise?.isBranch === "customerService"
-                ? "Customer Service"
-                : data.franchise?.isBranch === "pickup"
-                ? "pickup"
-                : "franchise"
-          );
-
-          localStorage.setItem("name", data.franchise.name);
-          localStorage.setItem("authExpiry", authExpiry);
-          router.push(returnUrl);
-        } else {
-          console.error("Error:", data.error);
-          // Optionally, show an error message to the user
-        }
-      } catch (error) {
-        console.error("Error during sign-in:", error);
-      }
-    } else {
-      try {
-        const response = await fetch("/api/client-signin", {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify(values), // Pass email and password
-        });
-
-        const data = await response.json(); // Parse response as JSON
-
-        if (response.ok) {
-          console.log("Client signed in:", data.client);
-          const authExpiry = Date.now() + 7 * 24 * 60 * 60 * 1000;
-          localStorage.setItem("id", data.client._id);
-          localStorage.setItem("userType", "client");
-          // if company name is available, use it; otherwise, use personal name
-          localStorage.setItem("name", data.client.companyName || data.client.name);
-          localStorage.setItem("code", data.client.code);
-          localStorage.setItem("authExpiry", authExpiry);
-          router.push(returnUrl);
-        } else {
-          console.error("Error:", data.error);
-          // Optionally, show an error message to the user
-        }
-      } catch (error) {
-        console.error("Error during sign-in:", error);
-      }
+    } catch (error) {
+      console.error("Error during sign-in:", error);
+      toast.error("Could not reach the server. Please try again.");
     }
 
     setIsLoading(false);

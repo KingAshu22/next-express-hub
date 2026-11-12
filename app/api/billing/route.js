@@ -1,4 +1,6 @@
 import { NextResponse } from "next/server";
+import { withAuth } from "@/lib/auth/server"
+import { ADMIN_ONLY } from "@/lib/auth/config"
 import { connectToDB } from "@/app/_utils/mongodb";
 import Billing from "@/models/Billing";
 import Awb from "@/models/Awb";
@@ -16,7 +18,7 @@ function getFinancialYear() {
 }
 
 // GET - Fetch all bills
-export async function GET(req) {
+export const GET = withAuth(async (req, _ctx, session) => {
   try {
     await connectToDB();
 
@@ -138,10 +140,10 @@ export async function GET(req) {
       { status: 500 }
     );
   }
-}
+}, { roles: ADMIN_ONLY })
 
 // POST - Create new bill
-export async function POST(req) {
+export const POST = withAuth(async (req, _ctx, session) => {
   try {
     await connectToDB();
     const data = await req.json();
@@ -206,4 +208,4 @@ export async function POST(req) {
       { status: 500 }
     );
   }
-}
+}, { roles: ADMIN_ONLY })

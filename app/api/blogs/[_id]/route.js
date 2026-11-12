@@ -1,8 +1,10 @@
 import { connectToDB } from "@/app/_utils/mongodb";
+import { withAuth } from "@/lib/auth/server"
+import { ADMIN_BRANCH } from "@/lib/auth/config"
 import Blog from "@/models/Blog";
 import { NextResponse } from "next/server";
 
-export async function GET(request, { params }) {
+export const GET = withAuth(async (request, { params }, session) => {
   await connectToDB();
 
   try {
@@ -18,9 +20,9 @@ export async function GET(request, { params }) {
       { status: 500 }
     );
   }
-}
+}, { roles: ADMIN_BRANCH })
 
-export async function PUT(request, { params }) {
+export const PUT = withAuth(async (request, { params }, session) => {
   await connectToDB();
 
   try {
@@ -52,9 +54,9 @@ export async function PUT(request, { params }) {
       { status: 500 }
     );
   }
-}
+}, { roles: ADMIN_BRANCH })
 
-export async function DELETE(request, { params }) {
+export const DELETE = withAuth(async (request, { params }, session) => {
   await connectToDB();
 
   try {
@@ -70,4 +72,4 @@ export async function DELETE(request, { params }) {
       { status: 500 }
     );
   }
-}
+}, { roles: ADMIN_BRANCH })

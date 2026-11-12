@@ -1,4 +1,5 @@
 import mongoose, { Schema, model, models } from "mongoose";
+import { passwordHashingPlugin } from "@/lib/auth/password";
 
 const KYC_TYPES = [
   "Aadhaar No",
@@ -74,7 +75,7 @@ const ClientSchema = new Schema(
     // Tax
     gstNo: { type: String, trim: true },
 
-    // Login (plain text password as requested)
+    // Login (password is stored as a bcrypt hash)
     email: {
       type: String,
       required: true,
@@ -89,6 +90,7 @@ const ClientSchema = new Schema(
       select: false, // don’t return by default
       trim: true,
     },
+    tokenVersion: { type: Number, default: 0 }, // bump to revoke all sessions
 
     // Rates
     rates: {
@@ -120,10 +122,13 @@ const ClientSchema = new Schema(
   { timestamps: true }
 );
 
+ClientSchema.plugin(passwordHashingPlugin);
+
 // Hide password in JSON output (extra safety)
 ClientSchema.set("toJSON", {
   transform(_doc, ret) {
     delete ret.password;
+    delete ret.tokenVersion;
     return ret;
   },
   versionKey: false,

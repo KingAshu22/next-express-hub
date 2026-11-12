@@ -1,9 +1,11 @@
 import { connectToDB } from "@/app/_utils/mongodb"
+import { withAuth } from "@/lib/auth/server"
+import { ADMIN_BRANCH } from "@/lib/auth/config"
 import VendorIntegration from "@/models/VendorIntegration"
 import { ITDRateFetcher } from "@/lib/itd-rate-fetcher"
 import iso from "iso-3166-1-alpha-2"
 
-export async function POST(request) {
+export const POST = withAuth(async (request, _ctx, session) => {
   try {
     await connectToDB()
     const { vendorId, awbData, packageCode } = await request.json()
@@ -139,4 +141,4 @@ export async function POST(request) {
       error: error.message || "Rate fetch failed" 
     }), { status: 500 })
   }
-}
+}, { roles: ADMIN_BRANCH })

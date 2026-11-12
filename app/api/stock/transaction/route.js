@@ -1,8 +1,10 @@
 import { connectToDB } from "@/app/_utils/mongodb";
+import { withAuth } from "@/lib/auth/server"
+import { ADMIN_ONLY } from "@/lib/auth/config"
 import Stock from "@/models/Stock"
 import { NextResponse } from "next/server"
 
-export async function POST(request) {
+export const POST = withAuth(async (request, _ctx, session) => {
   try {
     await connectToDB()
 
@@ -20,4 +22,4 @@ export async function POST(request) {
   } catch (error) {
     return NextResponse.json({ success: false, error: error.message }, { status: 400 })
   }
-}
+}, { roles: ADMIN_ONLY })

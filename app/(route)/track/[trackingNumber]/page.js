@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { useParams } from "next/navigation";
 import Link from "next/link";
 import axios from "axios";
@@ -43,24 +43,39 @@ export default function TrackingPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
 
-  useEffect(() => {
-    const fetchAWBData = async () => {
-      console.log(`AWB fetching data ${trackingNumber}`);
-      setLoading(true);
-      try {
-        const response = await axios.get(`/api/awb/${trackingNumber}`);
-        setAwbData(response.data[0]);
-        setLoading(false);
-      } catch (err) {
-        setError("Failed to fetch AWB data");
-        setLoading(false);
-      }
-    };
-
-    if (trackingNumber) {
-      fetchAWBData();
+  // Public, minimal tracking data (no names, addresses, vendor or C-Note
+  // details). The server merges our updates with the carrier's live scans.
+  const fetchTracking = useCallback(async (showSpinner = true) => {
+    if (!trackingNumber) return;
+    if (showSpinner) setLoading(true);
+    setError("");
+    try {
+      const response = await axios.get(`/api/track/${encodeURIComponent(trackingNumber)}`);
+      const t = response.data?.data;
+      setAwbData(
+        t
+          ? {
+              trackingNumber: t.trackingNumber,
+              sender: { city: t.origin?.city, country: t.origin?.country },
+              receiver: { city: t.destination?.city, country: t.destination?.country },
+              forwardingNumber: t.forwardingNumber,
+              forwardingLink: t.forwardingLink,
+              timeline: t.timeline || [],
+            }
+          : null
+      );
+    } catch (err) {
+      if (err?.response?.status === 404) setAwbData(null);
+      else if (err?.response?.status === 429) setError("Too many tracking requests. Please wait a minute and try again.");
+      else setError("We couldn't load this shipment right now. Please try again in a moment.");
+    } finally {
+      setLoading(false);
     }
   }, [trackingNumber]);
+
+  useEffect(() => {
+    fetchTracking();
+  }, [fetchTracking]);
 
   if (loading) {
     return (
@@ -77,7 +92,7 @@ export default function TrackingPage() {
       <StateScreen
         icon={<AlertCircle className="w-8 h-8" />}
         title="Something went wrong"
-        message="We couldn't load this shipment right now. Please try again in a moment."
+        message={error || "We couldn't load this shipment right now. Please try again in a moment."}
         showBack
       />
     );
@@ -97,7 +112,7 @@ export default function TrackingPage() {
   return (
     <>
       <FrontHeader />
-      <TrackingDetails parcelDetails={awbData} />
+      <TrackingDetails parcelDetails={awbData} onRefresh={() => fetchTracking(false)} />
       <Footer />
     </>
   );

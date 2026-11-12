@@ -1,24 +1,17 @@
 import { connectToDB } from "@/app/_utils/mongodb";
 import Client from "@/models/Client";
 import { NextResponse } from "next/server";
+import { withAuth, notFound } from "@/lib/auth/server";
+import { canAccessClient } from "@/lib/security/scope";
+import { sanitizeClient } from "@/lib/security/sanitize";
 
-export async function GET(req, { params }) {
-    const { code } = await params;
-    console.log("Inside get /api/clients/id/:code");
-    await connectToDB();
-    try {
-        const client = await Client.findOne({ _id: code });
+// GET /api/clients/id/:id  (looks a client up by its database id)
+export const GET = withAuth(async (req, { params }, session) => {
+  const { code } = await params;
+  await connectToDB();
 
-        if (!client) {
-            return NextResponse.json({ message: "Client s not found" }, { status: 404 });
-        }
+  const client = await Client.findById(String(code)).lean().catch(() => null);
+  if (!canAccessClient(session, client)) return notFound("Client not found");
 
-        return NextResponse.json(client);
-    } catch (error) {
-        console.error("Error fetching Client data:", error);
-        return NextResponse.json(
-            { message: "Failed to fetch Client data.", error: error.message },
-            { status: 500 }
-        );
-    }
-}
+  return NextResponse.json(sanitizeClient(client));
+});

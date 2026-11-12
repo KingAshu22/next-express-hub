@@ -1,8 +1,10 @@
 import { connectToDB } from "@/app/_utils/mongodb";
 import Estimate from "@/models/Estimate";
-import { NextResponse } from "next/server";
+import { NextResponse } from "next/server"
+import { withAuth } from "@/lib/auth/server"
+import { ADMIN_BRANCH } from "@/lib/auth/config";
 
-export async function GET() {
+export const GET = withAuth(async () => {
   await connectToDB();
 
   try {
@@ -25,4 +27,4 @@ export async function GET() {
       { status: 500 }
     );
   }
-}
+}, { roles: ADMIN_BRANCH })

@@ -60,7 +60,10 @@ const formSchema = z.object({
 
   // Login fields
   email: z.string().email({ message: "Please enter a valid email address" }),
-  password: z.string().min(8, { message: "Password must be at least 8 characters long" }),
+  // Blank on edit = keep the current password (passwords are stored hashed and never sent back)
+  password: z
+    .string()
+    .refine((v) => v === "" || v.length >= 8, { message: "Password must be at least 8 characters long" }),
 
   // Profile fields
   name: z.string().min(2, { message: "Name must be at least 2 characters long" }),
@@ -107,7 +110,7 @@ export default function ClientForm({
       role: "client",
       code: client?.code || "",
       email: client?.email || "",
-      password: client?.password || "",
+      password: "",
       name: client?.name || "",
       companyName: client?.companyName || "",
       address: client?.address || "",
@@ -261,6 +264,10 @@ export default function ClientForm({
   };
 
   async function onSubmit(values) {
+    if (!isEdit && !values.password) {
+      form.setError("password", { message: "Password is required" });
+      return;
+    }
     try {
       setIsLoading(true);
 
@@ -610,7 +617,7 @@ export default function ClientForm({
                     <div className="relative">
                       <Input
                         type={showPassword ? "text" : "password"}
-                        placeholder="Enter password"
+                        placeholder={isEdit ? "Leave blank to keep current password" : "Enter password"}
                         {...field}
                       />
                       <button

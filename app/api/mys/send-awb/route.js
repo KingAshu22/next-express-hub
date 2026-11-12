@@ -1,4 +1,6 @@
 import { connectToDB } from "@/app/_utils/mongodb"
+import { withAuth } from "@/lib/auth/server"
+import { ADMIN_BRANCH } from "@/lib/auth/config"
 import Awb from "@/models/Awb"
 import iso from "iso-3166-1-alpha-2"
 import { getExpressImpexToken } from "../get-token/route"
@@ -32,7 +34,7 @@ const SERVICE_PRODUCT_MAP = {
 // Common codes: DOX (Documents), NDX (Non-Documents/Parcels), SPX (Special)
 const DEFAULT_PRODUCT_CODE = "NONDOX" // Non-Document for shipments with items
 
-export async function POST(request) {
+export const POST = withAuth(async (request, _ctx, session) => {
   try {
     await connectToDB()
     const { awbId, service, vendorCode, productCode } = await request.json()
@@ -382,4 +384,4 @@ export async function POST(request) {
       }
     )
   }
-}
+}, { roles: ADMIN_BRANCH })

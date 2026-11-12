@@ -1,4 +1,5 @@
 import mongoose, { Schema, model, models } from "mongoose";
+import { passwordHashingPlugin } from "@/lib/auth/password";
 
 const RateRowSchema = new Schema({
   kg: Number,
@@ -37,7 +38,8 @@ const FranchiseSchema = new Schema({
   bankAccountName: String,
   bankAccountNumber: String,
   bankIfscCode: String,
-  password: String,
+  password: { type: String, select: false }, // bcrypt hash
+  tokenVersion: { type: Number, default: 0 }, // bump to revoke all sessions
 
   // old one, keep as it is
   rates: [
@@ -49,6 +51,15 @@ const FranchiseSchema = new Schema({
 
   // new structured sheets
   rateSheets: [RateSheetSchema],
+});
+
+FranchiseSchema.plugin(passwordHashingPlugin);
+FranchiseSchema.set("toJSON", {
+  transform(_doc, ret) {
+    delete ret.password;
+    delete ret.tokenVersion;
+    return ret;
+  },
 });
 
 const Franchise = models.Franchise || model("Franchise", FranchiseSchema);

@@ -1,9 +1,11 @@
 // app/api/vendor-integrations/route.js
 import { connectToDB } from "@/app/_utils/mongodb"
+import { withAuth } from "@/lib/auth/server"
+import { ADMIN_ONLY } from "@/lib/auth/config"
 import VendorIntegration from "@/models/VendorIntegration"
 
 // GET - List all vendor integrations
-export async function GET(request) {
+export const GET = withAuth(async (request, _ctx, session) => {
   try {
     await connectToDB()
 
@@ -38,10 +40,10 @@ export async function GET(request) {
       { status: 500, headers: { "Content-Type": "application/json" } }
     )
   }
-}
+}, { roles: ADMIN_ONLY })
 
 // POST - Create new vendor integration
-export async function POST(request) {
+export const POST = withAuth(async (request, _ctx, session) => {
   try {
     await connectToDB()
 
@@ -241,4 +243,4 @@ export async function POST(request) {
       { status: 500, headers: { "Content-Type": "application/json" } }
     )
   }
-}
+}, { roles: ADMIN_ONLY })

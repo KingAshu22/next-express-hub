@@ -29,7 +29,10 @@ const formSchema = z.object({
   bankIfscCode: z.string().optional(),
   code: z.string().min(3, { message: "Code must be at least 3 characters long" }),
   email: z.string().email({ message: "Please enter a valid email address" }),
-  password: z.string().min(8, { message: "Password must be at least 8 characters long" }),
+  // Blank on edit = keep the current password (passwords are stored hashed and never sent back)
+  password: z
+    .string()
+    .refine((v) => v === "" || v.length >= 8, { message: "Password must be at least 8 characters long" }),
   rates: z
     .array(
       z.object({
@@ -64,7 +67,7 @@ export default function FranchiseForm({ isEdit = false, franchise }) {
       bankAccountNumber: franchise?.bankAccountNumber || "",
       bankIfscCode: franchise?.bankIfscCode || "",
       email: franchise?.email || "",
-      password: franchise?.password || "",
+      password: "",
       rates: franchise?.rates || [{ country: "Rest of World", percent: "" }],
     },
   })
@@ -110,6 +113,10 @@ export default function FranchiseForm({ isEdit = false, franchise }) {
   }
 
   async function onSubmit(values) {
+    if (!values.password) {
+      form.setError("password", { message: "Password is required" });
+      return;
+    }
     try {
       setIsLoading(true)
       console.log("Inside Save Franchise Function")
@@ -400,7 +407,7 @@ export default function FranchiseForm({ isEdit = false, franchise }) {
                     <div className="relative">
                       <Input
                         type={showPassword ? "text" : "password"}
-                        placeholder="Enter password"
+                        placeholder={isEdit ? "Leave blank to keep current password" : "Enter password"}
                         autoComplete="off"
                         {...field}
                       />

@@ -1,10 +1,12 @@
 import { connectToDB } from "@/app/_utils/mongodb";
+import { withAuth } from "@/lib/auth/server"
+import { ADMIN_BRANCH } from "@/lib/auth/config"
 import Blog from "@/models/Blog";
 import { NextResponse } from "next/server";
 import slugify from "slugify";
 
 // ✅ GET blogs with pagination + search
-export async function GET(req) {
+export const GET = withAuth(async (req, _ctx, session) => {
   await connectToDB();
 
   try {
@@ -42,10 +44,10 @@ export async function GET(req) {
   } catch (error) {
     return NextResponse.json({ error: error.message }, { status: 500 });
   }
-}
+}, { roles: ADMIN_BRANCH })
 
 // ✅ POST create a new blog
-export async function POST(req) {
+export const POST = withAuth(async (req, _ctx, session) => {
   await connectToDB();
 
   try {
@@ -74,4 +76,4 @@ export async function POST(req) {
   } catch (error) {
     return NextResponse.json({ error: error.message }, { status: 500 });
   }
-}
+}, { roles: ADMIN_BRANCH })

@@ -1,24 +1,20 @@
 import { connectToDB } from "@/app/_utils/mongodb";
 import Awb from "@/models/Awb";
 import { NextResponse } from "next/server";
+import { withAuth, notFound } from "@/lib/auth/server";
+import { canAccessRefCode } from "@/lib/security/scope";
+import { sanitizeAwbs, AWB_EXTERNAL_PROJECTION } from "@/lib/security/sanitize";
+import { isInternalRole } from "@/lib/auth/config";
 
-export async function GET(req, { params }) {
+export const GET = withAuth(async (req, { params }, session) => {
   const { refCode } = await params;
-  console.log("Inside get /api/awb/refCode/:refCode");
   await connectToDB();
-  try {
-    const awb = await Awb.find({ refCode: refCode });
 
-    if (!awb) {
-      return NextResponse.json({ message: "AWB not found" }, { status: 404 });
-    }
+  if (!(await canAccessRefCode(session, String(refCode)))) return notFound("AWB not found");
 
-    return NextResponse.json(awb);
-  } catch (error) {
-    console.error("Error fetching AWB data:", error);
-    return NextResponse.json(
-      { message: "Failed to fetch AWB data.", error: error.message },
-      { status: 500 }
-    );
-  }
-}
+  let query = Awb.find({ refCode: String(refCode) }).sort({ date: -1 });
+  if (!isInternalRole(session.role)) query = query.select(AWB_EXTERNAL_PROJECTION);
+  const awbs = await query.lean();
+
+  return NextResponse.json(sanitizeAwbs(awbs, session));
+});

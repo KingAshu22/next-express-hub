@@ -1,9 +1,11 @@
 import { NextResponse } from "next/server";
+import { withAuth } from "@/lib/auth/server";
+import { sanitizeRateResult } from "@/lib/security/sanitize";
 import { connectToDB } from "@/app/_utils/mongodb";
 import Rate from "@/models/Rate";
 import { findMatchingPostalZone } from "@/app/_utils/postalZoneMatch";
 
-export async function GET(req) {
+export const GET = withAuth(async (req, ctx, session) => {
     const { searchParams } = new URL(req.url);
     const type = searchParams.get("type");
     const country = searchParams.get("country");
@@ -12,9 +14,9 @@ export async function GET(req) {
     const inputWeight = parseFloat(searchParams.get("weight"));
     const rateCategory = searchParams.get("rateCategory") || "sales";
     
-    // Handle case-insensitive headers
-    const userType = req.headers.get("userType") || req.headers.get("usertype") || "";
-    const userId = req.headers.get("userId") || req.headers.get("userid") || "";
+    // Identity from the signed session (request headers are ignored)
+    const userType = session.role;
+    const userId = session.code;
 
     console.log("\n--- [START] /api/rate Request ---");
     console.log(`Params: type=${type}, country=${country}, zipCode=${zipCode}, weight=${inputWeight}, rateCategory=${rateCategory}, profitPercent=${profitPercent}`);
@@ -40,7 +42,7 @@ export async function GET(req) {
         // Determine if user is admin or branch
         const isAdminOrBranch = userType === "admin" || userType === "branch";
 
-        if (isAdminOrBranch || !userType) {
+        if (isAdminOrBranch) {
             console.log("DEBUG: Admin/Branch/Testing - no visibility filter applied");
         } else if (userType === "franchise" || userType === "client") {
             if (rateCategory === "purchase") {
@@ -310,7 +312,7 @@ export async function GET(req) {
 
         console.log("--- [END] Request Processed Successfully ---");
         
-        return NextResponse.json({
+        return NextResponse.json(sanitizeRateResult({
             service: rateResult.service,
             originalName: rateResult.originalName,
             vendorName: rateResult.vendorName,
@@ -337,13 +339,12 @@ export async function GET(req) {
             subtotalBeforeGST: parseFloat(subtotalBeforeGST.toFixed(2)),
             gstAmount: parseFloat(gstAmount.toFixed(2)),
             total: parseFloat(finalTotal.toFixed(2)),
-        });
+        }, session));
 
     } catch (error) {
         console.error("FATAL: An unexpected error occurred:", error);
         return NextResponse.json({ 
             error: "Internal Server Error", 
-            details: error.message 
         }, { status: 500 });
     }
-}
+});

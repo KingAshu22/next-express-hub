@@ -1,8 +1,10 @@
 import { NextResponse } from "next/server"
+import { withAuth } from "@/lib/auth/server"
+import { ADMIN_BRANCH, ADMIN_ONLY } from "@/lib/auth/config"
 import { connectToDB } from "@/app/_utils/mongodb"
 import Rate from "@/models/Rate"
 
-export async function GET(req) {
+export const GET = withAuth(async (req, _ctx, session) => {
   try {
     await connectToDB()
     
@@ -22,9 +24,9 @@ export async function GET(req) {
     console.error("Error fetching rates:", error)
     return NextResponse.json({ message: "Failed to fetch rates.", error: error.message }, { status: 500 })
   }
-}
+}, { roles: ADMIN_BRANCH })
 
-export async function POST(req) {
+export const POST = withAuth(async (req, _ctx, session) => {
   try {
     await connectToDB()
     const body = await req.json()
@@ -134,4 +136,4 @@ export async function POST(req) {
       error: error.message 
     }, { status: 500 })
   }
-}
+}, { roles: ADMIN_ONLY })

@@ -1,33 +1,47 @@
 import { connectToDB } from "@/app/_utils/mongodb"
 import Franchise from "@/models/Franchise"
+import Client from "@/models/Client"
 import { NextResponse } from "next/server"
+import { withAuth } from "@/lib/auth/server"
+import { ROLES, ADMIN_ONLY, isInternalRole } from "@/lib/auth/config"
+import { sanitizeFranchises, sanitizeFranchise } from "@/lib/security/sanitize"
 
-export async function GET() {
-  console.log("Inside get /api/franchises")
+// Passwords / bank details / identity documents are never part of a list.
+const LIST_EXCLUDE = "-password -tokenVersion -bankAccountName -bankAccountNumber -bankIfscCode -panNo -aadhaarNo -rateSheets"
+
+export const GET = withAuth(async (req, ctx, session) => {
   await connectToDB()
-  try {
-    const franchises = await Franchise.find({}).sort({ _id: -1 })
-    return NextResponse.json(franchises)
-  } catch (error) {
-    console.error("Error fetching Franchises:", error.message)
-    return NextResponse.json({ error: "Failed to fetch Franchises" }, { status: 500 })
+
+  if (isInternalRole(session.role)) {
+    const franchises = await Franchise.find({}).select(LIST_EXCLUDE).sort({ _id: -1 }).lean()
+    return NextResponse.json(sanitizeFranchises(franchises, session))
   }
-}
 
-export async function POST(req) {
-  try {
-    console.log("Inside /api/franchises")
+  if (session.role === ROLES.FRANCHISE) {
+    const me = await Franchise.find({ code: session.code }).select(LIST_EXCLUDE).lean()
+    return NextResponse.json(sanitizeFranchises(me, session))
+  }
+
+  // Client: only the franchise it belongs to (letterhead info)
+  const client = await Client.findOne({ code: session.code }).select("owner").lean()
+  const owner = client?.owner ? await Franchise.find({ code: client.owner }).lean() : []
+  return NextResponse.json(sanitizeFranchises(owner, session))
+})
+
+export const POST = withAuth(
+  async (req, ctx, session) => {
     await connectToDB()
-    const data = await req.json() // Parse JSON body from the request
-
-    console.log(data)
+    const data = await req.json()
+    delete data._id
+    delete data.tokenVersion
 
     const newFranchise = new Franchise(data)
     await newFranchise.save()
 
-    return NextResponse.json({ message: "Franchise added successfully!", newFranchise }, { status: 200 })
-  } catch (error) {
-    console.error("Error in POST /api/franchises:", error.message)
-    return NextResponse.json({ error: "Internal Server Error" }, { status: 500 })
-  }
-}
+    return NextResponse.json(
+      { message: "Franchise added successfully!", newFranchise: sanitizeFranchise(newFranchise, session) },
+      { status: 200 }
+    )
+  },
+  { roles: ADMIN_ONLY }
+)

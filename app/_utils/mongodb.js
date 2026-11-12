@@ -1,29 +1,24 @@
 import mongoose from "mongoose";
 
-let isConnected = false;
+// Connection string comes from the environment - never hard-code credentials.
+const MONGODB_URI = process.env.MONGODB_URI;
+const MONGODB_DB = process.env.MONGODB_DB || "test";
+
+// Re-use one connection across hot reloads / serverless invocations
+const cached = globalThis.__koMongoose || (globalThis.__koMongoose = { promise: null });
 
 export const connectToDB = async () => {
-  if (isConnected) {
-    console.log("MongoDB is already connected");
-    return;
+  if (mongoose.connection.readyState === 1) return;
+  if (!MONGODB_URI) {
+    throw new Error("MONGODB_URI is not set. Add it to your environment (.env / hosting dashboard).");
   }
 
   try {
-    console.log(
-      `MongoDB URL: mongodb+srv://ashishprasad9833:urshPBc3hBsk6O35@cluster0.qx13w.mongodb.net/`
-    );
-    await mongoose.connect(
-      "mongodb+srv://ashishprasad9833:urshPBc3hBsk6O35@cluster0.qx13w.mongodb.net/",
-      {
-        dbName: "test",
-      }
-    );
-
-    isConnected = true;
-    console.log("MongoDB is connected");
+    cached.promise ||= mongoose.connect(MONGODB_URI, { dbName: MONGODB_DB });
+    await cached.promise;
   } catch (err) {
-    isConnected = false; // Reset isConnected flag on connection failure
-    console.error("Error connecting to MongoDB:", err);
-    // Depending on your application's requirements, you might want to throw an error here or retry the connection.
+    cached.promise = null; // allow a retry on the next request
+    console.error("Error connecting to MongoDB:", err.message);
+    throw err;
   }
 };

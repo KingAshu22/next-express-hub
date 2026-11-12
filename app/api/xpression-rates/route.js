@@ -5,6 +5,8 @@
  */
 
 import { NextResponse } from "next/server";
+import { withAuth } from "@/lib/auth/server";
+import { ADMIN_BRANCH } from "@/lib/auth/config";
 import { connectToDB } from "@/app/_utils/mongodb";
 import VendorIntegration from "@/models/VendorIntegration";
 import { XpressionRateFetcher } from "@/lib/xpression-rate-fetcher";
@@ -13,15 +15,7 @@ import iso from "iso-3166-1-alpha-2";
 async function handleRequest(req) {
   try {
     // Check if user is admin or branch
-    const userType = req.headers.get("userType") || req.headers.get("usertype") || "";
-    
-    if (userType !== "admin" && userType !== "branch") {
-      return NextResponse.json(
-        { error: "Only admins can access Xpression rates" },
-        { status: 403 }
-      );
-    }
-
+    // Access is checked by withAuth (admin / branch only) - see the exports below
     await connectToDB();
 
     // Extract parameters from query string or body
@@ -142,10 +136,6 @@ async function handleRequest(req) {
 }
 
 // Export both GET and POST handlers
-export async function GET(req) {
-  return handleRequest(req);
-}
+export const GET = withAuth((req) => handleRequest(req), { roles: ADMIN_BRANCH });
 
-export async function POST(req) {
-  return handleRequest(req);
-}
+export const POST = withAuth((req) => handleRequest(req), { roles: ADMIN_BRANCH });

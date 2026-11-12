@@ -1,9 +1,11 @@
 import { connectToDB } from "@/app/_utils/mongodb"
+import { withAuth } from "@/lib/auth/server"
+import { ADMIN_ONLY } from "@/lib/auth/config"
 import Stock from "@/models/Stock"
 import Party from "@/models/Party"
 import { NextResponse } from "next/server"
 
-export async function GET(request) {
+export const GET = withAuth(async (request, _ctx, session) => {
   try {
     await connectToDB()
 
@@ -41,9 +43,9 @@ export async function GET(request) {
     console.error("GET /api/stock error:", error)
     return NextResponse.json({ success: false, error: error.message }, { status: 500 })
   }
-}
+}, { roles: ADMIN_ONLY })
 
-export async function POST(request) {
+export const POST = withAuth(async (request, _ctx, session) => {
   try {
     await connectToDB()
 
@@ -259,4 +261,4 @@ export async function POST(request) {
       { status: 400 },
     )
   }
-}
+}, { roles: ADMIN_ONLY })

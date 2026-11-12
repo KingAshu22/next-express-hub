@@ -1,5 +1,7 @@
 // app/api/vendor-integrations/send-awb/route.js
 import { connectToDB } from "@/app/_utils/mongodb"
+import { withAuth } from "@/lib/auth/server"
+import { ADMIN_BRANCH } from "@/lib/auth/config"
 import VendorIntegration from "@/models/VendorIntegration"
 import Awb from "@/models/Awb"
 import iso from "iso-3166-1-alpha-2"
@@ -2014,7 +2016,7 @@ async function sendToM5C(awb, vendor, serviceData, customSender) {
   }
 }
 
-export async function POST(request) {
+export const POST = withAuth(async (request, _ctx, session) => {
   try {
     await connectToDB()
 
@@ -2168,4 +2170,4 @@ export async function POST(request) {
       { status: 500, headers: { "Content-Type": "application/json" } }
     )
   }
-}
+}, { roles: ADMIN_BRANCH })

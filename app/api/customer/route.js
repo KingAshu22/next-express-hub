@@ -1,47 +1,26 @@
 import { connectToDB } from "@/app/_utils/mongodb";
 import Customer from "@/models/Customer";
 import { NextResponse } from "next/server";
+import { withAuth, isAdminOrBranch } from "@/lib/auth/server";
+import { ownerIdFor } from "@/lib/security/scope";
 
-export async function GET(req) {
-    console.log("Inside get /api/customer");
-    await connectToDB();
-    try {
-        // Extract userType and id from the request headers
-        const userType = req.headers.get("userType");
-        const userId = req.headers.get("userId");
-        let customers;
-        if (userType === "admin" || userType === "branch") {
-            customers = await Customer.find({}).sort({ _id: -1 });
-    } else {
-      customers = await Customer.find({owner: userId}).sort({ _id: -1 });
-    }
-        return NextResponse.json(customers);
-    } catch (error) {
-        console.error("Error fetching Customers:", error.message);
-        return NextResponse.json({ error: "Failed to fetch Customers" }, { status: 500 });
-    }
-}
+// Address book: admin / branch see all, everyone else only the customers they saved.
+export const GET = withAuth(async (req, ctx, session) => {
+  await connectToDB();
+  const query = isAdminOrBranch(session) ? {} : { owner: ownerIdFor(session) };
+  const customers = await Customer.find(query).sort({ _id: -1 }).lean();
+  return NextResponse.json(customers);
+});
 
-export async function POST(req) {
-    try {
-        console.log("Inside /api/customers");
-        await connectToDB();
-        const data = await req.json(); // Parse JSON body from the request
+export const POST = withAuth(async (req, ctx, session) => {
+  await connectToDB();
+  const data = await req.json();
+  delete data._id;
+  // Owner always comes from the session
+  data.owner = ownerIdFor(session);
 
-        console.log(data);
+  const customer = new Customer(data);
+  await customer.save();
 
-        const customer = new Customer(data);
-        await customer.save();
-
-        return NextResponse.json(
-            { message: "Customer added successfully!", customer },
-            { status: 200 }
-        );
-    } catch (error) {
-        console.error("Error in POST /api/customer:", error.message);
-        return NextResponse.json(
-            { error: "Internal Server Error" },
-            { status: 500 }
-        );
-    }
-}
+  return NextResponse.json({ message: "Customer added successfully!", customer }, { status: 200 });
+});

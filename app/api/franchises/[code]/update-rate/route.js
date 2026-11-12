@@ -1,11 +1,13 @@
 import { connectToDB } from "@/app/_utils/mongodb"
 import Franchise from "@/models/Franchise"
 import { NextResponse } from "next/server"
+import { withAuth } from "@/lib/auth/server"
+import { ADMIN_ONLY } from "@/lib/auth/config"
 
-export async function POST(req, { params }) {
+export const POST = withAuth(async (req, { params }) => {
   try {
     await connectToDB()
-    const { code } = params
+    const { code } = await params
     const body = await req.json()
 
     // basic validation
@@ -28,7 +30,7 @@ export async function POST(req, { params }) {
       )
     }
 
-    const franchise = await Franchise.findOne({ code })
+    const franchise = await Franchise.findOne({ code: String(code) })
     if (!franchise) {
       return NextResponse.json({ error: "Franchise not found" }, { status: 404 })
     }
@@ -64,4 +66,4 @@ export async function POST(req, { params }) {
     console.error("Error in update-rate:", err)
     return NextResponse.json({ error: "Failed to upload rate" }, { status: 500 })
   }
-}
+}, { roles: ADMIN_ONLY })

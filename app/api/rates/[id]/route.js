@@ -1,10 +1,12 @@
 import { NextResponse } from "next/server"
+import { withAuth } from "@/lib/auth/server"
+import { ADMIN_BRANCH, ADMIN_ONLY } from "@/lib/auth/config"
 import { connectToDB } from "@/app/_utils/mongodb"
 import Rate from "@/models/Rate"
 
 // GET and DELETE methods remain unchanged. Only PUT needs updating.
 
-export async function GET(req, { params }) {
+export const GET = withAuth(async (req, { params }, session) => {
   try {
     await connectToDB()
     const { id } = await params
@@ -19,9 +21,9 @@ export async function GET(req, { params }) {
     console.error(`Error fetching rate ${params.id}:`, error)
     return NextResponse.json({ message: "Failed to fetch rate.", error: error.message }, { status: 500 })
   }
-}
+}, { roles: ADMIN_BRANCH })
 
-export async function PUT(req, { params }) {
+export const PUT = withAuth(async (req, { params }, session) => {
   try {
     await connectToDB()
     const { id } = await params
@@ -67,9 +69,9 @@ export async function PUT(req, { params }) {
     }
     return NextResponse.json({ message: "Failed to update rate.", error: error.message }, { status: 500 })
   }
-}
+}, { roles: ADMIN_ONLY })
 
-export async function DELETE(req, { params }) {
+export const DELETE = withAuth(async (req, { params }, session) => {
   try {
     await connectToDB()
     const { id } = await params
@@ -84,4 +86,4 @@ export async function DELETE(req, { params }) {
     console.error(`Error deleting rate ${params.id}:`, error)
     return NextResponse.json({ message: "Failed to delete rate.", error: error.message }, { status: 500 })
   }
-}
+}, { roles: ADMIN_ONLY })

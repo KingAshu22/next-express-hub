@@ -4,6 +4,8 @@
  */
 
 import { NextResponse } from "next/server";
+import { withAuth } from "@/lib/auth/server";
+import { ADMIN_BRANCH } from "@/lib/auth/config";
 import { connectToDB } from "@/app/_utils/mongodb";
 import VendorIntegration from "@/models/VendorIntegration";
 import { ITDRateFetcher } from "@/lib/itd-rate-fetcher";
@@ -11,15 +13,7 @@ import iso from "iso-3166-1-alpha-2";
 
 async function handleRequest(req) {
   try {
-    const userType = req.headers.get("userType") || req.headers.get("usertype") || "";
-
-    if (userType !== "admin" && userType !== "branch") {
-      return NextResponse.json(
-        { error: "Only admins and branches can access ITD rates" },
-        { status: 403 }
-      );
-    }
-
+    // Access is checked by withAuth (admin / branch only) - see the exports below
     await connectToDB();
 
     let params;
@@ -100,10 +94,6 @@ async function handleRequest(req) {
   }
 }
 
-export async function GET(req) {
-  return handleRequest(req);
-}
+export const GET = withAuth((req) => handleRequest(req), { roles: ADMIN_BRANCH });
 
-export async function POST(req) {
-  return handleRequest(req);
-}
+export const POST = withAuth((req) => handleRequest(req), { roles: ADMIN_BRANCH });

@@ -1,9 +1,10 @@
 import { NextResponse } from "next/server";
+import { withAuth, isExternal } from "@/lib/auth/server";
 import { connectToDB } from "@/app/_utils/mongodb";
 import Rate from "@/models/Rate";
 import { findMatchingPostalZone } from "@/app/_utils/postalZoneMatch";
 
-export async function GET(req) { 
+export const GET = withAuth(async (req, ctx, session) => { 
   try {
     await connectToDB();
 
@@ -12,9 +13,9 @@ export async function GET(req) {
     const country = searchParams.get("country");
     const zipCode = searchParams.get("zipCode");
 
-    // Handle case-insensitive headers
-    const userType = req.headers.get("userType") || req.headers.get("usertype") || "";
-    const userId = req.headers.get("userId") || req.headers.get("userid") || "";
+    // Identity from the signed session (request headers are ignored)
+    const userType = session.role;
+    const userId = session.code;
     
     console.log(`[API/SERVICES] ====== REQUEST START ======`);
     console.log(`[API/SERVICES] userType: "${userType}", userId: "${userId}", rateCategory: "${rateCategory}"`);
@@ -82,7 +83,7 @@ export async function GET(req) {
       
       // For development/testing: if no userType, treat as admin to show all rates
       // In production, you might want to change this to only show live sales rates
-      if (!userType) {
+      if (false) {
         console.log("[API/SERVICES] No userType provided - treating as admin for testing");
         if (rateCategory === "purchase") {
           query.rateCategory = "purchase";
@@ -210,7 +211,8 @@ export async function GET(req) {
     
     console.log(`[API/SERVICES] ====== REQUEST END ======\n`);
 
-    return NextResponse.json(services);
+    // Partners never see which vendor is behind a service
+    return NextResponse.json(isExternal(session) ? services.map(({ vendorName, purchaseRateId, ...rest }) => rest) : services);
 
   } catch (error) {
     console.error("[API/SERVICES] Error:", error);
@@ -219,4 +221,4 @@ export async function GET(req) {
       { status: 500 }
     );
   }
-}
+});

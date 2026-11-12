@@ -1,9 +1,11 @@
 // app/api/vendor-integrations/[id]/route.js
 import { connectToDB } from "@/app/_utils/mongodb"
+import { withAuth } from "@/lib/auth/server"
+import { ADMIN_ONLY } from "@/lib/auth/config"
 import VendorIntegration from "@/models/VendorIntegration"
 
 // GET - Get single vendor integration
-export async function GET(request, { params }) {
+export const GET = withAuth(async (request, { params }, session) => {
   try {
     await connectToDB()
     
@@ -40,10 +42,10 @@ export async function GET(request, { params }) {
       { status: 500, headers: { "Content-Type": "application/json" } }
     )
   }
-}
+}, { roles: ADMIN_ONLY })
 
 // PUT - Update vendor integration
-export async function PUT(request, { params }) {
+export const PUT = withAuth(async (request, { params }, session) => {
   try {
     await connectToDB()
     
@@ -265,10 +267,10 @@ export async function PUT(request, { params }) {
       { status: 500, headers: { "Content-Type": "application/json" } }
     )
   }
-}
+}, { roles: ADMIN_ONLY })
 
 // DELETE - Delete vendor integration
-export async function DELETE(request, { params }) {
+export const DELETE = withAuth(async (request, { params }, session) => {
   try {
     await connectToDB()
     
@@ -303,4 +305,4 @@ export async function DELETE(request, { params }) {
       { status: 500, headers: { "Content-Type": "application/json" } }
     )
   }
-}
+}, { roles: ADMIN_ONLY })

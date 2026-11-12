@@ -1,4 +1,5 @@
 "use client";
+import { logout } from "@/lib/auth/client";
 
 import {
   LayoutDashboard,
@@ -228,14 +229,8 @@ export function AppSidebar() {
   }, []);
 
   // Handle sign out
-  const handleSignOut = () => {
-    localStorage.removeItem("id");
-    localStorage.removeItem("name");
-    localStorage.removeItem("authExpiry");
-    localStorage.removeItem("userType");
-    localStorage.removeItem("code");
-    router.push("/signin");
-  };
+  // Ends the session on the server (revokes tokens) and clears local display info
+  const handleSignOut = () => logout();
 
   // Get user initials for avatar
   const getInitials = (name) => {

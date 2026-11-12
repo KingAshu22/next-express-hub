@@ -1,12 +1,14 @@
 import { NextResponse } from "next/server";
+import { withAuth } from "@/lib/auth/server";
 import { connectToDB } from "@/app/_utils/mongodb";
 import Rate from "@/models/Rate";
 
-export async function POST(req) {
+export const POST = withAuth(async (req, ctx, session) => {
   try {
     const { startWeight, endWeight, country, selectedServices, profitPercent, includeGST } = await req.json();
-    const userId = req.headers.get("userId");
-    const userType = req.headers.get("userType");
+    // Identity from the signed session (request headers are ignored)
+    const userId = session.code;
+    const userType = session.role;
 
     if (!country || !selectedServices || selectedServices.length === 0) {
       return NextResponse.json({ error: "Missing required parameters" }, { status: 400 });
@@ -28,6 +30,10 @@ export async function POST(req) {
       }
     } else if (userType !== 'admin' && userType !== 'branch') {
       serviceQuery.status = 'live';
+    }
+    if (userType !== 'admin' && userType !== 'branch') {
+      // Purchase (vendor cost) sheets are never available to partners
+      serviceQuery.rateCategory = 'sales';
     }
     // Admins/branches see all selected services
 
@@ -195,4 +201,4 @@ export async function POST(req) {
     console.error("Rate range calculation error:", error);
     return NextResponse.json({ error: "Internal Server Error" }, { status: 500 });
   }
-}
+});

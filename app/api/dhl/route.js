@@ -1,6 +1,8 @@
 import { NextResponse } from "next/server"
+import { withAuth } from "@/lib/auth/server"
+import { OPS_ROLES } from "@/lib/auth/config"
 
-export async function GET(request) {
+export const GET = withAuth(async (request, _ctx, session) => {
   const { searchParams } = new URL(request.url)
   const trackingNumber = searchParams.get("trackingNumber")
 
@@ -28,4 +30,4 @@ export async function GET(request) {
   } catch (error) {
     return NextResponse.json({ error: error.message }, { status: 500 })
   }
-}
+}, { roles: OPS_ROLES })

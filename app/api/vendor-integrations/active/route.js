@@ -1,8 +1,10 @@
 // app/api/vendor-integrations/active/route.js
 import { connectToDB } from "@/app/_utils/mongodb"
+import { withAuth } from "@/lib/auth/server"
+import { ADMIN_BRANCH } from "@/lib/auth/config"
 import VendorIntegration from "@/models/VendorIntegration"
 
-export async function GET(request) {
+export const GET = withAuth(async (request, _ctx, session) => {
   try {
     await connectToDB()
     
@@ -82,4 +84,4 @@ export async function GET(request) {
       { status: 500, headers: { "Content-Type": "application/json" } }
     )
   }
-}
+}, { roles: ADMIN_BRANCH })

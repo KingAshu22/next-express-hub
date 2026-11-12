@@ -1,4 +1,5 @@
 "use client";
+import { logout } from "@/lib/auth/client";
 import React, { useState, useEffect } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
@@ -41,14 +42,8 @@ const Header = () => {
     return () => clearInterval(intervalId);
   }, []); // Pass an empty array as the second argument
 
-  const handleSignOut = () => {
-    localStorage.removeItem("id");
-    localStorage.removeItem("name");
-    localStorage.removeItem("authExpiry");
-    localStorage.removeItem("userType");
-    localStorage.removeItem("code");
-    router.push("/signin");
-  };
+  // Ends the session on the server (revokes tokens) and clears local display info
+  const handleSignOut = () => logout();
 
   const getInitials = (name) => {
     return name

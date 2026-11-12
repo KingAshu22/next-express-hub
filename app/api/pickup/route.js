@@ -1,8 +1,10 @@
 import { connectToDB } from "@/app/_utils/mongodb"
+import { withAuth } from "@/lib/auth/server"
+import { PICKUP_ROLES } from "@/lib/auth/config"
 import Pickup from "@/models/Pickup"
 import { NextResponse } from "next/server"
 
-export async function GET(req) {
+export const GET = withAuth(async (req, _ctx, session) => {
   await connectToDB()
   try {
     const { searchParams } = new URL(req.url)
@@ -49,9 +51,9 @@ export async function GET(req) {
   } catch (error) {
     return NextResponse.json({ message: "Failed to fetch pickups", error: error.message }, { status: 500 })
   }
-}
+}, { roles: PICKUP_ROLES })
 
-export async function POST(req) {
+export const POST = withAuth(async (req, _ctx, session) => {
   await connectToDB()
   try {
     const body = await req.json()
@@ -80,4 +82,4 @@ export async function POST(req) {
   } catch (error) {
     return NextResponse.json({ message: "Failed to create pickup", error: error.message }, { status: 500 })
   }
-}
+}, { roles: PICKUP_ROLES })

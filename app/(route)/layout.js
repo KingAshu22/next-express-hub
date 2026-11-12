@@ -24,6 +24,8 @@ import { useEffect, useState } from "react";
 import BackFooter from "../_components/BackFooter";
 import { GoogleTagManager } from '@next/third-parties/google'
 import { ThemeProvider } from "../_components/ThemeProvider";
+// Installs the session auto-refresh for every fetch/axios call (side-effect import)
+import "@/lib/auth/client";
 
 const inter = Inter({ subsets: ["latin"] });
 

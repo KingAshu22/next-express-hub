@@ -1,9 +1,11 @@
 import { connectToDB } from "@/app/_utils/mongodb";
 import Client from "@/models/Client";
 import { NextResponse } from "next/server";
+import { withAuth } from "@/lib/auth/server";
+import { ROLES } from "@/lib/auth/config";
 
 
-export async function GET() {
+export const GET = withAuth(async () => {
     await connectToDB()
 
     try {
@@ -26,4 +28,4 @@ export async function GET() {
         console.error("Error fetching Client:", error.message)
         return NextResponse.json({ error: "Failed to fetch Client" }, { status: 500 })
     }
-}
+}, { roles: [ROLES.ADMIN, ROLES.BRANCH, ROLES.FRANCHISE] })

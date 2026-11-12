@@ -1,8 +1,10 @@
 import { connectToDB } from "@/app/_utils/mongodb"
+import { withAuth } from "@/lib/auth/server"
+import { ADMIN_ONLY } from "@/lib/auth/config"
 import Stock from "@/models/Stock"
 import { NextResponse } from "next/server"
 
-export async function GET(request, { params }) {
+export const GET = withAuth(async (request, { params }, session) => {
   try {
     await connectToDB()
 
@@ -24,9 +26,9 @@ export async function GET(request, { params }) {
     console.error("GET /api/stock/[id] error:", error)
     return NextResponse.json({ success: false, error: error.message }, { status: 500 })
   }
-}
+}, { roles: ADMIN_ONLY })
 
-export async function PUT(request, { params }) {
+export const PUT = withAuth(async (request, { params }, session) => {
   try {
     await connectToDB()
 
@@ -49,9 +51,9 @@ export async function PUT(request, { params }) {
     console.error("PUT /api/stock/[id] error:", error)
     return NextResponse.json({ success: false, error: error.message }, { status: 400 })
   }
-}
+}, { roles: ADMIN_ONLY })
 
-export async function DELETE(request, { params }) {
+export const DELETE = withAuth(async (request, { params }, session) => {
   try {
     await connectToDB()
 
@@ -88,4 +90,4 @@ export async function DELETE(request, { params }) {
 
     return NextResponse.json({ success: false, error: error.message || "Failed to delete stock" }, { status: 500 })
   }
-}
+}, { roles: ADMIN_ONLY })

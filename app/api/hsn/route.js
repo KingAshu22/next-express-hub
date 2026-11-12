@@ -1,8 +1,9 @@
 import { connectToDB } from "@/app/_utils/mongodb"
+import { withAuth } from "@/lib/auth/server"
 import Hsn from "@/models/Hsn"
 import { NextResponse } from "next/server"
 
-export async function GET(req) {
+export const GET = withAuth(async (req, _ctx, session) => {
     try {
         await connectToDB()
 
@@ -33,4 +34,4 @@ export async function GET(req) {
         console.error("Error searching HSN codes:", error)
         return NextResponse.json({ error: "Failed to search HSN codes" }, { status: 500 })
     }
-}
+})

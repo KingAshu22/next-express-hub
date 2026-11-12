@@ -642,24 +642,23 @@ const DAY_MS = 24 * 60 * 60 * 1000;
 // ─────────────────────────────────────────────
 // MAIN COMPONENT
 // ─────────────────────────────────────────────
-export default function TrackingDetails({ parcelDetails }) {
-  const [vendorData,     setVendorData]     = useState(null);
-  const [error,          setError]          = useState(null);
-  const [isLoading,      setIsLoading]      = useState(false);
-  const [timeline,       setTimeline]       = useState([]);
+export default function TrackingDetails({ parcelDetails, onRefresh }) {
   const [copied,         setCopied]         = useState(false);
   const [copiedFwd,      setCopiedFwd]      = useState(false);
 
-  const hasVendor    = parcelDetails?.cNoteNumber && parcelDetails?.cNoteVendorName;
-  // "SkyNet" (any case) in the C Note vendor name always means: track via
-  // fetchSkyNetTracking using the C Note number, regardless of what's in the
-  // VendorIntegration DB (SkyNet's public API needs no vendor record at all).
-  const isSkynetCNote = /skynet/i.test(String(parcelDetails?.cNoteVendorName || ""));
+  // The timeline (our updates + live carrier scans) is built on the server by
+  // /api/track - vendor C-Note numbers never reach the browser.
+  const timeline = (parcelDetails?.timeline || []).map((e) => ({
+    timestamp: Number(e.timestamp) || 0,
+    status:    String(e.status ?? "Update").trim() || "Update",
+    location:  String(e.location ?? "").trim(),
+    comment:   e.comment || null,
+  }));
+  const isLoading = false;
+
   const fwdNumber    = parcelDetails?.forwardingNumber;
   const fwdLink      = parcelDetails?.forwardingLink || "";
   const fwdCarrier   = detectCarrier(fwdLink);
-  const isDHL        = fwdNumber && fwdLink.toLowerCase().includes("dhl") && fwdCarrier === "dhl";
-  const doVendor     = hasVendor || isDHL;
 
   const trackNum           = parcelDetails?.trackingNumber;
   const originCountry      = parcelDetails?.sender?.country   || "";
@@ -730,82 +729,7 @@ export default function TrackingDetails({ parcelDetails }) {
     );
   };
 
-  const fetchVendor = async () => {
-    if (!doVendor) return;
-    setIsLoading(true);
-    setError(null);
-    try {
-      const payload = isDHL
-        ? { awbNumber: fwdNumber, forceSoftwareType: "dhl" }
-        : {
-            awbNumber:  parcelDetails?.cNoteNumber,
-            // Skip vendorId for SkyNet so a stale/unrelated integratedVendorId can't
-            // hijack the lookup — forceSoftwareType alone is enough to route this
-            // straight to fetchSkyNetTracking on the backend.
-            vendorId:   isSkynetCNote ? undefined : parcelDetails?.integratedVendorId,
-            vendorName: parcelDetails?.cNoteVendorName,
-            forceSoftwareType: isSkynetCNote ? "skynet" : undefined,
-          };
-      const r   = await fetch("/api/vendor-integrations/tracking", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(payload),
-      });
-      const res = await r.json();
-      if (!res.success) { setError(res.error || "Failed"); return; }
-      setVendorData(res);
-    } catch (e) {
-      setError(e.message || "Failed");
-    } finally {
-      setIsLoading(false);
-    }
-  };
 
-  useEffect(() => { if (doVendor) fetchVendor(); }, [doVendor, parcelDetails]);
-
-  useEffect(() => {
-    try {
-      const all = [];
-
-      if (vendorData?.events?.length)
-        vendorData.events.forEach((e) =>
-          all.push({
-            timestamp: parseEventTimestamp(e, vendorData.softwareType),
-            status:    String(e.Status   ?? e.status   ?? "Update").trim(),
-            location:  String(e.Location ?? e.location ?? "").trim(),
-            comment:   sanitizeComment(e.Remark ?? e.comment),
-            source:    "vendor",
-          })
-        );
-
-      if (parcelDetails?.parcelStatus?.length)
-        parcelDetails.parcelStatus.forEach((e) =>
-          all.push({
-            timestamp: parseInternalDate(e.timestamp),
-            status:    String(e.status   ?? "Update").trim(),
-            location:  String(e.location ?? "").trim(),
-            comment:   sanitizeComment(e.comment),
-            source:    "database",
-          })
-        );
-
-      all.sort((a, b) => b.timestamp - a.timestamp);
-      setTimeline(
-        all.filter(
-          (e, i, arr) =>
-            i === 0 ||
-            !(
-              e.status.toLowerCase() === arr[i - 1].status.toLowerCase() &&
-              e.location.toLowerCase() === arr[i - 1].location.toLowerCase() &&
-              Math.abs(e.timestamp - arr[i - 1].timestamp) < 60000
-            )
-        )
-      );
-    } catch (err) {
-      console.error("Failed to build shipment history timeline:", err);
-      setTimeline([]);
-    }
-  }, [vendorData, parcelDetails]);
 
   if (!parcelDetails) return null;
 
@@ -829,9 +753,7 @@ export default function TrackingDetails({ parcelDetails }) {
     ? Math.max(1, Math.ceil(((isDelivered ? lastTs : Date.now()) - firstTs) / DAY_MS))
     : 0;
 
-  const refreshAll = () => {
-    if (doVendor) fetchVendor();
-  };
+  const refreshAll = () => onRefresh?.();
 
   return (
     <div className="w-full bg-slate-50 font-sans text-slate-900">

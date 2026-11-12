@@ -1,81 +1,54 @@
 import { connectToDB } from "@/app/_utils/mongodb"
 import Franchise from "@/models/Franchise"
 import { NextResponse } from "next/server"
+import { withAuth, notFound } from "@/lib/auth/server"
+import { ADMIN_ONLY } from "@/lib/auth/config"
+import { canReadFranchise } from "@/lib/security/scope"
+import { sanitizeFranchise } from "@/lib/security/sanitize"
+import { escapeRegex } from "@/lib/security/regex"
 
-export async function GET(req, { params }) {
-  const { code } = await params;
-  console.log("Inside get /api/franchises/:code");
+const findByCode = (code) =>
+  Franchise.findOne({ code: { $regex: `^${escapeRegex(code)}$`, $options: "i" } })
 
-  await connectToDB();
+export const GET = withAuth(async (req, { params }, session) => {
+  const { code } = await params
+  await connectToDB()
 
-  try {
-    // Match case-insensitively to be safe
-    const franchise = await Franchise.findOne({ code: { $regex: new RegExp(`^${code}$`, 'i') } });
-    
-    if (!franchise) {
-      return NextResponse.json({ message: "Franchise not found" }, { status: 404 });
-    }
+  const franchise = await findByCode(code).lean()
+  if (!(await canReadFranchise(session, franchise))) return notFound("Franchise not found")
 
-    return NextResponse.json(franchise); // Return direct object, not array
-  } catch (error) {
-    console.error("Error fetching Franchise data:", error);
-    return NextResponse.json({ message: "Failed to fetch Franchise data.", error: error.message }, { status: 500 });
-  }
-}
+  return NextResponse.json(sanitizeFranchise(franchise, session)) // single object, not array
+})
 
-export async function PUT(req, { params }) {
-  try {
-    console.log("Updating Franchise")
+export const PUT = withAuth(
+  async (req, { params }, session) => {
     await connectToDB()
-    const { code } = await params // Correctly extract params
-    const body = await req.json() // Parse the incoming JSON data
+    const { code } = await params
+    const body = await req.json()
+    for (const key of Object.keys(body || {})) if (key.startsWith("$")) delete body[key]
+    delete body._id
+    delete body.tokenVersion
+    // Empty password = keep the current one (handled by the model plugin)
 
-    const updatedFranchise = await Franchise.findOneAndUpdate(
-      { code }, // Use a proper query object
-      body,
-      { new: true },
-    )
+    const updatedFranchise = await Franchise.findOneAndUpdate({ code: String(code) }, body, { new: true })
+    if (!updatedFranchise) return notFound("Franchise not found")
 
-    if (!updatedFranchise) {
-      return new Response(JSON.stringify({ message: "Franchise not found" }), {
-        status: 404,
-        headers: { "Content-Type": "application/json" },
-      })
-    }
-
-    return new Response(JSON.stringify({ message: "Franchise updated successfully!", updatedFranchise }), {
-      status: 200,
-      headers: { "Content-Type": "application/json" },
+    return NextResponse.json({
+      message: "Franchise updated successfully!",
+      updatedFranchise: sanitizeFranchise(updatedFranchise, session),
     })
-  } catch (error) {
-    console.error("Error updating Franchise data:", error)
-    return new Response(
-      JSON.stringify({
-        message: "Failed to update Franchise data.",
-        error: error.message,
-      }),
-      {
-        status: 500,
-        headers: { "Content-Type": "application/json" },
-      },
-    )
-  }
-}
+  },
+  { roles: ADMIN_ONLY }
+)
 
-export async function DELETE(req, { params }) {
-  try {
-    console.log("Deleting Franchise")
+export const DELETE = withAuth(
+  async (req, { params }) => {
     await connectToDB()
-    const { code } = await params // Correctly extract params
-    const deletedFranchise = await Franchise.findOneAndDelete({ code }) // Use a proper query object
+    const { code } = await params
+    const deletedFranchise = await Franchise.findOneAndDelete({ code: String(code) })
 
-    if (!deletedFranchise) {
-      return NextResponse.json({ error: "Franchise not found" }, { status: 404 })
-    }
-
+    if (!deletedFranchise) return notFound("Franchise not found")
     return NextResponse.json({ message: "Franchise deleted successfully!" }, { status: 200 })
-  } catch (error) {
-    console.error("Error deleting Franchise data:", error)
-    return NextResponse.json({ message: "Failed to delete Franchise data." }, { status: 500 })
-  }
-}
+  },
+  { roles: ADMIN_ONLY }
+)

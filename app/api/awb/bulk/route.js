@@ -2,6 +2,10 @@ import { connectToDB } from "@/app/_utils/mongodb"
 import Awb from "@/models/Awb"
 import Customer from "@/models/Customer"
 import { NextResponse } from "next/server"
+import { withAuth, isExternal } from "@/lib/auth/server"
+import { ROLES } from "@/lib/auth/config"
+import { getAllowedRefCodes, ownerIdFor } from "@/lib/security/scope"
+import { getUniqueTrackingNumber } from "@/lib/booking-numbers"
 import {
   MAX_BULK_ROWS,
   buildBookingsFromRows,
@@ -9,9 +13,6 @@ import {
   normalizeSheetRows,
   parseCsvToSheetRows,
 } from "@/lib/bulk-awb"
-
-const generateTrackingNumber = () =>
-  String(Math.floor(1000000000 + Math.random() * 9000000000))
 
 const getStartingInvoiceNumber = async () => {
   const lastAwb = await Awb.findOne({}).sort({ _id: -1 }).select("invoiceNumber").lean()
@@ -22,10 +23,7 @@ const getStartingInvoiceNumber = async () => {
 const generateUniqueTrackingNumbers = async (count) => {
   const trackingNumbers = new Set()
   while (trackingNumbers.size < count) {
-    const candidate = generateTrackingNumber()
-    if (trackingNumbers.has(candidate)) continue
-    const exists = await Awb.exists({ trackingNumber: candidate })
-    if (!exists) trackingNumbers.add(candidate)
+    trackingNumbers.add(String(await getUniqueTrackingNumber()))
   }
   return Array.from(trackingNumbers)
 }
@@ -66,7 +64,9 @@ const readRows = async (request) => {
   return normalizeSheetRows(parseCsvToSheetRows(await file.text()))
 }
 
-export async function GET() {
+const BULK_ROLES = [ROLES.ADMIN, ROLES.BRANCH, ROLES.FRANCHISE, ROLES.CLIENT]
+
+export const GET = withAuth(async () => {
   // BOM so Excel opens the CSV as UTF-8
   return new Response(`﻿${buildTemplateCsv()}`, {
     status: 200,
@@ -75,9 +75,9 @@ export async function GET() {
       "Content-Disposition": 'attachment; filename="kargoone-bulk-booking-template.csv"',
     },
   })
-}
+}, { roles: BULK_ROLES })
 
-export async function POST(request) {
+export const POST = withAuth(async (request, ctx, session) => {
   try {
     const rows = await readRows(request)
 
@@ -94,11 +94,12 @@ export async function POST(request) {
       )
     }
 
-    const userType = request.headers.get("userType") || ""
-    const userCode = request.headers.get("userId") || ""
-    const staffIdHeader = request.headers.get("staffId") || ""
-    const isClientOrFranchise = userType === "client" || userType === "franchise"
-    const staffId = userType === "admin" ? "admin" : staffIdHeader || userCode
+    // Identity comes from the signed session, never from request headers
+    const userType = session.role
+    const userCode = session.code
+    const isClientOrFranchise = isExternal(session)
+    const staffId = ownerIdFor(session)
+    const allowedRefCodes = isClientOrFranchise ? await getAllowedRefCodes(session) : null
 
     const bookings = buildBookingsFromRows(rows)
     const valid = bookings.filter((b) => b.booking)
@@ -128,12 +129,17 @@ export async function POST(request) {
     const awbs = []
     bookings.forEach((b, i) => {
       if (!b.booking) return
+      const booking = { ...b.booking }
+      if (isClientOrFranchise) {
+        // Partners can't set vendor details through the sheet
+        for (const f of ["cNoteNumber", "cNoteVendorName", "awbNumber", "forwardingNumber", "forwardingLink", "financials"]) delete booking[f]
+      }
       const awb = {
-        ...b.booking,
+        ...booking,
         staffId,
-        // Clients / franchises only see bookings with their own code
+        // Clients / franchises: their own code, or (franchise) one of their own clients
         refCode: isClientOrFranchise
-          ? userCode
+          ? allowedRefCodes.includes(b.booking.refCode) ? b.booking.refCode : userCode
           : b.booking.refCode || (userType === "branch" ? userCode : ""),
         invoiceNumber: String(startingInvoiceNumber + validIndex),
         trackingNumber: trackingNumbers[validIndex],
@@ -174,8 +180,8 @@ export async function POST(request) {
   } catch (error) {
     console.error("Bulk AWB import error:", error)
     return NextResponse.json(
-      { success: false, error: error.message || "Failed to import bookings" },
+      { success: false, error: "Failed to import bookings" },
       { status: 500 }
     )
   }
-}
+}, { roles: BULK_ROLES })

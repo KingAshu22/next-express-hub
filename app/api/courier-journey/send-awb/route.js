@@ -1,4 +1,6 @@
 import { connectToDB } from "@/app/_utils/mongodb"
+import { withAuth } from "@/lib/auth/server"
+import { ADMIN_BRANCH } from "@/lib/auth/config"
 import Awb from "@/models/Awb"
 import iso from "iso-3166-1-alpha-2"
 
@@ -15,7 +17,7 @@ const KYC_TYPE_MAP = {
   "GST No -": "GSTIN (Normal)",
 }
 
-export async function POST(request) {
+export const POST = withAuth(async (request, _ctx, session) => {
   try {
     await connectToDB()
     const { awbId, service } = await request.json()
@@ -238,4 +240,4 @@ export async function POST(request) {
       },
     )
   }
-}
+}, { roles: ADMIN_BRANCH })

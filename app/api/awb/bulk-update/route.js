@@ -1,6 +1,8 @@
 import { connectToDB } from "@/app/_utils/mongodb"
 import Awb from "@/models/Awb"
 import { NextResponse } from "next/server"
+import { withAuth } from "@/lib/auth/server"
+import { OPS_ROLES } from "@/lib/auth/config"
 
 const normalizeTrackingNumbers = (rawTrackingNumbers) => {
   if (Array.isArray(rawTrackingNumbers)) {
@@ -15,11 +17,12 @@ const normalizeTrackingNumbers = (rawTrackingNumbers) => {
     .filter(Boolean)
 }
 
-export async function PUT(request) {
+// Staff only: sets vendor C-Note / forwarding numbers and tracking statuses
+export const PUT = withAuth(async (request) => {
   try {
     await connectToDB()
     const body = await request.json()
-    const trackingNumbers = normalizeTrackingNumbers(body.trackingNumbers)
+    const trackingNumbers = normalizeTrackingNumbers(body.trackingNumbers).slice(0, 1000)
 
     if (trackingNumbers.length === 0) {
       return NextResponse.json(
@@ -168,9 +171,8 @@ export async function PUT(request) {
       {
         success: false,
         message: "Failed to update AWBs.",
-        error: error.message,
       },
       { status: 500 }
     )
   }
-}
+}, { roles: OPS_ROLES })

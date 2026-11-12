@@ -1,7 +1,9 @@
 import * as cheerio from "cheerio"
+import { withAuth } from "@/lib/auth/server"
+import { OPS_ROLES } from "@/lib/auth/config"
 import { NextResponse } from "next/server"
 
-export async function GET(request) {
+export const GET = withAuth(async (request, _ctx, session) => {
   const { searchParams } = new URL(request.url)
   const trackingNumber = searchParams.get("trackingNumber")
   const link = searchParams.get("link") // Keep backward compatibility
@@ -297,4 +299,4 @@ export async function GET(request) {
       { status: 500 },
     )
   }
-}
+}, { roles: OPS_ROLES })

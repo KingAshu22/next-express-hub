@@ -1,5 +1,7 @@
 // app/api/vendor-integrations/[id]/services/route.js
 import { connectToDB } from "@/app/_utils/mongodb"
+import { withAuth } from "@/lib/auth/server"
+import { ADMIN_BRANCH } from "@/lib/auth/config"
 import VendorIntegration from "@/models/VendorIntegration"
 import axios from "axios"
 
@@ -84,7 +86,7 @@ async function fetchM5CServices(vendor) {
   })).filter((service) => service.serviceName && service.serviceCode)
 }
 
-export async function GET(request, { params }) {
+export const GET = withAuth(async (request, { params }, session) => {
   try {
     await connectToDB()
     
@@ -149,4 +151,4 @@ export async function GET(request, { params }) {
       { status: 500, headers: { "Content-Type": "application/json" } }
     )
   }
-}
+}, { roles: ADMIN_BRANCH })

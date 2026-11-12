@@ -1,13 +1,15 @@
 import { NextResponse } from "next/server";
+import { withAuth } from "@/lib/auth/server";
 import { connectToDB } from "@/app/_utils/mongodb";
 import Rate from "@/models/Rate";
 import { Countries } from "@/app/constants/country";
 
-export async function POST(req) {
+export const POST = withAuth(async (req, ctx, session) => {
   try {
     const { startWeight, endWeight, selectedServices, profitPercent, includeGST } = await req.json();
-    const userId = req.headers.get("userId");
-    const userType = req.headers.get("userType");
+    // Identity from the signed session (request headers are ignored)
+    const userId = session.code;
+    const userType = session.role;
 
     if (!selectedServices || selectedServices.length !== 1) {
       return NextResponse.json(
@@ -32,6 +34,10 @@ export async function POST(req) {
       }
     } else if (userType !== 'admin' && userType !== 'branch') {
       rateQuery.status = 'live';
+    }
+    if (userType !== 'admin' && userType !== 'branch') {
+      // Purchase (vendor cost) sheets are never available to partners
+      rateQuery.rateCategory = 'sales';
     }
 
     const rateResult = await Rate.findOne(rateQuery);
@@ -176,4 +182,4 @@ export async function POST(req) {
     console.error("Error in rate-all-countries API:", error);
     return NextResponse.json({ error: "Internal server error" }, { status: 500 });
   }
-}
+});

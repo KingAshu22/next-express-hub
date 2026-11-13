@@ -13,7 +13,7 @@ import {
 } from "@/lib/auth/server"
 
 export async function POST(req) {
-  const limit = publicRateLimit(req, "refresh", { limit: 60, windowMs: 60_000 })
+  const limit = publicRateLimit(req, "refresh", { limit: 600, windowMs: 60_000 })
   if (!limit.ok) return tooManyRequests(limit.retryAfter)
 
   const { session } = await verifyRefreshToken(readRefreshCookie(req))

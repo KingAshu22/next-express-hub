@@ -679,28 +679,19 @@ export default function TrackingDetails({ parcelDetails, onRefresh }) {
   const originCity  = parcelDetails?.sender?.city   || "";
   const destCity    = parcelDetails?.receiver?.city || "";
 
-  const sName  = parcelDetails?.sender?.name    || "";
+  const partyName = (p) => [p?.name, p?.companyName].filter(Boolean).join(" · ");
+  const sName  = partyName(parcelDetails?.sender);
   const sPhone = parcelDetails?.sender?.phone   || "";
-  const rName  = parcelDetails?.receiver?.name  || "";
+  const rName  = partyName(parcelDetails?.receiver);
   const rPhone = parcelDetails?.receiver?.phone || "";
-  const sAddr  = [
-    parcelDetails?.sender?.address,
-    parcelDetails?.sender?.city,
-    parcelDetails?.sender?.state,
-    parcelDetails?.sender?.country,
-  ]
-    .filter(Boolean)
-    .join(", ");
-  const rAddr = [
-    parcelDetails?.receiver?.address,
-    parcelDetails?.receiver?.address2,
-    parcelDetails?.receiver?.city,
-    parcelDetails?.receiver?.state,
-    parcelDetails?.receiver?.zip,
-    parcelDetails?.receiver?.country,
-  ]
-    .filter(Boolean)
-    .join(", ");
+  // Full postal address: line 1, line 2, city, state, ZIP, country
+  const fullAddress = (p) =>
+    [p?.address, p?.address2, p?.city, p?.state, p?.zip, p?.country]
+      .map((v) => String(v ?? "").trim())
+      .filter(Boolean)
+      .join(", ");
+  const sAddr = fullAddress(parcelDetails?.sender);
+  const rAddr = fullAddress(parcelDetails?.receiver);
 
   const copyTrack = () => {
     navigator.clipboard?.writeText(String(trackNum));

@@ -56,8 +56,8 @@ export default function TrackingPage() {
         t
           ? {
               trackingNumber: t.trackingNumber,
-              sender: { city: t.origin?.city, country: t.origin?.country },
-              receiver: { city: t.destination?.city, country: t.destination?.country },
+              sender: t.sender || {},
+              receiver: t.receiver || {},
               forwardingNumber: t.forwardingNumber,
               forwardingLink: t.forwardingLink,
               timeline: t.timeline || [],

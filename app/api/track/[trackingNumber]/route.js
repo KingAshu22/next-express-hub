@@ -1,7 +1,8 @@
 // GET /api/track/:trackingNumber
 // Public "Track your parcel" endpoint used by the website.
-//  - Returns ONLY: route (city/country), forwarding number/link, and the status
-//    timeline. No names, phones, addresses, boxes, money, C-Note or vendor.
+//  - Returns ONLY: sender / receiver name + postal address, forwarding
+//    number/link and the status timeline. No phones, emails, KYC, boxes,
+//    money, C-Note or vendor.
 //  - Vendor scans are fetched here on the server, so the C-Note number never
 //    reaches the browser.
 //  - Rate limited per IP so tracking numbers can't be bulk-scraped.
@@ -30,7 +31,7 @@ export async function GET(req, { params }) {
   try {
     await connectToDB()
     const awb = await Awb.findOne({ trackingNumber: String(trackingNumber) })
-      .select("trackingNumber date refCode sender.city sender.country receiver.city receiver.country forwardingNumber forwardingLink parcelStatus cNoteNumber cNoteVendorName integratedVendorId")
+      .select("trackingNumber date refCode sender.name sender.companyName sender.address sender.address2 sender.city sender.state sender.zip sender.country receiver.name receiver.companyName receiver.address receiver.address2 receiver.city receiver.state receiver.zip receiver.country forwardingNumber forwardingLink parcelStatus cNoteNumber cNoteVendorName integratedVendorId")
       .lean()
     if (!awb) return notFound("No shipment found")
 

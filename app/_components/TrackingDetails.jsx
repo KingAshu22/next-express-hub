@@ -637,8 +637,6 @@ const PartyBlock = ({ dotClass, eyebrow, place, name, phone, address }) => (
   </div>
 );
 
-const DAY_MS = 24 * 60 * 60 * 1000;
-
 // ─────────────────────────────────────────────
 // MAIN COMPONENT
 // ─────────────────────────────────────────────
@@ -740,11 +738,7 @@ export default function TrackingDetails({ parcelDetails, onRefresh }) {
   const tone         = getStatusMeta(latestStatus);
 
   const dated     = timeline.filter((e) => e.timestamp > 0);
-  const firstTs   = dated.length ? dated[dated.length - 1].timestamp : 0;
   const lastTs    = dated.length ? dated[0].timestamp : 0;
-  const transitDays = firstTs
-    ? Math.max(1, Math.ceil(((isDelivered ? lastTs : Date.now()) - firstTs) / DAY_MS))
-    : 0;
 
   const refreshAll = () => onRefresh?.();
 
@@ -915,18 +909,12 @@ export default function TrackingDetails({ parcelDetails, onRefresh }) {
           </div>
 
           {/* Facts */}
-          <dl className="grid grid-cols-2 sm:grid-cols-3 gap-px bg-slate-100 border-t border-slate-100">
+          <dl className="grid grid-cols-2 gap-px bg-slate-100 border-t border-slate-100">
             {[
               {
                 icon:  Calendar,
                 label: "Last update",
                 value: lastTs ? `${fmtDate(lastTs)} · ${fmtTime(lastTs)}` : "—",
-                span:  "col-span-2 sm:col-span-1",
-              },
-              {
-                icon:  Clock,
-                label: isDelivered ? "Delivered in" : "Transit time",
-                value: transitDays ? `${transitDays} day${transitDays !== 1 ? "s" : ""}` : "—",
               },
               {
                 icon:  Route,
